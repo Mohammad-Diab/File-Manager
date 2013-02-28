@@ -3,11 +3,22 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:Custom="http://schemas.microsoft.com/winfx/2006/xaml/presentation/ribbon" x:Class="File_Manager.MainWindow"
         Title="File Manager" Width="810" Height="525" WindowStartupLocation="Manual" Loaded="Main_Window_Loaded" Icon="File_Manager.ico" PreviewKeyUp="Refresh">
-    <Grid Background="#FFF0F0F0">
-        <Grid Margin="0,26,0,0">
-            <ListView x:Name="Explorer" TextBlock.TextAlignment="Right" PreviewMouseDoubleClick="Traversing" Margin="0,0,10,19">
+    <Grid>
+        <Grid Margin="0,51,0,0">
+            <Grid.RowDefinitions>
+                <RowDefinition/>
+            </Grid.RowDefinitions>
+            <Grid x:Name="Properties" HorizontalAlignment="Right" Margin="0,0,0,0" Width="220" Visibility="Visible" Grid.RowSpan="1" Background="#FFE7E5E4">
+                <StackPanel Margin="10">
+                    <TextBlock x:Name="name" Margin="0,0,0,0" TextWrapping="Wrap" Text="Name:" VerticalAlignment="Top" FontSize="14"/>
+                    <TextBlock x:Name="type" Margin="0,0,0,0" TextWrapping="Wrap" Text="Type:" VerticalAlignment="Top"/>
+                    <TextBlock x:Name="size" Margin="0,0,0,0" TextWrapping="Wrap" Text="Size:" VerticalAlignment="Top"/>
+                    <TextBlock x:Name="data_Modified" Margin="0,0,0,0" TextWrapping="Wrap" Text="Data Modified:" VerticalAlignment="Top"/>
+                </StackPanel>
+            </Grid>
+            <ListView x:Name="Explorer" TextBlock.TextAlignment="Right" PreviewMouseDoubleClick="Traversing" Margin="0,0,220,19" SelectionChanged="View_Items_Basic_Info" PreviewKeyUp="Preview_Items" >
                 <!--<ListView.View>-->
-                <!--<GridView x:Name="vvv">
+                    <!--<GridView x:Name="vvv">
                         <GridViewColumn TextBlock.TextAlignment="Left" Header="Name" Width="275"/>
                         <GridViewColumn Header="Size" Width="90"/>
                         <GridViewColumn Header="Type" Width="85"/>
@@ -15,22 +26,68 @@
                     </GridView>-->
                 <!--</ListView.View>-->
             </ListView>
-            <Grid VerticalAlignment="Bottom">
+            <Grid VerticalAlignment="Bottom" Margin="0,0,220,0">
                 <TextBlock x:Name="statebar" TextWrapping="Wrap" Text="" VerticalAlignment="Top" FontSize="14" Margin="2,0,0,0"/>
             </Grid>
         </Grid>
-        <Menu HorizontalAlignment="Left" VerticalAlignment="Top">
-            <MenuItem Header="File Manager" FontSize="14" Height="25">
-                <MenuItem Header="New Window" Click="New_Window"/>
-                <MenuItem Header="New Window(Admin Propriety)" Click="New_Window_Admin"/>
-                <Separator/>
-                <MenuItem Header="Preferences"/>
-                <MenuItem Header="about File Manager"  Click="MenuItem_Click"/>
-                <Separator/>
-                <MenuItem Header="Quit"  Click="Quit"/>
-            </MenuItem>
-        </Menu>
-        <TextBox x:Name="Address" Text="Computer" Background="{x:Null}" KeyUp="Traversing_KeyBoard" VerticalAlignment="Top" Margin="123,3,10,0"/>
-        <Button Content="Up" Click="Go_UP" Margin="99,2,0,0" VerticalAlignment="Top" Background="{x:Null}" HorizontalAlignment="Left"/>
+        <Grid Height="30" Margin="0,21,0,0" VerticalAlignment="Top" Background="#FFF2F1F0">
+            <Button Content="Back" Click="Go_Back" Margin="3,3,0,3" VerticalAlignment="Stretch" Background="{x:Null}" HorizontalAlignment="Left" />
+            <Button Content="Forword" Click="Go_Front" Margin="34,3,0,3" VerticalAlignment="Stretch" Background="{x:Null}" HorizontalAlignment="Left" />
+            <ComboBox x:Name="backMenu" HorizontalAlignment="Left" Margin="87,6,0,6" Width="20" SelectionChanged="Surfing_Back"/>
+            <Button Content="Up" Click="Go_UP" Margin="112,3,0,3" VerticalAlignment="Stretch" Background="{x:Null}" HorizontalAlignment="Left"/>
+            <TextBox x:Name="Address" Text="Computer" Margin="136,6,255,6" Background="{x:Null}" KeyUp="Traversing_KeyBoard" HorizontalAlignment="Stretch"/>
+            <Button Content="Refresh" Click="Refresh" Margin="0,3,206,3" VerticalAlignment="Stretch" Background="{x:Null}" HorizontalAlignment="Right"/>
+            <TextBox x:Name="Search" Margin="0,6" Background="{x:Null}" HorizontalAlignment="Right" Width="200"/>
+        </Grid>
+        <Grid VerticalAlignment="Top">
+            <Menu>
+                <MenuItem Header="Files" FontSize="14">
+                    <MenuItem Header="New Window" Click="New_Window"/>
+                    <MenuItem Header="New Window(Admin Propriety)" Click="New_Window_Admin"/>
+                    <Separator/>
+                    <MenuItem Header="BookMarks"/>
+                    <Separator/>
+                    <MenuItem Header="Preferences"/>
+                    <MenuItem Header="about File Manager"  Click="MenuItem_Click"/>
+                    <MenuItem Header="Help" />
+                    <Separator/>
+                    <MenuItem Header="Quit"  Click="Quit"/>
+                </MenuItem>
+                <MenuItem Header="View" FontSize="14">
+                    <MenuItem Header="Show Image"/>
+                    <MenuItem Header="Zoom In" />
+                    <MenuItem Header="Zoom Out" />
+                    <MenuItem Header="Normal Size"  Click="HH"/>
+                    <Separator/>
+                    <MenuItem Header="Refresh"  Click="Refresh"/>
+                    <Separator/>
+                    <MenuItem Header="Show Details Pane" />
+                    <MenuItem Header="Show Hidden Files"  Click="Show_Hidden_Files"/>
+                </MenuItem>
+                <MenuItem Header="Options" FontSize="14">
+                    <MenuItem Header="New Tab" />
+                    <MenuItem Header="New Folder"/>
+                    <MenuItem Header="New Document" >
+                        <MenuItem Header="Text" />
+                    </MenuItem>
+                    <Separator/>
+                    <Grid>
+                        <Button Width="40" Margin="-80,0,0,0" Content="Cut" />
+                        <Button Width="40" Margin="10,0,0,0" Content="Copy"  Click="Copy"/>
+                        <Button Width="40" Margin="100,0,0,0" Content="Paste"  Click="Paste"/>
+                    </Grid>
+                    <MenuItem Header="Undo" />
+                    <MenuItem Header="Redo" />
+                    <Separator/>
+                    <MenuItem Header="Select All" />
+                    <MenuItem Header="Inverse Selection" />
+                    <Separator/>
+                    <MenuItem Header="BookMark This Location" />
+                    <MenuItem Header="Properties" />
+                    <Separator/>
+                    <MenuItem Header="Close"  Click="Close"/>
+                </MenuItem>
+            </Menu>
+        </Grid>
     </Grid>
 </Window>

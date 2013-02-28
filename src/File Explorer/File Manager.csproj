@@ -116,6 +116,13 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
+    <Resource Include="Images\LargeIcon.png" />
+    <Resource Include="Images\SmallIcon.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Menu\clipboard-copy.png" />
+  </ItemGroup>
+  <ItemGroup>
     <Resource Include="File_Manager.ico" />
   </ItemGroup>
   <ItemGroup>

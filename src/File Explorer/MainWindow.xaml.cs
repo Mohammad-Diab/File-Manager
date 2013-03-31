@@ -32,7 +32,7 @@ namespace File_Manager
         FileInfo View_File;
         Stack<string> back, front;
         string copydir, path = String.Empty, imagesource = "pack://application:,,,/File Manager;component/Images/Icons/";
-        //static string computer_Name, operating_System, CPU = "!", Memory_Size;
+        static string computer_Name, operating_System, CPU = "!", Memory_Size;
         List<string> copyfiles, copydirectory;
         int sub_dirs, sub_files;
         static public string to_go_path, new_Name;
@@ -85,6 +85,32 @@ namespace File_Manager
                 back.Push(PrimPath);
             }
             backMenu.Items.Add(Path);
+            if (CPU.Equals("!"))
+            {
+                ManagementObjectSearcher searcher;
+                computer_Name = System.Environment.MachineName;
+                operating_System = System.Environment.OSVersion.Clone().ToString() + " " + System.Environment.Version.ToString();
+                searcher = new ManagementObjectSearcher("select * from Win32_Processor");
+                foreach (var share in searcher.Get())
+                {
+                    CPU = share["Name"].ToString();
+                    break;
+                }
+                searcher = new ManagementObjectSearcher("select * from Win32_PhysicalMemory");
+                long memory_size = 0;
+                foreach (var share in searcher.Get())
+                {
+                    long tmp;
+                    long.TryParse(share.Properties["Capacity"].Value.ToString(), out tmp);
+                    memory_size = memory_size + tmp;
+                }
+                string unit;
+                Memory_Size = File_Size(memory_size, out unit) + " " + unit + " Memory";
+            }
+            name.Text = computer_Name;
+            type.Text = operating_System;
+            size.Text = CPU;
+            data_Modified.Text = Memory_Size;
         }
 
         private void Traversing(object sender, MouseButtonEventArgs e)
@@ -253,6 +279,7 @@ namespace File_Manager
 
         private void Preview_Items(object sender, KeyEventArgs e)
         {
+            MessageBox.Show("Viewer is coming soon", "FILE MANAGER", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private string Path
@@ -1103,7 +1130,7 @@ namespace File_Manager
 
         private void MenuItem_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("File Manager v0.1.0\nby: mohammad.diab93@outlook.com", "FILE MANAGER", MessageBoxButton.OK, MessageBoxImage.Information, MessageBoxResult.OK);
+            MessageBox.Show("File Manager v0.2.0\nby: mohammad.diab93@outlook.com", "FILE MANAGER", MessageBoxButton.OK, MessageBoxImage.Information, MessageBoxResult.OK);
         }
 
         private void Make_Listof_File(string DirPath)
@@ -1129,17 +1156,34 @@ namespace File_Manager
             //var x = Environment.CurrentDirectory;
             ProcessStartInfo PSI = new ProcessStartInfo(System.Windows.Forms.Application.ExecutablePath);
             PSI.Verb = "runas";
-            //try
-
-            Process.Start(PSI);
-            
-            //catch (Exception err)
-            //{ MessageBox.Show(err.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error); }
+            try
+            { System.Diagnostics.Process.Start(PSI); }
+            catch (Exception err)
+            { MessageBox.Show(err.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error); }
         }
 
         private void Quit(object sender, RoutedEventArgs e)
         {
             Process.GetCurrentProcess().Kill();
+        }
+
+        private void New_Folder(object sender, RoutedEventArgs e)
+        {
+            Rename window = new Rename();
+            window.ShowDialog();
+            if (new_Name != null)
+            {
+                if (Directory.Exists(path + "\\" + new_Name))
+                {
+                    new_Name = null;
+                    MessageBox.Show("Directory already exists", "Error", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    Directory.CreateDirectory(path + "\\" + new_Name);
+                    Refresh();
+                }
+            }
         }
 
         private void Close(object sender, RoutedEventArgs e)
@@ -1168,14 +1212,29 @@ namespace File_Manager
                     //img.Source = new BitmapImage(new Uri(GetImageSource(imagesource, "Folder", true)));
                     name.Text = "Name: " + View_Directory.Name;
                     type.Text = "Type: Directory";
-                    sub_dirs = Directory.GetDirectories(FileName).Length;
-                    sub_files = Directory.GetFiles(FileName).Length;
+                    try
+                    {
+                        sub_dirs = Directory.GetDirectories(FileName).Length;
+                        sub_files = Directory.GetFiles(FileName).Length;
+                    }
+                    catch (Exception err)
+                    { sub_dirs = 0; sub_files = 0; MessageBox.Show(err.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error); }
                     size.Text = "Contains " + sub_dirs + " Folders & " + sub_files + " Files";
                     data_Modified.Text = "Data Created: " + View_Directory.CreationTime.ToString();
                     break;
                 case "File":
                     View_File = new FileInfo(FileName);
                     //img.Source = new BitmapImage(new Uri(GetImageSource(imagesource, View_File.Extension, true)));
+                    if (IsImage(View_File.Extension))
+                    {
+                        try
+                        {
+                            //img.Source = new BitmapImage(new Uri(View_File.FullName));
+                            //if (new Bitmap(View_File.FullName).Height < 200 || new Bitmap(View_File.FullName).Height < 200)
+                                //img.Stretch = Stretch.None;
+                        }
+                        catch (Exception ex) { }
+                    }
                     name.Text = "Name: " + View_File.Name;
                     type.Text = "Type: " + View_File.Extension + " File";
                     size.Text = "Size: " + File_Size(View_File.Length, out unit) + " " + unit;
@@ -1200,6 +1259,20 @@ namespace File_Manager
                         size.Text = "Drive is not Ready";
                     }
                     data_Modified.Text = "";
+                    break;
+                case "":
+                    name.Text = computer_Name;
+                    type.Text = operating_System;
+                    size.Text = CPU;
+                    data_Modified.Text = Memory_Size;
+                    //img.Source = new BitmapImage(new Uri(GetImageSource(imagesource, "Computer", true)));
+                    break;
+                case "Computer":
+                    name.Text = computer_Name;
+                    type.Text = operating_System;
+                    size.Text = CPU;
+                    data_Modified.Text = Memory_Size;
+                    //img.Source = new BitmapImage(new Uri(GetImageSource(imagesource, "Computer", true)));
                     break;
                 default:
                     break;

@@ -17,7 +17,6 @@ namespace File_Manager
         public _Viewer(string path)
         {
             InitializeComponent();
-            InitializeComponent();
             file = new FileInfo(path);
         }
 
@@ -25,12 +24,11 @@ namespace File_Manager
         {
             FileName.Text = file.FullName;
             if (file.Extension.ToLower().Equals(".pdf"))
-            { }
-            PdfDoc.OpenFile(file.FullName);
+                PdfDoc.OpenFile(file.FullName);
         }
         private void button1_Click(object sender, EventArgs e)
         {
-            this.Close();
+            Close();
         }
     }
 }

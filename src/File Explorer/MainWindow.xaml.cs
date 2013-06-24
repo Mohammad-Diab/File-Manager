@@ -225,7 +225,7 @@ namespace File_Manager
                         if (hiddenfiles || (!hiddenfiles && !File.GetAttributes(i).HasFlag(FileAttributes.Hidden)))
                         {
                             files.Add(i);
-                            Explorer.Items.Add(Make_Grid_For_Explorer(GetImageSource(imagesource, new FileInfo(i).Extension, true), Name_of_File(i), "Size: " + File_Size(i.Length, out unit) + " " + unit, "Type: " + new FileInfo(i).Extension + " File"));
+                            Explorer.Items.Add(Make_Grid_For_Explorer(GetImageSource(imagesource, new FileInfo(i).Extension, true), Name_of_File(i), "Size: " + File_Size(new FileInfo(i).Length, out unit) + " " + unit, "Type: " + new FileInfo(i).Extension + " File"));
                         }
                     //sub_Directorys = Directory.GetDirectories(path).ToList<string>();
                     //files = Directory.GetFiles(path).ToList<String>();
@@ -1176,7 +1176,7 @@ namespace File_Manager
 
         private void MenuItem_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("File Manager v0.3.0-alpha.2\nby: mohammad.diab93@outlook.com", "FILE MANAGER", MessageBoxButton.OK, MessageBoxImage.Information, MessageBoxResult.OK);
+            MessageBox.Show("File Manager v0.3.0\nby: mohammad.diab93@outlook.com", "FILE MANAGER", MessageBoxButton.OK, MessageBoxImage.Information, MessageBoxResult.OK);
         }
 
         private void Make_Listof_File(string DirPath)

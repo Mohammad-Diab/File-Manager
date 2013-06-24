@@ -37,19 +37,21 @@
             // 
             // button1
             // 
+            this.button1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
             this.button1.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.button1.Location = new System.Drawing.Point(653, 344);
+            this.button1.ForeColor = System.Drawing.Color.White;
+            this.button1.Location = new System.Drawing.Point(679, 3);
             this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(69, 25);
+            this.button1.Size = new System.Drawing.Size(55, 25);
             this.button1.TabIndex = 0;
-            this.button1.Text = "button1";
-            this.button1.UseVisualStyleBackColor = true;
+            this.button1.Text = "Close";
+            this.button1.UseVisualStyleBackColor = false;
             this.button1.Click += new System.EventHandler(this.button1_Click);
             // 
             // PdfDoc
             // 
             this.PdfDoc.Enabled = true;
-            this.PdfDoc.Location = new System.Drawing.Point(0, 28);
+            this.PdfDoc.Location = new System.Drawing.Point(0, 25);
             this.PdfDoc.Name = "PdfDoc";
             this.PdfDoc.OcxState = ((System.Windows.Forms.AxHost.State)(resources.GetObject("PdfDoc.OcxState")));
             this.PdfDoc.Size = new System.Drawing.Size(734, 355);
@@ -76,9 +78,9 @@
             this.BackColor = System.Drawing.Color.Black;
             this.CancelButton = this.button1;
             this.ClientSize = new System.Drawing.Size(734, 381);
+            this.Controls.Add(this.button1);
             this.Controls.Add(this.FileName);
             this.Controls.Add(this.PdfDoc);
-            this.Controls.Add(this.button1);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             this.MaximizeBox = false;
             this.MinimizeBox = false;

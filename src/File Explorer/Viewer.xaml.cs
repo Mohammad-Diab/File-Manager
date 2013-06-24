@@ -11,7 +11,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Documents;
 //using System.Windows.Forms;
-using GemBox.Document;
+//using GemBox.Document;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;

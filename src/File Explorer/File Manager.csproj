@@ -4,7 +4,7 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{82349589-FE4A-4A74-A217-8D7BF8A6D592}</ProjectGuid>
+    <ProjectGuid>{08AAF9C8-64AD-4C32-9010-F2729F63ECC9}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>File_Manager</RootNamespace>
@@ -41,7 +41,15 @@
     <ApplicationIcon>File_Manager.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="GemBox.Document, Version=21.3.30.1110, Culture=neutral, PublicKeyToken=b1b72c69714d4847, processorArchitecture=MSIL" />
+    <Reference Include="AxInterop.FOXITREADERLib, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\File Manager\File Explorer\bin\Debug\AxInterop.FOXITREADERLib.dll</HintPath>
+    </Reference>
+    <Reference Include="Interop.FOXITREADERLib, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+      <HintPath>..\..\File Manager\File Explorer\bin\Debug\Interop.FOXITREADERLib.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.Windows.Shell, Version=3.5.41019.1, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL" />
     <Reference Include="PresentationFramework" />
     <Reference Include="ReachFramework" />
@@ -331,23 +339,6 @@
     <Resource Include="File_Manager.ico" />
   </ItemGroup>
   <ItemGroup>
-    <COMReference Include="AxFOXITREADERLib">
-      <Guid>{3A8BD65E-9922-4162-A649-83F2D5326BBE}</Guid>
-      <VersionMajor>1</VersionMajor>
-      <VersionMinor>0</VersionMinor>
-      <Lcid>0</Lcid>
-      <WrapperTool>aximp</WrapperTool>
-      <Isolated>False</Isolated>
-    </COMReference>
-    <COMReference Include="FOXITREADERLib">
-      <Guid>{3A8BD65E-9922-4162-A649-83F2D5326BBE}</Guid>
-      <VersionMajor>1</VersionMajor>
-      <VersionMinor>0</VersionMinor>
-      <Lcid>0</Lcid>
-      <WrapperTool>tlbimp</WrapperTool>
-      <Isolated>False</Isolated>
-      <EmbedInteropTypes>True</EmbedInteropTypes>
-    </COMReference>
     <COMReference Include="MSINKAUTLib">
       <Guid>{7D868ACD-1A5D-4A47-A247-F39741353012}</Guid>
       <VersionMajor>1</VersionMajor>

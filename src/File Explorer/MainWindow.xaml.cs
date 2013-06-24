@@ -1176,7 +1176,7 @@ namespace File_Manager
 
         private void MenuItem_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("File Manager v0.3.0-alpha.1\nby: mohammad.diab93@outlook.com", "FILE MANAGER", MessageBoxButton.OK, MessageBoxImage.Information, MessageBoxResult.OK);
+            MessageBox.Show("File Manager v0.3.0-alpha.2\nby: mohammad.diab93@outlook.com", "FILE MANAGER", MessageBoxButton.OK, MessageBoxImage.Information, MessageBoxResult.OK);
         }
 
         private void Make_Listof_File(string DirPath)

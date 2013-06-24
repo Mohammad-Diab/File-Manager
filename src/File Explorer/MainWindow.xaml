@@ -38,7 +38,7 @@
             <Button Content="Up" Click="Go_UP" Margin="112,3,0,3" VerticalAlignment="Stretch" Background="{x:Null}" HorizontalAlignment="Left"/>
             <TextBox x:Name="Address" Text="Computer" Margin="136,6,255,6" Background="{x:Null}" KeyUp="Traversing_KeyBoard" HorizontalAlignment="Stretch"/>
             <Button Content="Refresh" Click="Refresh" Margin="0,3,206,3" VerticalAlignment="Stretch" Background="{x:Null}" HorizontalAlignment="Right"/>
-            <TextBox x:Name="Search" Margin="0,6" Background="{x:Null}" HorizontalAlignment="Right" Width="200" ToolTip="GGGGG" Tag="FFFFFFFFFFF"/>
+            <TextBox x:Name="Search" Margin="0,6" Background="{x:Null}" HorizontalAlignment="Right" Width="200"/>
         </Grid>
         <Grid VerticalAlignment="Top" Background="#FFEEF5FD">
             <Menu Background="#FF41403B" Foreground="#FFF2F2EB">

@@ -37,7 +37,7 @@ namespace File_Manager
         int sub_dirs, sub_files;
         static public string to_go_path, new_Name;
         static public bool go_to_path;
-        bool hiddenfiles = false, show_image = false;
+        bool hiddenfiles = false, show_image = true;
         string systemDrive = "", PrimPath;
         string[] nn = new string[14000];
         public MainWindow()
@@ -225,7 +225,7 @@ namespace File_Manager
                         if (hiddenfiles || (!hiddenfiles && !File.GetAttributes(i).HasFlag(FileAttributes.Hidden)))
                         {
                             files.Add(i);
-                            Explorer.Items.Add(Make_Grid_For_Explorer(GetImageSource(imagesource, new FileInfo(i).Extension, true), Name_of_File(i), "Size: " + File_Size(new FileInfo(i).Length, out unit) + " " + unit, "Type: " + new FileInfo(i).Extension + " File"));
+                            Explorer.Items.Add(Make_Grid_For_Explorer(GetImageSource(imagesource, new FileInfo(i).Extension, true), Name_of_File(i), "Size: " + File_Size(i.Length, out unit) + " " + unit, "Type: " + new FileInfo(i).Extension + " File"));
                         }
                     //sub_Directorys = Directory.GetDirectories(path).ToList<string>();
                     //files = Directory.GetFiles(path).ToList<String>();
@@ -279,7 +279,53 @@ namespace File_Manager
 
         private void Preview_Items(object sender, KeyEventArgs e)
         {
-            MessageBox.Show("Viewer is coming soon", "FILE MANAGER", MessageBoxButton.OK, MessageBoxImage.Information);
+            go_to_path = false;
+            if (e.Key.Equals(Key.Space) && Explorer.SelectedIndex>-1)
+            {
+                bool? type;
+                if (Path == "Computer")
+                {
+                    Viewer window;
+                    type = null;
+                    DirectoryInfo drive_directory = new DirectoryInfo(Drives[Explorer.SelectedIndex].Name);
+                    if (Drives[Explorer.SelectedIndex].IsReady)
+                    {
+                        sub_dirs = drive_directory.GetDirectories().Length;
+                        sub_files = drive_directory.GetFiles().Length;
+                    }
+                    window = new Viewer(Drives[Explorer.SelectedIndex].Name, type, sub_dirs, sub_files);
+                    window.ShowDialog();
+                }
+                else if (Explorer.SelectedIndex >= directorys.Count && Explorer.SelectedIndex < directorys.Count + files.Count)
+                {
+                    type = true;
+                    if (new FileInfo(files[Explorer.SelectedIndex - directorys.Count]).Extension.ToLower().Equals(".pdf"))
+                    {
+                        _Viewer window = new _Viewer(files[Explorer.SelectedIndex - directorys.Count]);
+                        window.ShowDialog();
+                    }
+                    else
+                    {
+                        Viewer window = new Viewer(files[Explorer.SelectedIndex - directorys.Count], type, sub_dirs, sub_files);
+                        window.ShowDialog();
+                    }
+                }
+                else
+                {
+                    Viewer window;
+                    type = false;
+                    window = new Viewer(directorys[Explorer.SelectedIndex], type, sub_dirs, sub_files);
+                    window.ShowDialog();
+                }
+                
+                if (go_to_path)
+                {
+                    Navigation(to_go_path);
+                    back.Push(to_go_path);
+                    backMenu.Items.Add(to_go_path);
+                    path = to_go_path;
+                }
+            }
         }
 
         private string Path
@@ -1098,39 +1144,39 @@ namespace File_Manager
 
         private void Copy(object sender, RoutedEventArgs e)
         {
-            //if (path != "" && path != "Computer")
-            //{
-            //    if (Explorer.SelectedIndex > -1 && Explorer.SelectedIndex < directorys.Count)
-            //    {
-            //        copyfiles.Clear();
-            //        copydirectory.Clear();
-            //        copydir = Directory.GetParent(directorys[Explorer.SelectedIndex]).FullName;
-            //        foreach (var i in new DirectoryInfo(directorys[Explorer.SelectedIndex]).GetFiles())
-            //            copyfiles.Add(Subname(i.FullName, copydir));
-            //        copydirectory.Add(Subname(directorys[Explorer.SelectedIndex], copydir));
-            //        Make_Listof_File(directorys[Explorer.SelectedIndex]);
-            //    }
-            //    else if (Explorer.SelectedIndex >= directorys.Count && Explorer.SelectedIndex < directorys.Count + files.Count)
-            //    {
-            //        copyfiles.Clear();
-            //        copyfiles.Add(files[Explorer.SelectedIndex - directorys.Count]);
-            //    }
-            //}
+            if (path != "" && path != "Computer")
+            {
+                if (Explorer.SelectedIndex > -1 && Explorer.SelectedIndex < directorys.Count)
+                {
+                    copyfiles.Clear();
+                    copydirectory.Clear();
+                    copydir = Directory.GetParent(directorys[Explorer.SelectedIndex]).FullName;
+                    foreach (var i in new DirectoryInfo(directorys[Explorer.SelectedIndex]).GetFiles())
+                        copyfiles.Add(Subname(i.FullName, copydir));
+                    copydirectory.Add(Subname(directorys[Explorer.SelectedIndex], copydir));
+                    Make_Listof_File(directorys[Explorer.SelectedIndex]);
+                }
+                else if (Explorer.SelectedIndex >= directorys.Count && Explorer.SelectedIndex < directorys.Count + files.Count)
+                {
+                    copyfiles.Clear();
+                    copyfiles.Add(files[Explorer.SelectedIndex - directorys.Count]);
+                }
+            }
         }
 
         private void Paste(object sender, RoutedEventArgs e)
         {
-            //if (copydirectory.Count > 0)
-            //    foreach (var i in copydirectory)
-            //        if (!Directory.Exists(path + i))
-            //            Directory.CreateDirectory(path + i);
-            //foreach (var i in copyfiles)
-            //    (new FileInfo(copydir + i)).CopyTo(path + i, false);
+            if (copydirectory.Count > 0)
+                foreach (var i in copydirectory)
+                    if (!Directory.Exists(path + i))
+                        Directory.CreateDirectory(path + i);
+            foreach (var i in copyfiles)
+                (new FileInfo(copydir + i)).CopyTo(path + i, false);
         }
 
         private void MenuItem_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("File Manager v0.2.0\nby: mohammad.diab93@outlook.com", "FILE MANAGER", MessageBoxButton.OK, MessageBoxImage.Information, MessageBoxResult.OK);
+            MessageBox.Show("File Manager v0.3.0-alpha.1\nby: mohammad.diab93@outlook.com", "FILE MANAGER", MessageBoxButton.OK, MessageBoxImage.Information, MessageBoxResult.OK);
         }
 
         private void Make_Listof_File(string DirPath)
@@ -1199,17 +1245,18 @@ namespace File_Manager
 
         private void Button_Click_1(object sender, RoutedEventArgs e)
         {
+            new File_Operation().ShowDialog();
         }
 
         private void View_Items_Basic_Info(string FileName, string Type)
         {
-            //img.Stretch = Stretch.Uniform;
+            img.Stretch = Stretch.Uniform;
             string unit;
             switch (Type)
             {
                 case "Folder":
                     View_Directory = new DirectoryInfo(FileName);
-                    //img.Source = new BitmapImage(new Uri(GetImageSource(imagesource, "Folder", true)));
+                    img.Source = new BitmapImage(new Uri(GetImageSource(imagesource, "Folder", true)));
                     name.Text = "Name: " + View_Directory.Name;
                     type.Text = "Type: Directory";
                     try
@@ -1224,14 +1271,14 @@ namespace File_Manager
                     break;
                 case "File":
                     View_File = new FileInfo(FileName);
-                    //img.Source = new BitmapImage(new Uri(GetImageSource(imagesource, View_File.Extension, true)));
+                    img.Source = new BitmapImage(new Uri(GetImageSource(imagesource, View_File.Extension, true)));
                     if (IsImage(View_File.Extension))
                     {
                         try
                         {
-                            //img.Source = new BitmapImage(new Uri(View_File.FullName));
-                            //if (new Bitmap(View_File.FullName).Height < 200 || new Bitmap(View_File.FullName).Height < 200)
-                                //img.Stretch = Stretch.None;
+                            img.Source = new BitmapImage(new Uri(View_File.FullName));
+                            if (new Bitmap(View_File.FullName).Height < 200 || new Bitmap(View_File.FullName).Height < 200)
+                                img.Stretch = Stretch.None;
                         }
                         catch (Exception ex) { }
                     }
@@ -1242,10 +1289,10 @@ namespace File_Manager
                     break;
                 case "Drive":
                     DriveInfo drive = new DriveInfo(FileName);
-                    //if (drive.DriveType.ToString().ToLower().Equals("fixed"))
-                    //img.Source = new BitmapImage(new Uri(GetImageSource(imagesource, drive.DriveType.ToString(), drive.IsReady && drive.Name.ToLower().Equals(systemDrive))));
-                    //else
-                    //img.Source = new BitmapImage(new Uri(GetImageSource(imagesource, drive.DriveType.ToString(), drive.IsReady)));
+                    if (drive.DriveType.ToString().ToLower().Equals("fixed"))
+                        img.Source = new BitmapImage(new Uri(GetImageSource(imagesource, drive.DriveType.ToString(), drive.IsReady && drive.Name.ToLower().Equals(systemDrive))));
+                    else
+                        img.Source = new BitmapImage(new Uri(GetImageSource(imagesource, drive.DriveType.ToString(), drive.IsReady)));
                     if (drive.IsReady)
                     {
                         name.Text = "Name: " + drive.VolumeLabel + " (" + drive.Name + ")";
@@ -1265,14 +1312,14 @@ namespace File_Manager
                     type.Text = operating_System;
                     size.Text = CPU;
                     data_Modified.Text = Memory_Size;
-                    //img.Source = new BitmapImage(new Uri(GetImageSource(imagesource, "Computer", true)));
+                    img.Source = new BitmapImage(new Uri(GetImageSource(imagesource, "Computer", true)));
                     break;
                 case "Computer":
                     name.Text = computer_Name;
                     type.Text = operating_System;
                     size.Text = CPU;
                     data_Modified.Text = Memory_Size;
-                    //img.Source = new BitmapImage(new Uri(GetImageSource(imagesource, "Computer", true)));
+                    img.Source = new BitmapImage(new Uri(GetImageSource(imagesource, "Computer", true)));
                     break;
                 default:
                     break;
@@ -1285,8 +1332,15 @@ namespace File_Manager
             return i[i.Length - 1];
         }
 
+        private void MenuItem_Click_1(object sender, RoutedEventArgs e)
+        {
+            show_image = !show_image;
+            Refresh();
+        }
+
         private void HH(object sender, RoutedEventArgs e)
         {
+            (new Folder_Picker()).ShowDialog();
         }
     }
 }

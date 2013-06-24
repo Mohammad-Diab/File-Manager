@@ -4,7 +4,7 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{08AAF9C8-64AD-4C32-9010-F2729F63ECC9}</ProjectGuid>
+    <ProjectGuid>{82349589-FE4A-4A74-A217-8D7BF8A6D592}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>File_Manager</RootNamespace>
@@ -41,6 +41,8 @@
     <ApplicationIcon>File_Manager.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="GemBox.Document, Version=21.3.30.1110, Culture=neutral, PublicKeyToken=b1b72c69714d4847, processorArchitecture=MSIL" />
+    <Reference Include="Microsoft.Windows.Shell, Version=3.5.41019.1, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL" />
     <Reference Include="PresentationFramework" />
     <Reference Include="ReachFramework" />
     <Reference Include="System" />
@@ -68,9 +70,32 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="File Operation.xaml.cs">
+      <DependentUpon>File Operation.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Folder Picker.xaml.cs">
+      <DependentUpon>Folder Picker.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Rename.xaml.cs">
       <DependentUpon>Rename.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Viewer.xaml.cs">
+      <DependentUpon>Viewer.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="_Viewer.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="_Viewer.Designer.cs">
+      <DependentUpon>_Viewer.cs</DependentUpon>
+    </Compile>
+    <Page Include="File Operation.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Folder Picker.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -84,6 +109,10 @@
       <SubType>Code</SubType>
     </Compile>
     <Page Include="Rename.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Viewer.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -106,6 +135,9 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+    <EmbeddedResource Include="_Viewer.resx">
+      <DependentUpon>_Viewer.cs</DependentUpon>
+    </EmbeddedResource>
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -123,9 +155,199 @@
     <Resource Include="Images\Menu\clipboard-copy.png" />
   </ItemGroup>
   <ItemGroup>
+    <Resource Include="Images\Icons\folder.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\harddisk.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\opticaldrive.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\dvdmedia.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\removableusb.png" />
+    <Resource Include="Images\Icons\disk-mou.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\unknownfile.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\x-exe.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\text-file.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\text-x.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\text-c.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\text-c++.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\text-cs.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\text-html.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\text-reg.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\text-java.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\text-script.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\text-python.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\text-richtext.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\text-presentation.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\text-spreadsheet.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\text-database.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\text-pdf.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\text-xps.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\text-help.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\disk-hdd.png" />
+    <Resource Include="Images\Icons\disk-vdi.png" />
+    <Resource Include="Images\Icons\disk-vhd.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\disk-iso.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\x-package.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\removable-media.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\archive-zip.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\archive-cab.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\archive-7z.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\archive-rar.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\archive-tar.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\archive-file.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\archive-deb.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\archive-lzma.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\archive-bz2.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\archive-gz.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\archive-rpm.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\archive-ace.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\multimedia-mp3.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\multimedia-audio.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\multimedia-video.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\multimedia-flv.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\multimedia-ogg.png" />
+    <Resource Include="Images\Icons\multimedia-wav.png" />
+    <Resource Include="Images\Icons\multimedia-wma.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\multimedia-image.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\multimedia-bmp.png" />
+    <Resource Include="Images\Icons\multimedia-gif.png" />
+    <Resource Include="Images\Icons\multimedia-ico.png" />
+    <Resource Include="Images\Icons\multimedia-jpg.png" />
+    <Resource Include="Images\Icons\multimedia-png.png" />
+    <Resource Include="Images\Icons\multimedia-psd.png" />
+    <Resource Include="Images\Icons\multimedia-tif.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\archive-jar.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\x-dll.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\x-scr.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\x-fon.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\file.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\x-sys.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\media-controller-background.png" />
+  </ItemGroup>
+  <ItemGroup>
     <Resource Include="File_Manager.ico" />
   </ItemGroup>
   <ItemGroup>
+    <COMReference Include="AxFOXITREADERLib">
+      <Guid>{3A8BD65E-9922-4162-A649-83F2D5326BBE}</Guid>
+      <VersionMajor>1</VersionMajor>
+      <VersionMinor>0</VersionMinor>
+      <Lcid>0</Lcid>
+      <WrapperTool>aximp</WrapperTool>
+      <Isolated>False</Isolated>
+    </COMReference>
+    <COMReference Include="FOXITREADERLib">
+      <Guid>{3A8BD65E-9922-4162-A649-83F2D5326BBE}</Guid>
+      <VersionMajor>1</VersionMajor>
+      <VersionMinor>0</VersionMinor>
+      <Lcid>0</Lcid>
+      <WrapperTool>tlbimp</WrapperTool>
+      <Isolated>False</Isolated>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </COMReference>
     <COMReference Include="MSINKAUTLib">
       <Guid>{7D868ACD-1A5D-4A47-A247-F39741353012}</Guid>
       <VersionMajor>1</VersionMajor>
@@ -146,10 +368,12 @@
     </COMReference>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Tools\7za.exe" />
+    <None Include="Images\Icons\text-ini.png" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Images\Appearance\" />
+    <Resource Include="Images\Icons\computer.png" />
+    <Resource Include="Images\Icons\systemharddisk.png" />
+    <Content Include="Tools\7za.exe" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

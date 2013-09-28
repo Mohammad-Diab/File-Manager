@@ -1,0 +1,15 @@
+﻿<Window x:Class="File_Explorer.Renamer"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Renamer" Height="350" Width="408.27">
+    <Grid>
+        <ListBox x:Name="File_List" Margin="10,10,10,60"/>
+        <Button Content="Rename" HorizontalAlignment="Right" Margin="0,0,10,10" VerticalAlignment="Bottom" Width="60" Click="Rename_Click"/>
+        <TextBox x:Name="extension" Height="23" Margin="10,0,140,10" TextWrapping="Wrap" VerticalAlignment="Bottom" TextChanged="extension_TextChanged"/>
+        <TextBlock HorizontalAlignment="Left" Margin="10,0,0,38" TextWrapping="Wrap" Text="Type new  extension here (without any dots):" VerticalAlignment="Bottom" Foreground="Blue"/>
+        <Button Content="Add files" HorizontalAlignment="Right" Margin="0,0,75,35" VerticalAlignment="Bottom" Width="60" Click="Add_file_Click"/>
+        <Button Content="Add folder" HorizontalAlignment="Right" Margin="0,0,10,35" VerticalAlignment="Bottom" Width="60" Click="Add_folder_Click"/>
+        <Button Content="Clear list" HorizontalAlignment="Right" Margin="0,0,75,10" VerticalAlignment="Bottom" Width="60" Click="Clear_List_Click"/>
+
+    </Grid>
+</Window>

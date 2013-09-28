@@ -1,4 +1,4 @@
-﻿namespace File_Manager
+﻿namespace File_Explorer
 {
     partial class _Viewer
     {
@@ -30,32 +30,21 @@
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(_Viewer));
             this.button1 = new System.Windows.Forms.Button();
-            this.PdfDoc = new AxFOXITREADERLib.AxFoxitCtl();
             this.FileName = new System.Windows.Forms.TextBox();
-            ((System.ComponentModel.ISupportInitialize)(this.PdfDoc)).BeginInit();
+            this.axFoxitCtl1 = new AxFOXITREADERLib.AxFoxitCtl();
+            ((System.ComponentModel.ISupportInitialize)(this.axFoxitCtl1)).BeginInit();
             this.SuspendLayout();
             // 
             // button1
             // 
-            this.button1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(0)))), ((int)(((byte)(0)))));
             this.button1.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.button1.ForeColor = System.Drawing.Color.White;
-            this.button1.Location = new System.Drawing.Point(679, 3);
+            this.button1.Location = new System.Drawing.Point(653, 344);
             this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(55, 25);
+            this.button1.Size = new System.Drawing.Size(69, 25);
             this.button1.TabIndex = 0;
-            this.button1.Text = "Close";
-            this.button1.UseVisualStyleBackColor = false;
+            this.button1.Text = "button1";
+            this.button1.UseVisualStyleBackColor = true;
             this.button1.Click += new System.EventHandler(this.button1_Click);
-            // 
-            // PdfDoc
-            // 
-            this.PdfDoc.Enabled = true;
-            this.PdfDoc.Location = new System.Drawing.Point(0, 25);
-            this.PdfDoc.Name = "PdfDoc";
-            this.PdfDoc.OcxState = ((System.Windows.Forms.AxHost.State)(resources.GetObject("PdfDoc.OcxState")));
-            this.PdfDoc.Size = new System.Drawing.Size(734, 355);
-            this.PdfDoc.TabIndex = 1;
             // 
             // FileName
             // 
@@ -66,10 +55,19 @@
             this.FileName.Location = new System.Drawing.Point(0, 0);
             this.FileName.Name = "FileName";
             this.FileName.ReadOnly = true;
-            this.FileName.Size = new System.Drawing.Size(734, 29);
+            this.FileName.Size = new System.Drawing.Size(732, 29);
             this.FileName.TabIndex = 4;
             this.FileName.Text = "Path";
             this.FileName.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
+            // 
+            // axFoxitCtl1
+            // 
+            this.axFoxitCtl1.Enabled = true;
+            this.axFoxitCtl1.Location = new System.Drawing.Point(0, 29);
+            this.axFoxitCtl1.Name = "axFoxitCtl1";
+            this.axFoxitCtl1.OcxState = ((System.Windows.Forms.AxHost.State)(resources.GetObject("axFoxitCtl1.OcxState")));
+            this.axFoxitCtl1.Size = new System.Drawing.Size(732, 348);
+            this.axFoxitCtl1.TabIndex = 5;
             // 
             // _Viewer
             // 
@@ -77,17 +75,17 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.Black;
             this.CancelButton = this.button1;
-            this.ClientSize = new System.Drawing.Size(734, 381);
-            this.Controls.Add(this.button1);
+            this.ClientSize = new System.Drawing.Size(732, 376);
+            this.Controls.Add(this.axFoxitCtl1);
             this.Controls.Add(this.FileName);
-            this.Controls.Add(this.PdfDoc);
+            this.Controls.Add(this.button1);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.Name = "_Viewer";
             this.Text = "_Viewer";
             this.Load += new System.EventHandler(this.Viewer_Load);
-            ((System.ComponentModel.ISupportInitialize)(this.PdfDoc)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.axFoxitCtl1)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -98,5 +96,6 @@
         private System.Windows.Forms.Button button1;
         private AxFOXITREADERLib.AxFoxitCtl PdfDoc;
         private System.Windows.Forms.TextBox FileName;
+        private AxFOXITREADERLib.AxFoxitCtl axFoxitCtl1;
     }
 }

@@ -1,0 +1,60 @@
+﻿<Window
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:Forms="clr-namespace:System.Windows.Forms;assembly=System.Windows.Forms" x:Class="File_Explorer.Big_File_Finder"
+        Title="Big_File_Finder" Height="406" Width="450" MinWidth="400">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="30"/>
+            <RowDefinition Height="1*"/>
+            <RowDefinition Height="1*"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition/>
+            <ColumnDefinition Width="200"/>
+        </Grid.ColumnDefinitions>
+        <Button Content="Select Folder" Height="30" VerticalAlignment="Bottom" Click="Button_Click_1"/>
+        <Grid x:Name="Properties" Margin="0,0,0,0" Visibility="Visible" Background="#FFE7E5E4" Grid.Column="1" Grid.Row="1">
+            <StackPanel Margin="13,10,10,10">
+                <TextBlock TextWrapping="Wrap" FontSize="18"><Run Foreground="DarkRed" Text="Files" FontWeight="Bold" TextDecorations="Underline"/></TextBlock>
+                <TextBlock TextWrapping="Wrap" FontSize="14"><Run Foreground="Red" Text="Name: "/><Run x:Name="name"/></TextBlock>
+                <Separator/>
+                <TextBlock TextWrapping="Wrap"><Run Foreground="Blue" Text="Path: "/><Run x:Name="path" Foreground="Black"/></TextBlock>
+                <Separator/>
+                <TextBlock TextWrapping="Wrap"><Run Foreground="Blue" Text="Type: "/><Run x:Name="type" Foreground="Black"/></TextBlock>
+                <Separator/>
+                <TextBlock TextWrapping="Wrap"><Run Foreground="Blue" Text="Size: "/><Run x:Name="size" Foreground="Black"/></TextBlock>
+                <Separator/>
+                <TextBlock TextWrapping="Wrap"><Run Foreground="Blue" Text="Data Modified: "/><Run x:Name="data_Modified" Foreground="Black"/></TextBlock>
+                <Separator/>
+            </StackPanel>
+        </Grid>
+        <ListBox x:Name="ListDir" SelectionChanged="ListDir_SelectionChanged" Grid.Row="2"/>
+        <Grid x:Name="Properties_1" Visibility="Visible" Background="#FFE7E5E4" Grid.Column="1" Grid.Row="2">
+            <StackPanel Margin="13,10,10,10">
+                <TextBlock TextWrapping="Wrap" FontSize="18"><Run Foreground="DarkRed" Text="Directories" FontWeight="Bold" TextDecorations="Underline"/></TextBlock>
+                <TextBlock TextWrapping="Wrap" FontSize="14"><Run Foreground="Red" Text="Name: "/><Run x:Name="name1"/></TextBlock>
+                <Separator/>
+                <TextBlock TextWrapping="Wrap"><Run Foreground="Blue" Text="Path: "/><Run x:Name="path1" Foreground="Black"/></TextBlock>
+                <Separator/>
+                <TextBlock TextWrapping="Wrap"><Run Foreground="Blue" Text="Size: "/><Run x:Name="size1" Foreground="Black"/></TextBlock>
+                <Separator/>
+                <TextBlock TextWrapping="Wrap"><Run Foreground="Blue" Text="Contains: "/><Run x:Name="contain" Foreground="Black"/></TextBlock>
+                <Separator/>
+                <TextBlock TextWrapping="Wrap"><Run Foreground="Blue" Text="Data Modified: "/><Run x:Name="data_Modified1" Foreground="Black"/></TextBlock>
+                <Separator/>
+            </StackPanel>
+        </Grid>
+        <Grid Grid.Column="1" Background="#FFE7E5E4"/>
+        <ListView x:Name="ListFile" Grid.Row="1" ScrollViewer.HorizontalScrollBarVisibility="Auto" ItemsSource="{Binding}" SelectionChanged="ListFile_SelectionChanged">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="Name" Width="Auto" DisplayMemberBinding="{Binding Path=Name}"/>
+                    <GridViewColumn Header="Type" Width="Auto" DisplayMemberBinding="{Binding Path=Type}"/>
+                    <GridViewColumn Header="Size" Width="Auto" DisplayMemberBinding="{Binding Path=Size}"/>
+                    <GridViewColumn Header="Date" Width="Auto" DisplayMemberBinding="{Binding Path=Date}"/>
+                </GridView>
+            </ListView.View>
+        </ListView>
+    </Grid>
+</Window>

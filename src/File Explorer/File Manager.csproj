@@ -7,14 +7,13 @@
     <ProjectGuid>{08AAF9C8-64AD-4C32-9010-F2729F63ECC9}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>File_Manager</RootNamespace>
-    <AssemblyName>File Manager</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <RootNamespace>File_Explorer</RootNamespace>
+    <AssemblyName>File Explorer</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <WarningLevel>4</WarningLevel>
-    <TargetFrameworkProfile>
-    </TargetFrameworkProfile>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -25,7 +24,6 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -35,31 +33,27 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup>
     <ApplicationIcon>File_Manager.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="AxInterop.FOXITREADERLib, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\File Manager\File Explorer\bin\Debug\AxInterop.FOXITREADERLib.dll</HintPath>
+    <Reference Include="AxInterop.FOXITREADERLib">
+      <HintPath>..\..\File_Explorer\File Explorer\bin\Debug\AxInterop.FOXITREADERLib.dll</HintPath>
     </Reference>
-    <Reference Include="Interop.FOXITREADERLib, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="Microsoft.Windows.Shell, Version=3.5.41019.1, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <EmbedInteropTypes>True</EmbedInteropTypes>
-      <HintPath>..\..\File Manager\File Explorer\bin\Debug\Interop.FOXITREADERLib.dll</HintPath>
+      <HintPath>..\..\File_Explorer\File Explorer\bin\Debug\Microsoft.Windows.Shell.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.Windows.Shell, Version=3.5.41019.1, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL" />
-    <Reference Include="PresentationFramework" />
     <Reference Include="ReachFramework" />
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Management" />
     <Reference Include="System.Printing" />
-    <Reference Include="System.Web.Services" />
+    <Reference Include="System.Windows" />
     <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Windows.Presentation" />
     <Reference Include="System.Xml" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Core" />
@@ -72,20 +66,50 @@
     <Reference Include="UIAutomationTypes" />
     <Reference Include="WindowsBase" />
     <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="WindowsFormsIntegration" />
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Big File Finder.xaml.cs">
+      <DependentUpon>Big File Finder.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Class.cs" />
+    <Compile Include="Empty Folder Remover.xaml.cs">
+      <DependentUpon>Empty Folder Remover.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Exists Files Window.xaml.cs">
+      <DependentUpon>Exists Files Window.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="File Compresser.xaml.cs">
+      <DependentUpon>File Compresser.xaml</DependentUpon>
+    </Compile>
     <Compile Include="File Operation.xaml.cs">
       <DependentUpon>File Operation.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="File%27s Transferring Error.xaml.cs">
+      <DependentUpon>File%27s Transferring Error.xaml</DependentUpon>
     </Compile>
     <Compile Include="Folder Picker.xaml.cs">
       <DependentUpon>Folder Picker.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Identical File Remover.xaml.cs">
+      <DependentUpon>Identical File Remover.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="My MessageBox.xaml.cs">
+      <DependentUpon>My MessageBox.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Rename.xaml.cs">
       <DependentUpon>Rename.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Renamer.xaml.cs">
+      <DependentUpon>Renamer.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="System Monitor.xaml.cs">
+      <DependentUpon>System Monitor.xaml</DependentUpon>
     </Compile>
     <Compile Include="Viewer.xaml.cs">
       <DependentUpon>Viewer.xaml</DependentUpon>
@@ -96,11 +120,35 @@
     <Compile Include="_Viewer.Designer.cs">
       <DependentUpon>_Viewer.cs</DependentUpon>
     </Compile>
+    <Page Include="Big File Finder.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Empty Folder Remover.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Exists Files Window.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="File Compresser.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="File Operation.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="File%27s Transferring Error.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Folder Picker.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Identical File Remover.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -116,7 +164,19 @@
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Page Include="My MessageBox.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Rename.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Renamer.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="System Monitor.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -156,215 +216,194 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="Images\LargeIcon.png" />
-    <Resource Include="Images\SmallIcon.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Menu\clipboard-copy.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\folder.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\harddisk.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\opticaldrive.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\dvdmedia.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\removableusb.png" />
-    <Resource Include="Images\Icons\disk-mou.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\unknownfile.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\x-exe.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\text-file.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\text-x.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\text-c.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\text-c++.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\text-cs.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\text-html.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\text-reg.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\text-java.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\text-script.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\text-python.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\text-richtext.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\text-presentation.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\text-spreadsheet.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\text-database.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\text-pdf.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\text-xps.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\text-help.png" />
-  </ItemGroup>
-  <ItemGroup>
+    <Resource Include="Images\Appearance\media-controller-background.png" />
+    <Resource Include="Images\Icons\archive-7z.png" />
+    <Resource Include="Images\Icons\archive-ace.png" />
+    <Resource Include="Images\Icons\archive-bz2.png" />
+    <Resource Include="Images\Icons\archive-cab.png" />
+    <Resource Include="Images\Icons\archive-deb.png" />
+    <Resource Include="Images\Icons\archive-file.png" />
+    <Resource Include="Images\Icons\archive-gz.png" />
+    <Resource Include="Images\Icons\archive-jar.png" />
+    <Resource Include="Images\Icons\archive-lzma.png" />
+    <Resource Include="Images\Icons\archive-rar.png" />
+    <Resource Include="Images\Icons\archive-rpm.png" />
+    <Resource Include="Images\Icons\archive-tar.png" />
+    <Resource Include="Images\Icons\archive-zip.png" />
+    <Resource Include="Images\Icons\computer.png" />
     <Resource Include="Images\Icons\disk-hdd.png" />
+    <Resource Include="Images\Icons\disk-iso.png" />
+    <Resource Include="Images\Icons\disk-mou.png" />
     <Resource Include="Images\Icons\disk-vdi.png" />
     <Resource Include="Images\Icons\disk-vhd.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\disk-iso.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\x-package.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\removable-media.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\archive-zip.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\archive-cab.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\archive-7z.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\archive-rar.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\archive-tar.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\archive-file.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\archive-deb.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\archive-lzma.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\archive-bz2.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\archive-gz.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\archive-rpm.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\archive-ace.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\multimedia-mp3.png" />
-  </ItemGroup>
-  <ItemGroup>
+    <Resource Include="Images\Icons\dvd-media.png" />
+    <Resource Include="Images\Icons\file.png" />
+    <Resource Include="Images\Icons\directory.png" />
+    <Resource Include="Images\Icons\hard-disk.png" />
     <Resource Include="Images\Icons\multimedia-audio.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\multimedia-video.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\multimedia-flv.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\multimedia-ogg.png" />
-    <Resource Include="Images\Icons\multimedia-wav.png" />
-    <Resource Include="Images\Icons\multimedia-wma.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\multimedia-image.png" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Images\Icons\multimedia-bmp.png" />
+    <Resource Include="Images\Icons\multimedia-flv.png" />
     <Resource Include="Images\Icons\multimedia-gif.png" />
     <Resource Include="Images\Icons\multimedia-ico.png" />
+    <Resource Include="Images\Icons\multimedia-image.png" />
     <Resource Include="Images\Icons\multimedia-jpg.png" />
+    <Resource Include="Images\Icons\multimedia-mp3.png" />
+    <Resource Include="Images\Icons\multimedia-ogg.png" />
     <Resource Include="Images\Icons\multimedia-png.png" />
     <Resource Include="Images\Icons\multimedia-psd.png" />
     <Resource Include="Images\Icons\multimedia-tif.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\archive-jar.png" />
-  </ItemGroup>
-  <ItemGroup>
+    <Resource Include="Images\Icons\multimedia-video.png" />
+    <Resource Include="Images\Icons\multimedia-wav.png" />
+    <Resource Include="Images\Icons\multimedia-wma.png" />
+    <Resource Include="Images\Icons\optical-drive.png" />
+    <Resource Include="Images\Icons\removable-media.png" />
+    <Resource Include="Images\Icons\removable-usb.png" />
+    <Resource Include="Images\Icons\system-hard-disk.png" />
+    <Resource Include="Images\Icons\text-c++.png" />
+    <Resource Include="Images\Icons\text-c.png" />
+    <Resource Include="Images\Icons\text-cs.png" />
+    <Resource Include="Images\Icons\text-database.png" />
+    <Resource Include="Images\Icons\text-file.png" />
+    <Resource Include="Images\Icons\text-help.png" />
+    <Resource Include="Images\Icons\text-html.png" />
+    <Resource Include="Images\Icons\text-ini.png" />
+    <Resource Include="Images\Icons\text-java.png" />
+    <Resource Include="Images\Icons\text-pdf.png" />
+    <Resource Include="Images\Icons\text-presentation.png" />
+    <Resource Include="Images\Icons\text-python.png" />
+    <Resource Include="Images\Icons\text-reg.png" />
+    <Resource Include="Images\Icons\text-richtext.png" />
+    <Resource Include="Images\Icons\text-script.png" />
+    <Resource Include="Images\Icons\text-spreadsheet.png" />
+    <Resource Include="Images\Icons\text-x.png" />
+    <Resource Include="Images\Icons\text-xps.png" />
+    <Resource Include="Images\Icons\unknown-file.png" />
     <Resource Include="Images\Icons\x-dll.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\x-scr.png" />
-  </ItemGroup>
-  <ItemGroup>
+    <Resource Include="Images\Icons\x-exe.png" />
     <Resource Include="Images\Icons\x-fon.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Icons\file.png" />
-  </ItemGroup>
-  <ItemGroup>
+    <Resource Include="Images\Icons\x-package.png" />
+    <Resource Include="Images\Icons\x-scr.png" />
     <Resource Include="Images\Icons\x-sys.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\Appearance\media-controller-background.png" />
+    <Resource Include="Images\LargeIcon.png" />
+    <Resource Include="Images\Menu\clipboard-copy.png" />
+    <Resource Include="Images\SmallIcon.png" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="File_Manager.ico" />
   </ItemGroup>
   <ItemGroup>
-    <COMReference Include="MSINKAUTLib">
-      <Guid>{7D868ACD-1A5D-4A47-A247-F39741353012}</Guid>
-      <VersionMajor>1</VersionMajor>
-      <VersionMinor>0</VersionMinor>
-      <Lcid>0</Lcid>
-      <WrapperTool>tlbimp</WrapperTool>
-      <Isolated>False</Isolated>
-      <EmbedInteropTypes>True</EmbedInteropTypes>
-    </COMReference>
-    <COMReference Include="XcpControlLib">
-      <Guid>{283C8576-0726-4DBC-9609-3F855162009A}</Guid>
-      <VersionMajor>5</VersionMajor>
-      <VersionMinor>1</VersionMinor>
-      <Lcid>0</Lcid>
-      <WrapperTool>tlbimp</WrapperTool>
-      <Isolated>False</Isolated>
-      <EmbedInteropTypes>True</EmbedInteropTypes>
-    </COMReference>
+    <Resource Include="Images\Icons\16 x 16\folder.png" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Images\Icons\text-ini.png" />
+    <Resource Include="Images\Appearance\go-next.png" />
+    <Resource Include="Images\Appearance\go-previous.png" />
+    <Resource Include="Images\Appearance\go-up.png" />
+    <Resource Include="Images\Appearance\view-refresh.png" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="Images\Icons\computer.png" />
-    <Resource Include="Images\Icons\systemharddisk.png" />
-    <Content Include="Tools\7za.exe" />
+    <Resource Include="Images\Appearance\setting.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Menu\copy-pause.png" />
+    <Resource Include="Images\Menu\copy-start.png" />
+    <Resource Include="Images\Menu\copy-stop.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Menu\rotate-left.png" />
+    <Resource Include="Images\Menu\rotate-right.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Menu\image-save.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Menu\open-with.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Menu\open-file.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Menu\folder-copy.png" />
+    <Resource Include="Images\Menu\folder-move.png" />
+    <Resource Include="Images\Menu\run-command.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Menu\file-copy.png" />
+    <Resource Include="Images\Menu\file-delete.png" />
+    <Resource Include="Images\Menu\file-move.png" />
+    <Resource Include="Images\Menu\file-preview.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Menu\folder.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Menu\harddisk.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Menu\run-as-adimstrator.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Menu\run-application.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Menu\explore-archive.png" />
+    <Resource Include="Images\Menu\extract-archive.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Menu\document-edit.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Menu\font-install.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Menu\covert-to-iso.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Menu\window-new.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\16 x 16\hard-disk.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\16 x 16\optical-drive.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\16 x 16\dvd-media.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\16 x 16\removable-usb.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\16 x 16\removable-media.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\16 x 16\system-hard-disk.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\multi-selection.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\delete.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\delete-icon.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\list.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\new-folder.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\new-file.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\empty.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\rename.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\file-operation.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

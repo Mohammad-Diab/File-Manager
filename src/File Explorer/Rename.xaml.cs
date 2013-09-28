@@ -12,43 +12,79 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 
-namespace File_Manager
+namespace File_Explorer
 {
     /// <summary>
     /// Interaction logic for Rename.xaml
     /// </summary>
     public partial class Rename : Window
     {
+        bool accept = false;
         public Rename()
         {
             InitializeComponent();
         }
 
+        public Rename(string name)
+        {
+            InitializeComponent();
+            this.name.Text = name;
+        }
+
         private void Window_Loaded_1(object sender, RoutedEventArgs e)
         {
             TabIndex = 10;
+            name.Focus();
             name.SelectAll();
+            Label1.Visibility = Visibility.Visible;
         }
 
-        private void Button_Click_1(object sender, RoutedEventArgs e)
+        private void OK_Click(object sender, RoutedEventArgs e)
         {
-            if (name.Text.Contains("*") || name.Text.Contains("/") || name.Text.Contains("\\") || name.Text.Contains("\"") || name.Text.Contains("?") || name.Text.Contains("<") || name.Text.Contains(">") || name.Text.Contains("|"))
+            if (name.Text == string.Empty)
             {
                 _name.Height = 160;
-                Label1.Text = "File name can't contain any of these characters:\n\\ / : * ? \" < > |";
                 Label1.Visibility = Visibility.Visible;
+                Label1.Text = "You must write a name.";
             }
             else
             {
-                MainWindow.new_Name = name.Text;
+                accept = true;
                 this.Close();
             }
         }
 
-        private void Button_Click_2(object sender, RoutedEventArgs e)
+        private void Name_TextChanged(object sender, TextChangedEventArgs e)
         {
-            MainWindow.new_Name = null;
-            this.Close();
+            if (name.Text.Contains("*") || name.Text.Contains("/") || name.Text.Contains("\\") || name.Text.Contains("\"") || name.Text.Contains("?") || name.Text.Contains("<") || name.Text.Contains(">") || name.Text.Contains("|"))
+            {
+                int i = name.CaretIndex;
+                name.Text = name.Text.Replace("*", "").Replace("/", "").Replace("\\", "").Replace("\"", "").Replace("?", "").Replace("<", "").Replace(">", "").Replace("|", "").Replace(".", "");
+                Label1.Text = "File name can't contain any of these characters:\n\\ / : * ? \" > |";
+                Label1.Visibility = Visibility.Visible;
+                _name.Height = 160;
+                name.CaretIndex = i - 1;
+            }
+            else
+                _name.Height = 120;
+        }
+
+        internal string ShowthisDialog()
+        {
+            this.ShowDialog();
+            if (accept)
+                return name.Text;
+            else
+                return null;
+        }
+
+        private void _name_PreviewKeyUp(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape)
+            {
+                accept = false;
+                Close();
+            }
         }
     }
 }

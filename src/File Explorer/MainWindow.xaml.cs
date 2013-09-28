@@ -293,7 +293,7 @@ namespace File_Explorer
 
         private void MenuItem_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("File Manager v0.5.1-alpha.1\nby: mohammad.diab93@outlook.com", "FILE MANAGER", MessageBoxButton.OK, MessageBoxImage.Information, MessageBoxResult.OK);
+            MessageBox.Show("File Manager v0.5.1-alpha.2\nby: mohammad.diab93@outlook.com", "FILE MANAGER", MessageBoxButton.OK, MessageBoxImage.Information, MessageBoxResult.OK);
         }
 
         private void CreateNewListBox(string p)
@@ -340,7 +340,7 @@ namespace File_Explorer
                         list_box.Items.Add(Item1);
                     }
                 }
-                stack1.Children.Insert(stack1.Children.Count - 1, list_box);
+                //stack1.Children.Insert(stack1.Children.Count - 1, list_box);
             }
             catch (Exception ex) { MessageBox.Show(ex.Message); }
         }
@@ -352,15 +352,15 @@ namespace File_Explorer
 
         private void ElementNew_DoubleClick(object sender, MouseButtonEventArgs e)
         {
-            int x = stack1.Children.Count;
-            for (int i = 1; i < stack1.Children.Count - 1; i++)
-                if (((ListBox)stack1.Children[i]).ToolTip.ToString().Equals(new DirectoryInfo(((ListBoxItem)sender).ContentStringFormat.ToString()).FullName))
-                {
-                    x = i;
-                    break;
-                }
-            for (int i = x; i < stack1.Children.Count - 1; i++)
-                stack1.Children.RemoveAt(i);
+            //int x = stack1.Children.Count;
+            //for (int i = 1; i < stack1.Children.Count - 1; i++)
+            //    if (((ListBox)stack1.Children[i]).ToolTip.ToString().Equals(new DirectoryInfo(((ListBoxItem)sender).ContentStringFormat.ToString()).FullName))
+            //    {
+            //        x = i;
+            //        break;
+            //    }
+            //for (int i = x; i < stack1.Children.Count - 1; i++)
+            //    stack1.Children.RemoveAt(i);
             CreateNewListBox(((ListBoxItem)sender).ContentStringFormat);
         }
 

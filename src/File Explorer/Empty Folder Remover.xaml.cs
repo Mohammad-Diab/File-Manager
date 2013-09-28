@@ -38,9 +38,9 @@ namespace File_Explorer
             {
                 Get_all_files(FBD.SelectedPath);
                 List1.Items.Clear();
-                for (int i = 0; i < dirs_name.Count; i++)
+                for (int i = 0; i < files_number.Count; i++)
                     if (files_number[i] == 0)
-                        List1.Items.Add(dirs_name[i]);
+                        List1.Items.Add(files_number[i]);
                 dirs_name.Clear();
                 files_number.Clear();
                 dirs_numbers.Clear();

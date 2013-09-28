@@ -220,12 +220,11 @@ namespace File_Explorer
         {
             if (ListFile.SelectedIndex > -1)
             {
-                FileInfo file = new FileInfo((String)ListFile.SelectedItem);
-                name.Text = file.Name;
-                path.Text = file.FullName;
-                type.Text = file.Extension + " File";
-                size.Text = Functions.File_Size(file.Length);
-                data_Modified.Text = file.LastWriteTime.ToString();
+                name.Text = (ListFile.SelectedItem as ListItem).Name;
+                path.Text = (ListFile.SelectedItem as ListItem).File.FullName;
+                type.Text = (ListFile.SelectedItem as ListItem).Type;
+                size.Text = (ListFile.SelectedItem as ListItem).Size;
+                data_Modified.Text = (ListFile.SelectedItem as ListItem).Date;
             }
         }
 

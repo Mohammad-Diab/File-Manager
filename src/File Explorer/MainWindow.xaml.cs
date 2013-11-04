@@ -41,7 +41,7 @@ namespace File_Explorer
             get { return directory_address; }
             set
             {
-                //Up.IsEnabled = !(value == "Computer");
+                Up.IsEnabled = !(value.ToLower() == "computer");
                 directory_address = value;
             }
         }
@@ -75,6 +75,7 @@ namespace File_Explorer
             if (FileInformation.file_bitmap.Count == 0)
                 foreach (var i in FileInformation.file_image)
                     FileInformation.file_bitmap.Add(new BitmapImage(new Uri(StandardImageSource + i)));
+            Navigation("computer", false, true);
         }
 
         private ListViewItem MakeGridForFile(FileInfo file)
@@ -97,7 +98,7 @@ namespace File_Explorer
                     if (show_image)
                     {
                         int file_index = Functions.GetFileIndex(((FileInfo)i.Tag).Extension);
-                        System.Windows.Controls.Image img1 = new System.Windows.Controls.Image();
+                        Image img1 = new Image();
                         img1.Height = img1.Width = 64;
                         img1.HorizontalAlignment = HorizontalAlignment.Left;
                         img1.VerticalAlignment = VerticalAlignment.Stretch;
@@ -108,9 +109,9 @@ namespace File_Explorer
                         name.Text = ((FileInfo)i.Tag).Name;
                         name.HorizontalAlignment = HorizontalAlignment.Left;
                         if (((FileInfo)i.Tag).Attributes.HasFlag(FileAttributes.Compressed))
-                            name.Foreground = System.Windows.Media.Brushes.RoyalBlue;
+                            name.Foreground = Brushes.RoyalBlue;
                         else if (((FileInfo)i.Tag).Attributes.HasFlag(FileAttributes.Encrypted))
-                            name.Foreground = System.Windows.Media.Brushes.Green;
+                            name.Foreground = Brushes.Green;
                         name.VerticalAlignment = VerticalAlignment.Stretch;
                         name.Margin = name_thickness;
                         name.TextTrimming = TextTrimming.CharacterEllipsis;
@@ -196,7 +197,7 @@ namespace File_Explorer
             Item1.Tag = drive;
             if (show_image)
             {
-                System.Windows.Controls.Image img1 = new System.Windows.Controls.Image();
+                Image img1 = new Image();
                 img1.Height = img1.Width = 64;
                 img1.HorizontalAlignment = HorizontalAlignment.Left;
                 img1.VerticalAlignment = VerticalAlignment.Stretch;
@@ -229,7 +230,7 @@ namespace File_Explorer
                     drive_size.Width = drive_container.Width - (drive.TotalFreeSpace * drive_container.Width) / drive.TotalSize - 2;
                     TextBlock size = new TextBlock();
                     size.Text = Functions.File_Size(drive.TotalFreeSpace) + " free of " + Functions.File_Size(drive.TotalSize);
-                    size.Foreground = System.Windows.Media.Brushes.DarkGray;
+                    size.Foreground = Brushes.DarkGray;
                     size.Margin = type_thickness;
                     size.HorizontalAlignment = HorizontalAlignment.Left;
                     size.VerticalAlignment = VerticalAlignment.Top;
@@ -256,7 +257,7 @@ namespace File_Explorer
                 fake = true;
                 Address1.Items.Clear();
                 fake = false;
-                if (path == "Computer")
+                if (path.ToLower() == "computer")
                 {
                     var drives = DriveInfo.GetDrives();
                     Explorer.Items.Clear();
@@ -269,10 +270,10 @@ namespace File_Explorer
                     var subdirectories = directory.GetDirectories();
                     var files = directory.GetFiles();
                     Explorer.Items.Clear();
-                    if (to_copy_files != null && to_copy_files.Count > 0)
-                        ((MenuItem)directory_context_menu.Items[7]).IsEnabled = true;
-                    else
-                        ((MenuItem)directory_context_menu.Items[7]).IsEnabled = false;
+                    //if (to_copy_files != null && to_copy_files.Count > 0)
+                    //    ((MenuItem)directory_context_menu.Items[7]).IsEnabled = true;
+                    //else
+                    //    ((MenuItem)directory_context_menu.Items[7]).IsEnabled = false;
                     foreach (var i in subdirectories)
                         if (hiddenfiles || (!hiddenfiles && !i.Attributes.HasFlag(FileAttributes.Hidden)))
                             Explorer.Items.Add(MakeGridForDirectory(i));
@@ -358,7 +359,7 @@ namespace File_Explorer
 
         private void MenuItem_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("File Manager v0.5.1-alpha.3\nby: mohammad.diab93@outlook.com", "FILE MANAGER", MessageBoxButton.OK, MessageBoxImage.Information, MessageBoxResult.OK);
+            MessageBox.Show("File Manager v0.5.1-alpha.4\nby: mohammad.diab93@outlook.com", "FILE MANAGER", MessageBoxButton.OK, MessageBoxImage.Information, MessageBoxResult.OK);
         }
 
         private void New_Window(object sender, RoutedEventArgs e)

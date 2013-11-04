@@ -1,13 +1,8 @@
 ﻿<Window x:Class="File_Explorer.Identical_File_Remover"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Dublicate files remover" Height="320" Width="300">
+        Title="Identical_File_Remover" Height="300" Width="300">
     <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition/>
-        </Grid.ColumnDefinitions>
-        <Button Content="Select Folder" Height="31" Margin="10,0,10,10" VerticalAlignment="Bottom" Click="Button_Click_1"/>
-        <TreeView x:Name="List1" Margin="10,10,10,46">
-        </TreeView>
+        
     </Grid>
 </Window>

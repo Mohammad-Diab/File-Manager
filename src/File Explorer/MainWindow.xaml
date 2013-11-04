@@ -1,16 +1,33 @@
-﻿<Window
+﻿<Window x:Class="File_Explorer.MainWindow"
+        Title="Files Manager (APPS PREVIEW)" Width="800" Height="525" WindowStartupLocation="Manual"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:Custom="http://schemas.microsoft.com/winfx/2006/xaml/presentation/ribbon" x:Class="File_Explorer.MainWindow"
-        Title="Files Manager (APPS PREVIEW)" Width="800" Height="525" WindowStartupLocation="Manual" Loaded="Main_Window_Loaded" Icon="File_Manager.ico" PreviewKeyUp="Refresh">
-    <Window.TaskbarItemInfo>
-        <TaskbarItemInfo/>
-    </Window.TaskbarItemInfo>
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Grid>
         <Grid Margin="0,51,0,0">
             <Grid.RowDefinitions>
                 <RowDefinition/>
             </Grid.RowDefinitions>
+            <Grid x:Name="Properties" HorizontalAlignment="Right" Margin="0,8,0,0" Width="220" Visibility="Visible" Grid.RowSpan="1" Background="#FFE7E5E4">
+                <Image x:Name="img" Height="200" Margin="10,20,10,0" VerticalAlignment="Top" Stretch="UniformToFill" Source="Images\Icons\computer.png"/>
+                <StackPanel Margin="10,240,10,10">
+                    <TextBlock Margin="0,0,0,0" TextWrapping="Wrap" VerticalAlignment="Top" FontSize="14">
+                        <Run x:Name="name_title" Text="Name: " Foreground="RoyalBlue"/>
+                        <Run x:Name="name" Text=""/>
+                    </TextBlock>
+                    <TextBlock Margin="0,0,0,0" TextWrapping="Wrap" VerticalAlignment="Top" FontSize="14">
+                        <Run x:Name="type_title" Text="Type: " Foreground="Tomato"/>
+                        <Run x:Name="type" Text=""/>
+                    </TextBlock>
+                    <TextBlock Margin="0,0,0,0" TextWrapping="Wrap" VerticalAlignment="Top" FontSize="14">
+                        <Run x:Name="size_title" Text="Size: " Foreground="Tomato"/>
+                        <Run x:Name="size" Text=""/>
+                    </TextBlock>
+                    <TextBlock Margin="0,0,0,0" TextWrapping="Wrap" VerticalAlignment="Top" FontSize="14">
+                        <Run x:Name="data_Modified_title" Text="Data Modified: " Foreground="Tomato"/>
+                        <Run x:Name="data_Modified" Text=""/>
+                    </TextBlock>
+                </StackPanel>
+            </Grid>
             <ListView x:Name="Explorer" TextBlock.TextAlignment="Right" Margin="0,8,220,19" PreviewKeyUp="Explorer_PreviewKeyUp" Foreground="#FF41403B" SelectionChanged="Explorer_SelectionChanged" Background="White" ContextMenuOpening="Explorer_ContextMenuOpening">
                 <ListView.ContextMenu>
                     <ContextMenu>
@@ -52,29 +69,9 @@
                     </GridView>
                 </ListView.View>-->
             </ListView>
-            <TextBlock x:Name="statebar" TextWrapping="Wrap" FontSize="14" Background="#FFE7E5E4" Height="19" VerticalAlignment="Bottom"><Run x:Name="count"/><Run Text=" "/><Run x:Name="selected" Foreground="DodgerBlue"/><Run Text=" "/><Run x:Name="total_files_size" Foreground="Brown"/></TextBlock>
-            <Grid x:Name="Properties" HorizontalAlignment="Right" Margin="0,0,0,0" Width="220" Visibility="Visible" Grid.RowSpan="1" Background="#FFE7E5E4">
-                <Image x:Name="img" Height="200" Margin="10,20,10,0" VerticalAlignment="Top" Stretch="UniformToFill" Source="Images\Icons\computer.png"/>
-                <StackPanel Margin="10,240,10,10">
-                    <TextBlock Margin="0,0,0,0" TextWrapping="Wrap" VerticalAlignment="Top" FontSize="14">
-                        <Run x:Name="name_title" Text="Name: " Foreground="RoyalBlue"/>
-                        <Run x:Name="name" Text=""/>
-                    </TextBlock>
-                    <TextBlock Margin="0,0,0,0" TextWrapping="Wrap" VerticalAlignment="Top" FontSize="14">
-                        <Run x:Name="type_title" Text="Type: " Foreground="Tomato"/>
-                        <Run x:Name="type" Text=""/>
-                    </TextBlock>
-                    <TextBlock Margin="0,0,0,0" TextWrapping="Wrap" VerticalAlignment="Top" FontSize="14">
-                        <Run x:Name="size_title" Text="Size: " Foreground="Tomato"/>
-                        <Run x:Name="size" Text=""/>
-                    </TextBlock>
-                    <TextBlock Margin="0,0,0,0" TextWrapping="Wrap" VerticalAlignment="Top" FontSize="14">
-                        <Run x:Name="data_Modified_title" Text="Data Modified: " Foreground="Tomato"/>
-                        <Run x:Name="data_Modified" Text=""/>
-                    </TextBlock>
-                </StackPanel>
+            <Grid VerticalAlignment="Bottom" Margin="0,0,220,0">
+                <TextBlock x:Name="statebar" TextWrapping="Wrap" FontSize="14"><Run Text=" "/><Run x:Name="count"/><Run Text=" "/><Run x:Name="selected" Foreground="DodgerBlue"/><Run Text=" "/><Run x:Name="total_files_size" Foreground="Brown"/></TextBlock>
             </Grid>
-
         </Grid>
         <Grid Height="38" Margin="0,21,0,0" VerticalAlignment="Top" Background="#FFF2F1F0">
             <Button x:Name="Back" Click="GoBack_Click" Margin="3,3,0,3" VerticalAlignment="Stretch" Background="{x:Null}" HorizontalAlignment="Left" IsEnabled="False" Width="32" BorderBrush="{x:Null}">
@@ -100,12 +97,12 @@
                     <Image Source="Images/Appearance/view-refresh.png"/>
                 </Button.Content>
             </Button>
-            <TextBox x:Name="Search" Margin="0,8,3,8" Background="{x:Null}" HorizontalAlignment="Right" Width="197" FontSize="14"/>
+            <TextBox x:Name="Search" Margin="0,8,3,8" Background="{x:Null}" HorizontalAlignment="Right" Width="197" ToolTip="GGGGG" Tag="FFFFFFFFFFF" FontSize="14"/>
         </Grid>
-        <Menu Background="#FF41403B" Foreground="#FFF2F2EB" Height="21" VerticalAlignment="Top">
+        <Menu VerticalAlignment="Top">
             <MenuItem Header="FILE MANAGER" FontSize="14">
                 <MenuItem Header="New Window" Foreground="#FF41403B" Click="New_Window"/>
-                <MenuItem Header="New Window(Admin Propriety)" Foreground="#FF41403B" Click="NewWindowAdmin_Click"/>
+                <MenuItem Header="New Window (Admin Propriety)" Foreground="#FF41403B" Click="NewWindowAdmin_Click"/>
                 <Separator Foreground="#FF41403B"/>
                 <MenuItem Header="BookMarks" Foreground="#FF41403B"/>
                 <Separator Foreground="#FF41403B"/>

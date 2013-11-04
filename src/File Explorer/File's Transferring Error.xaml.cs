@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -15,11 +16,13 @@ using System.Windows.Shapes;
 namespace File_Explorer
 {
     /// <summary>
-    /// Interaction logic for File_s_Transforming_Error.xaml
+    /// Interaction logic for File_s_Transferring_Error.xaml
     /// </summary>
     public partial class File_s_transferring_Error : Window
+
     {
         List<UnCompleatOperation> uncomplete;
+        bool wait = false;
         int accept = 0;//0 for cancel, 1 for OK, 2 for ratry all;
         Thickness[] Margins = { new Thickness(10, 0, 0, 0), new Thickness(10, 24, 0, 0), new Thickness(80, 24, 0, 0), new Thickness(80, 40, 0, 0), new Thickness(80, 56, 0, 0), new Thickness(80, 72, 0, 0), new Thickness(0, 41, 115, 0), new Thickness(0, 41, 25, 0), new Thickness(0, 95, 0, 0) };
         Brush my_grey = new SolidColorBrush(Color.FromArgb(255, 100, 100, 100));
@@ -139,22 +142,27 @@ namespace File_Explorer
 
         private void CheckUncheckSkip(int index, RadioButton radio)
         {
-            int j = 0;
-            foreach (Grid i in container.Children)
-                if (((RadioButton)i.Children[index]).IsChecked == true)
-                    j++;
-            if (j == container.Children.Count)
-                radio.IsChecked = true;
-            else if (j == 0)
-                radio.IsChecked = false;
-            else
-                radio.IsChecked = null;
+            if (!wait)
+            {
+                int j = 0;
+                foreach (Grid i in container.Children)
+                    if (((RadioButton)i.Children[index]).IsChecked == true)
+                        j++;
+                if (j == container.Children.Count)
+                    radio.IsChecked = true;
+                else if (j == 0)
+                    radio.IsChecked = false;
+                else
+                    radio.IsChecked = null;
+            }
         }
 
         private void CheckUncheckAll(bool p, int index)
         {
+            wait = true;
             foreach (Grid i in container.Children)
                 ((RadioButton)i.Children[index]).IsChecked = p;
+            wait = false;
         }
 
         private void RetryAll_Checked(object sender, RoutedEventArgs e)

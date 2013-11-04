@@ -23,6 +23,7 @@ namespace File_Explorer
         BitmapImage folder_source = new BitmapImage(new Uri("pack://application:,,,/File Explorer;component/Images/Icons/16 x 16/folder.png"));
         Thickness icon_Margin = new Thickness(0, 0, 0, 0);
         Thickness header_Margin = new Thickness(20, 0, 0, 0);
+        bool writable = false;
         string returnd_path = null;
 
         public Folder_Picker()
@@ -30,10 +31,11 @@ namespace File_Explorer
             InitializeComponent();
         }
 
-        public Folder_Picker(string title)
+        public Folder_Picker(string title, bool write)
         {
             InitializeComponent();
             Title = title;
+            writable = write;
         }
 
         private void Window_Loaded_1(object sender, RoutedEventArgs e)
@@ -95,8 +97,6 @@ namespace File_Explorer
                 returnd_path = ((TreeViewItem)(FolderExplorer.SelectedItem)).HeaderStringFormat;
                 this.Close();
             }
-            else
-                returnd_path = null;
         }
 
         internal string ShowThisDialog()
@@ -124,63 +124,16 @@ namespace File_Explorer
                     else
                         dir_name = ((TreeViewItem)FolderExplorer.SelectedItem).HeaderStringFormat + "\\" + new_name;
                     try { if (dir_name != null) Directory.CreateDirectory(dir_name); }
-                    catch (Exception ex) { MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error); }
+                    catch (Exception ex) { new My_MessageBox("Error", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Explorer;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
                     AddFolders(null, null);
                 }
             }
         }
+
+        private void Cancel_Click(object sender, RoutedEventArgs e)
+        {
+            returnd_path = null;
+            this.Close();
+        }
     }
 }
-
-//{ driver = new DriveInfo(((TextBlock)(((Grid)(((TreeViewItem)(FolderExplorer.SelectedItem)).Header)).Children[1])).Text); }
-//private void Add_Folders(string path)
-//{
-//    var dirs = Directory.GetDirectories(path);
-//    ((TreeViewItem)(FolderExplorer.SelectedItem)).Items.Clear();
-//    foreach (var i in dirs)
-//    {
-//        DirectoryInfo folder = new DirectoryInfo(i);
-//        Image icon = new Image();
-//        icon.Width = icon.Height = 14;
-//        icon.Source = folder_source;
-//        icon.Margin = new Thickness(0, 0, 0, 0);
-//        icon.HorizontalAlignment = HorizontalAlignment.Left;
-//        icon.VerticalAlignment = VerticalAlignment.Top;
-//        TextBlock header = new TextBlock();
-//        header.Text = folder.Name;
-//        header.Margin = new Thickness(20, 0, 0, 0);
-//        Grid grid = new Grid();
-//        grid.HorizontalAlignment = HorizontalAlignment.Left;
-//        grid.VerticalAlignment = VerticalAlignment.Top;
-//        grid.Width = 200;
-//        grid.Tag = folder.Name;
-//        grid.Children.Add(icon);
-//        grid.Children.Add(header);
-//        TreeViewItem TreeItem = new TreeViewItem();
-//        TreeItem.Header = grid;
-//        TreeItem.HeaderStringFormat = folder.FullName;
-//        TreeItem.PreviewMouseDoubleClick += add_folders;
-//        ((TreeViewItem)(FolderExplorer.SelectedItem)).Items.Add(TreeItem);
-//    }
-//}
-                //Image icon = new Image();
-                //icon.Width = icon.Height = 14;
-                //icon.Source = new BitmapImage(new Uri("pack://application:,,,/File Explorer;component/Images/Icons/16 x 16/drive.png"));
-                //icon.Margin = new Thickness(0, 0, 0, 0);
-                //icon.HorizontalAlignment = HorizontalAlignment.Left;
-                //icon.VerticalAlignment = VerticalAlignment.Top;
-                //TextBlock header = new TextBlock();
-                //header.Text = i.Name;
-                //header.Margin = new Thickness(20, 0, 0, 0);
-                //Grid grid = new Grid();
-                //grid.HorizontalAlignment = HorizontalAlignment.Left;
-                //grid.VerticalAlignment = VerticalAlignment.Top;
-                //grid.Width = 200;
-                //grid.Children.Add(icon);
-                //grid.Children.Add(header);
-                //TreeViewItem TreeItem = new TreeViewItem();
-                //TreeItem.Header = grid;
-                //TreeItem.HeaderStringFormat = i.Name;
-                //TreeItem.PreviewMouseDoubleClick += add_folders;
-                //TreeItem.HeaderStringFormat = i.Name;
-                //FolderExplorer.Items.Add(TreeItem);

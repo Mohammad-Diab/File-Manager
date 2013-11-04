@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -15,17 +15,16 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using System.Management;
 
 namespace File_Explorer
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
-
+    ///<summary>
+    ///Interaction logic for MainWindow.xaml
+    ///</summary>
     public partial class MainWindow : Window
     {
         ContextMenu directory_context_menu, file_context_menu;
+        BackgroundWorker b1, b2;
         public static List<FileElement> to_copy_files;
         static public bool go_to_path = false;
         public static string to_go_path = "";
@@ -42,7 +41,7 @@ namespace File_Explorer
             get { return directory_address; }
             set
             {
-                Up.IsEnabled = !(value == "Computer");
+                //Up.IsEnabled = !(value == "Computer");
                 directory_address = value;
             }
         }
@@ -50,6 +49,7 @@ namespace File_Explorer
         public MainWindow()
         {
             Initializer();
+            MessageBox.Show("--Arabic (العربية)--\n**اخلاء مسؤلية**\nهذا البرنامج لم يصدر بعد وهو في نسخة تجريبية لذلك يجب\nأن تكون حذرا في التعامل معه وخاصة خاصية 'الحذف' التي\nقد تقوم وعن غير قصد بحذف احد ملفاتك الضرورية أو الاضرار\nبجهازك.\nيمكنك الاستمتاع  باستعمال كامل الميزات الآخرى ولكن يجب ان تكون حذرا جدا.\n\nالرجاء عدم استخدام خاصية الحذف.\n\n--English (English)--\n**Disclaimer**\nThis app is in alpha version, so be very careful using it\nespecially delete Function, it may delete some of your\nimportant files or damage your system.\nyou can ingoye using all other features, but you should be very careful.\n\nplease don't use 'delete' function.", "FILE MANAGER", MessageBoxButton.OK, MessageBoxImage.Exclamation, MessageBoxResult.OK);
         }
 
         public MainWindow(string PrimePath)
@@ -68,6 +68,8 @@ namespace File_Explorer
         private void Initializer()
         {
             InitializeComponent();
+            if (Process.GetCurrentProcess().StartInfo.Verb == "runas")
+                Title = Title + " (Administrator)";
             back = new Stack<string>();
             front = new Stack<string>();
             if (FileInformation.file_bitmap.Count == 0)
@@ -77,52 +79,96 @@ namespace File_Explorer
 
         private ListViewItem MakeGridForFile(FileInfo file)
         {
-            int file_index = Functions.GetFileIndex(file.Extension);
             ListViewItem Item1 = new ListViewItem();
             Item1.HorizontalAlignment = HorizontalAlignment.Stretch;
             Item1.VerticalAlignment = VerticalAlignment.Stretch;
-            Item1.ContextMenu = MakeFileContextMenu(file_index);
+            Item1.ContextMenu = MakeFileContextMenu(0/*file_index*/);
             Item1.PreviewMouseDoubleClick += Element_DoubleClick;
             Item1.ContentStringFormat = file.FullName;
             Item1.Tag = file;
-            if (show_image)
-            {
-                System.Windows.Controls.Image img1 = new System.Windows.Controls.Image();
-                img1.Height = img1.Width = 64;
-                img1.HorizontalAlignment = HorizontalAlignment.Left;
-                img1.VerticalAlignment = VerticalAlignment.Stretch;
-                img1.Source = FileInformation.file_bitmap[file_index];
-                if (hiddenfiles && file.Attributes.HasFlag(FileAttributes.Hidden))
-                    img1.Opacity = 0.5;
-                TextBlock name = new TextBlock();
-                name.Text = file.Name;
-                name.HorizontalAlignment = HorizontalAlignment.Left;
-                name.VerticalAlignment = VerticalAlignment.Stretch;
-                name.Margin = name_thickness;
-                name.TextTrimming = TextTrimming.CharacterEllipsis;
-                TextBlock size = new TextBlock();
-                size.Text = Functions.File_Size(file.Length);
-                size.HorizontalAlignment = HorizontalAlignment.Left;
-                size.VerticalAlignment = VerticalAlignment.Top;
-                size.Margin = size_thickness;
-                size.TextTrimming = TextTrimming.CharacterEllipsis;
-                TextBlock type = new TextBlock();
-                type.Text = Functions.GetFileType(file_index, file.Extension);
-                type.HorizontalAlignment = HorizontalAlignment.Left;
-                type.VerticalAlignment = VerticalAlignment.Top;
-                type.Margin = type_thickness;
-                type.TextTrimming = TextTrimming.CharacterEllipsis;
-                Grid Grid1 = new Grid();
-                Grid1.HorizontalAlignment = HorizontalAlignment.Stretch;
-                Grid1.Children.Add(img1);
-                Grid1.Children.Add(name);
-                Grid1.Children.Add(type);
-                Grid1.Children.Add(size);
-                Item1.Content = Grid1;
-            }
-            else
-                Item1.Content = file.Name;
+            Item1.Name = "f";
             return Item1;
+        }
+
+        private void AddItemsToFileGrid()
+        {
+            foreach (ListViewItem i in Explorer.Items)
+                if (i.Name == "f")
+                    if (show_image)
+                    {
+                        int file_index = Functions.GetFileIndex(((FileInfo)i.Tag).Extension);
+                        System.Windows.Controls.Image img1 = new System.Windows.Controls.Image();
+                        img1.Height = img1.Width = 64;
+                        img1.HorizontalAlignment = HorizontalAlignment.Left;
+                        img1.VerticalAlignment = VerticalAlignment.Stretch;
+                        img1.Source = FileInformation.file_bitmap[file_index];
+                        if (hiddenfiles && ((FileInfo)i.Tag).Attributes.HasFlag(FileAttributes.Hidden))
+                            img1.Opacity = 0.5;
+                        TextBlock name = new TextBlock();
+                        name.Text = ((FileInfo)i.Tag).Name;
+                        name.HorizontalAlignment = HorizontalAlignment.Left;
+                        if (((FileInfo)i.Tag).Attributes.HasFlag(FileAttributes.Compressed))
+                            name.Foreground = System.Windows.Media.Brushes.RoyalBlue;
+                        else if (((FileInfo)i.Tag).Attributes.HasFlag(FileAttributes.Encrypted))
+                            name.Foreground = System.Windows.Media.Brushes.Green;
+                        name.VerticalAlignment = VerticalAlignment.Stretch;
+                        name.Margin = name_thickness;
+                        name.TextTrimming = TextTrimming.CharacterEllipsis;
+                        TextBlock size = new TextBlock();
+                        size.Text = Functions.File_Size(((FileInfo)i.Tag).Length);
+                        size.HorizontalAlignment = HorizontalAlignment.Left;
+                        size.VerticalAlignment = VerticalAlignment.Top;
+                        size.Margin = size_thickness;
+                        size.TextTrimming = TextTrimming.CharacterEllipsis;
+                        TextBlock type = new TextBlock();
+                        type.Text = Functions.GetFileType(file_index, ((FileInfo)i.Tag).Extension);
+                        type.HorizontalAlignment = HorizontalAlignment.Left;
+                        type.VerticalAlignment = VerticalAlignment.Top;
+                        type.Margin = type_thickness;
+                        type.TextTrimming = TextTrimming.CharacterEllipsis;
+                        Grid Grid1 = new Grid();
+                        Grid1.HorizontalAlignment = HorizontalAlignment.Stretch;
+                        Grid1.Children.Add(img1);
+                        Grid1.Children.Add(name);
+                        Grid1.Children.Add(type);
+                        Grid1.Children.Add(size);
+                        i.Content = Grid1;
+                    }
+                    else
+                        i.Content = ((FileInfo)i.Tag).Name;
+        }
+
+        private void AddItemsToDirectoryGrid()
+        {
+            foreach (ListViewItem i in Explorer.Items)
+                if (i.Name == "d")
+                    if (show_image)
+                    {
+                        System.Windows.Controls.Image img1 = new System.Windows.Controls.Image();
+                        img1.Height = img1.Width = 64;
+                        img1.HorizontalAlignment = HorizontalAlignment.Left;
+                        img1.VerticalAlignment = VerticalAlignment.Stretch;
+                        img1.Source = FileInformation.file_bitmap[FileInformation.file_bitmap.Count - 2];
+                        if (hiddenfiles && ((DirectoryInfo)i.Tag).Attributes.HasFlag(FileAttributes.Hidden))
+                            img1.Opacity = 0.5;
+                        TextBlock text = new TextBlock();
+                        text.Text = ((DirectoryInfo)i.Tag).Name;
+                        if (((DirectoryInfo)i.Tag).Attributes.HasFlag(FileAttributes.Compressed))
+                            text.Foreground = System.Windows.Media.Brushes.RoyalBlue;
+                        else if (((DirectoryInfo)i.Tag).Attributes.HasFlag(FileAttributes.Encrypted))
+                            text.Foreground = System.Windows.Media.Brushes.Green;
+                        text.Margin = folder_thickness;
+                        text.HorizontalAlignment = HorizontalAlignment.Stretch;
+                        text.VerticalAlignment = VerticalAlignment.Stretch;
+                        text.TextTrimming = TextTrimming.CharacterEllipsis;
+                        Grid Grid1 = new Grid();
+                        Grid1.HorizontalAlignment = HorizontalAlignment.Stretch;
+                        Grid1.Children.Add(img1);
+                        Grid1.Children.Add(text);
+                        i.Content = Grid1;
+                    }
+                    else
+                        i.Content = ((DirectoryInfo)i.Tag).Name;
         }
 
         private ListViewItem MakeGridForDirectory(DirectoryInfo folder)
@@ -133,30 +179,8 @@ namespace File_Explorer
             Item1.ContextMenu = directory_context_menu;
             Item1.PreviewMouseDoubleClick += Element_DoubleClick;
             Item1.ContentStringFormat = folder.FullName;
+            Item1.Name = "d";
             Item1.Tag = folder;
-            if (show_image)
-            {
-                System.Windows.Controls.Image img1 = new System.Windows.Controls.Image();
-                img1.Height = img1.Width = 64;
-                img1.HorizontalAlignment = HorizontalAlignment.Left;
-                img1.VerticalAlignment = VerticalAlignment.Stretch;
-                img1.Source = FileInformation.file_bitmap[FileInformation.file_bitmap.Count - 2];
-                if (hiddenfiles && folder.Attributes.HasFlag(FileAttributes.Hidden))
-                    img1.Opacity = 0.5;
-                TextBlock text = new TextBlock();
-                text.Text = folder.Name;
-                text.Margin = folder_thickness;
-                text.HorizontalAlignment = HorizontalAlignment.Stretch;
-                text.VerticalAlignment = VerticalAlignment.Stretch;
-                text.TextTrimming = TextTrimming.CharacterEllipsis;
-                Grid Grid1 = new Grid();
-                Grid1.HorizontalAlignment = HorizontalAlignment.Stretch;
-                Grid1.Children.Add(img1);
-                Grid1.Children.Add(text);
-                Item1.Content = Grid1;
-            }
-            else
-                Item1.Content = folder.Name;
             return Item1;
         }
 
@@ -189,15 +213,20 @@ namespace File_Explorer
                 Grid1.Children.Add(text);
                 if (drive.IsReady)
                 {
-                    ProgressBar drive_size = new ProgressBar();
-                    drive_size.Margin = new Thickness(80, 25, 0, 20); ;
                     text.VerticalAlignment = VerticalAlignment.Top;
-                    drive_size.Value = 100 - (drive.TotalFreeSpace * 100) / drive.TotalSize;
-                    if (drive_size.Value > 90)
-                        drive_size.Foreground = System.Windows.Media.Brushes.Crimson;
+                    Rectangle drive_container = new Rectangle();
+                    drive_container.Margin = new Thickness(80, 25, 0, 20);
+                    drive_container.Stroke = Brushes.Gray;
+                    drive_container.Fill = new LinearGradientBrush(Color.FromRgb(230, 230, 230), Color.FromRgb(230, 230, 230), 30);
+                    drive_container.Width = 350;
+                    Rectangle drive_size = new Rectangle();
+                    drive_size.HorizontalAlignment = HorizontalAlignment.Left;
+                    drive_size.Margin = new Thickness(81, 26, 0, 21);
+                    if (100 - (drive.TotalFreeSpace * 100) / drive.TotalSize > 90)
+                        drive_size.Fill = new LinearGradientBrush(Color.FromRgb(218, 38, 38), Color.FromRgb(220, 40, 40), 30);
                     else
-                        drive_size.Foreground = System.Windows.Media.Brushes.RoyalBlue;
-                    drive_size.Width = 350;
+                        drive_size.Fill = new LinearGradientBrush(Color.FromRgb(38, 160, 218), Color.FromRgb(40, 160, 220), 30);
+                    drive_size.Width = drive_container.Width - (drive.TotalFreeSpace * drive_container.Width) / drive.TotalSize - 2;
                     TextBlock size = new TextBlock();
                     size.Text = Functions.File_Size(drive.TotalFreeSpace) + " free of " + Functions.File_Size(drive.TotalSize);
                     size.Foreground = System.Windows.Media.Brushes.DarkGray;
@@ -205,6 +234,7 @@ namespace File_Explorer
                     size.HorizontalAlignment = HorizontalAlignment.Left;
                     size.VerticalAlignment = VerticalAlignment.Top;
                     size.TextTrimming = TextTrimming.CharacterEllipsis;
+                    Grid1.Children.Add(drive_container);
                     Grid1.Children.Add(drive_size);
                     Grid1.Children.Add(size);
                 }
@@ -219,6 +249,10 @@ namespace File_Explorer
         {
             try
             {
+                if (b1 != null && b1.IsBusy)
+                    b1.CancelAsync();
+                if (b2 != null && b2.IsBusy)
+                    b2.CancelAsync();
                 fake = true;
                 Address1.Items.Clear();
                 fake = false;
@@ -245,6 +279,18 @@ namespace File_Explorer
                     foreach (var i in files)
                         if (hiddenfiles || (!hiddenfiles && !i.Attributes.HasFlag(FileAttributes.Hidden)))
                             Explorer.Items.Add(MakeGridForFile(i));
+                    b1 = new BackgroundWorker();
+                    b1.WorkerReportsProgress = true;
+                    b1.DoWork += b1_DoWork;
+                    b1.ProgressChanged += b1_ProgressChanged;
+                    b1.WorkerSupportsCancellation = true;
+                    b1.RunWorkerAsync();
+                    b2 = new BackgroundWorker();
+                    b2.WorkerReportsProgress = true;
+                    b2.DoWork += b2_DoWork;
+                    b2.ProgressChanged += b2_ProgressChanged;
+                    b2.WorkerSupportsCancellation = true;
+                    b2.RunWorkerAsync();
                 }
                 count.Text = Explorer.Items.Count + " Item(s)";
                 if (Address.Text != path)
@@ -266,12 +312,31 @@ namespace File_Explorer
                 else
                     paste_context_menu.IsEnabled = false;
             }
-            catch (Exception ex) { MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error); if (close) Close(); }
+            catch (Exception ex) { new My_MessageBox("Error", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Explorer;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); if (close) Close(); }
+        }
+
+        void b1_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        {
+            AddItemsToFileGrid();
+        }
+
+        void b1_DoWork(object sender, DoWorkEventArgs e)
+        {
+            b1.ReportProgress(0);
+        }
+
+        void b2_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        {
+            AddItemsToDirectoryGrid();
+        }
+
+        void b2_DoWork(object sender, DoWorkEventArgs e)
+        {
+            b2.ReportProgress(0);
         }
 
         private void Main_Window_Loaded(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("--Arabic (العربية)--\n**اخلاء مسؤلية**\nهذا البرنامج لم يصدر بعد وهو في نسخة تجريبية لذلك يجب\nأن تكون حذرا في التعامل معه وخاصة خاصية 'الحذف' التي\nقد تقوم وعن غير قصد بحذف احد ملفاتك الضرورية أو الاضرار\nبجهازك.\nيمكنك الاستمتاع  باستعمال كامل الميزات الآخرى ولكن يجب ان تكون حذرا جدا.\n\nالرجاء عدم استخدام خاصية الحذف.\n\n--English (English)--\n**Disclaimer**\nThis app is in alpha version, so be very careful using it\nespecially delete Function, it may delete some of your\nimportant files or damage your system.\nyou can ingoye using all other features, but you should be very careful.\n\nplease don't use 'delete' function.", "FILE MANAGER", MessageBoxButton.OK, MessageBoxImage.Exclamation, MessageBoxResult.OK);
             systemDrive = new DirectoryInfo(Environment.SystemDirectory).Root.FullName;
             MakeDirectoryContextMenu();
             if (path == "Computer")
@@ -288,80 +353,12 @@ namespace File_Explorer
             data_Modified.Text = Memory_Size;
             if (to_select_file != null)
                 SelectItem(to_select_file);
-            CreateNewListBox(path);
+            string f = Process.GetCurrentProcess().StartInfo.Verb;
         }
 
         private void MenuItem_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("File Manager v0.5.1-alpha.2\nby: mohammad.diab93@outlook.com", "FILE MANAGER", MessageBoxButton.OK, MessageBoxImage.Information, MessageBoxResult.OK);
-        }
-
-        private void CreateNewListBox(string p)
-        {
-            try
-            {
-                ListBox list_box = new ListBox();
-                list_box.Width = 250;
-                list_box.ToolTip = p;
-                //list_box.SelectionChanged += list_box_SelectionChanged;
-                if (p == "Computer")
-                {
-                    foreach (var i in DriveInfo.GetDrives())
-                    {
-                        ListBoxItem Item1 = new ListBoxItem();
-                        Item1.ContextMenu = MakeDriveContextMenu(i);
-                        Item1.PreviewMouseDoubleClick += ElementNew_DoubleClick;
-                        Item1.ContentStringFormat = i.Name;
-                        Item1.Tag = i;
-                        Item1.Content = i.Name;
-                        list_box.Items.Add(Item1);
-                    }
-                }
-                else
-                {
-                    foreach (var i in new DirectoryInfo(p).GetDirectories())
-                    {
-                        ListBoxItem Item1 = new ListBoxItem();
-                        Item1.ContextMenu = directory_context_menu;
-                        Item1.PreviewMouseDoubleClick += ElementNew_DoubleClick;
-                        Item1.ContentStringFormat = i.FullName;
-                        Item1.Tag = i;
-                        Item1.Content = i.Name;
-                        list_box.Items.Add(Item1);
-                    }
-                    foreach (var i in new DirectoryInfo(p).GetFiles())
-                    {
-                        ListBoxItem Item1 = new ListBoxItem();
-                        Item1.ContextMenu = directory_context_menu;
-                        Item1.PreviewMouseLeftButtonUp += Item1_PreviewMouseLeftButtonUp;
-                        Item1.ContentStringFormat = i.FullName;
-                        Item1.Tag = i;
-                        Item1.Content = i.Name;
-                        list_box.Items.Add(Item1);
-                    }
-                }
-                //stack1.Children.Insert(stack1.Children.Count - 1, list_box);
-            }
-            catch (Exception ex) { MessageBox.Show(ex.Message); }
-        }
-
-        private void Item1_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-        {
-            ViewFileInfo(((ListBoxItem)sender).ContentStringFormat);
-        }
-
-        private void ElementNew_DoubleClick(object sender, MouseButtonEventArgs e)
-        {
-            //int x = stack1.Children.Count;
-            //for (int i = 1; i < stack1.Children.Count - 1; i++)
-            //    if (((ListBox)stack1.Children[i]).ToolTip.ToString().Equals(new DirectoryInfo(((ListBoxItem)sender).ContentStringFormat.ToString()).FullName))
-            //    {
-            //        x = i;
-            //        break;
-            //    }
-            //for (int i = x; i < stack1.Children.Count - 1; i++)
-            //    stack1.Children.RemoveAt(i);
-            CreateNewListBox(((ListBoxItem)sender).ContentStringFormat);
+            MessageBox.Show("File Manager v0.5.1-alpha.3\nby: mohammad.diab93@outlook.com", "FILE MANAGER", MessageBoxButton.OK, MessageBoxImage.Information, MessageBoxResult.OK);
         }
 
         private void New_Window(object sender, RoutedEventArgs e)
@@ -380,11 +377,11 @@ namespace File_Explorer
                     if (!is_paste)
                         if (new My_MessageBox("Append file to list", "Do you want to append files to the list?", "", "", new BitmapImage(new Uri("pack://application:,,,/File Explorer;component/Images/Appearance/list.png")), null/*buttons*/, null/* button_actions*/).ShowThisDialog() == MyMessageBoxResult.No)
                             to_copy_files.Clear();
-                    else
-                    {
-                        to_copy_files.Clear();
-                        is_paste = false;
-                    }
+                        else
+                        {
+                            to_copy_files.Clear();
+                            is_paste = false;
+                        }
                     else
                         to_copy_files.Clear();
                 }
@@ -395,7 +392,7 @@ namespace File_Explorer
                         Functions.AddAllFiles((((ListViewItem)i).ContentStringFormat), path, true, to_copy_files);
             }
             else
-                MessageBox.Show("You canot move any file or directory from here!", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+                new My_MessageBox("Cut", "You can not move any item from here!", new BitmapImage(new Uri("pack://application:,,,/File Explorer;component/Images/Appearance/dialog-warning.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-warning.wav")).ShowDialog();
         }
 
         private void Copy_Click(object sender, RoutedEventArgs e)
@@ -424,7 +421,7 @@ namespace File_Explorer
                         Functions.AddAllFiles((((ListViewItem)i).ContentStringFormat), path, false, to_copy_files);
             }
             else
-                MessageBox.Show("You canot copy any file or directory from here!", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+                new My_MessageBox("Copy", "You can not copy any item from here!", new BitmapImage(new Uri("pack://application:,,,/File Explorer;component/Images/Appearance/dialog-warning.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-warning.wav")).ShowDialog();
         }
 
         private void Paste_Click(object sender, RoutedEventArgs e)
@@ -436,9 +433,9 @@ namespace File_Explorer
                     window.Show(path);
                 }
                 else
-                    MessageBox.Show("You can not paste any item here!", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    new My_MessageBox("Paste", "You can not paste any item here!", new BitmapImage(new Uri("pack://application:,,,/File Explorer;component/Images/Appearance/dialog-warning.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-warning.wav")).ShowDialog();
             else
-                MessageBox.Show("There is not any item to paste it!", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+                new My_MessageBox("Paste", "There is not any item to paste it!", new BitmapImage(new Uri("pack://application:,,,/File Explorer;component/Images/Appearance/dialog-warning.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-warning.wav")).ShowDialog();
         }
 
         private void NewWindowAdmin_Click(object sender, RoutedEventArgs e)
@@ -447,8 +444,8 @@ namespace File_Explorer
             PSI.Verb = "runas";
             try
             { System.Diagnostics.Process.Start(PSI); }
-            catch (Exception err)
-            { MessageBox.Show(err.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error); }
+            catch (Exception ex)
+            { new My_MessageBox("Error", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Explorer;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
         }
 
         private void NewFolder_Click(object sender, RoutedEventArgs e)
@@ -461,12 +458,12 @@ namespace File_Explorer
                 Refresh();
             }
             else
-                MessageBox.Show("You can not create directory here", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                new My_MessageBox("Create new directory", "You can not create directory here!", new BitmapImage(new Uri("pack://application:,,,/File Explorer;component/Images/Appearance/dialog-warning.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-warning.wav")).ShowDialog();
         }
 
         private void Quit(object sender, RoutedEventArgs e)
         {
-            Process.GetCurrentProcess().Close();
+            Process.GetCurrentProcess().Kill();
         }
 
         private void Close(object sender, RoutedEventArgs e)
@@ -488,7 +485,7 @@ namespace File_Explorer
 
         private void DublicateFileRemover_Click(object sender, RoutedEventArgs e)
         {
-            new Identical_File_Remover().ShowDialog();
+            new Identical_File_Remover().Show();
         }
 
         private void BigFileFinder_Click(object sender, RoutedEventArgs e)
@@ -541,25 +538,25 @@ namespace File_Explorer
 
         private void CollectSystemInformation()
         {
-            ManagementObjectSearcher searcher;
-            computer_Name = System.Environment.MachineName;
-            operating_System = System.Environment.OSVersion.Clone().ToString() + " " + System.Environment.Version.ToString();
-            searcher = new ManagementObjectSearcher("select * from Win32_Processor");
-            CPU = Environment.CommandLine;
+            //ManagementObjectSearcher searcher;
+            //computer_Name = System.Environment.MachineName;
+            //operating_System = System.Environment.OSVersion.Clone().ToString() + " " + System.Environment.Version.ToString();
+            //searcher = new ManagementObjectSearcher("select * from Win32_Processor");
+            //CPU = Environment.CommandLine;
             //foreach (var share in searcher.Get())
             //{
             //    CPU = share["Name"].ToString();
             //    break;
             //}
-            searcher = new ManagementObjectSearcher("select * from Win32_PhysicalMemory");
-            long memory_size = 0;
-            foreach (var share in searcher.Get())
-            {
-                long tmp;
-                long.TryParse(share.Properties["Capacity"].Value.ToString(), out tmp);
-                memory_size = memory_size + tmp;
-            }
-            Memory_Size = Functions.File_Size(memory_size) + " Memory";
+            //searcher = new ManagementObjectSearcher("select * from Win32_PhysicalMemory");
+            //long memory_size = 0;
+            //foreach (var share in searcher.Get())
+            //{
+            //    long tmp;
+            //    long.TryParse(share.Properties["Capacity"].Value.ToString(), out tmp);
+            //    memory_size = memory_size + tmp;
+            //}
+            //Memory_Size = Functions.File_Size(memory_size) + " Memory";
         }
 
         private void ViewFolderInfo(string path)
@@ -574,8 +571,8 @@ namespace File_Explorer
                 sub_dirs_count = Directory.GetDirectories(view_directory.FullName).Length;
                 sub_files_count = Directory.GetFiles(view_directory.FullName).Length;
             }
-            catch (Exception er)
-            { MessageBox.Show(er.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error); }
+            catch (Exception ex)
+            { new My_MessageBox("Error", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Explorer;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
             SetDefualt();
             size_title.Text = "Contains: ";
             size.Text = sub_dirs_count + " Folders & " + sub_files_count + " Files";
@@ -808,7 +805,7 @@ namespace File_Explorer
             }
             else
                 selected.Text = string.Empty;
-                
+
         }
 
         private void Explorer_PreviewKeyUp(object sender, KeyEventArgs e)
@@ -851,7 +848,7 @@ namespace File_Explorer
         {
             if (path != "Computer" && Explorer.SelectedItems.Count > 0)
             {
-                List<UnCompleatOperation> un_done = new List<UnCompleatOperation>();
+                //List<UnCompleatOperation> un_done = new List<UnCompleatOperation>();
                 My_MessageBox messagebox;
                 if (Explorer.SelectedItems.Count > 1)
                     messagebox = new My_MessageBox(Explorer.SelectedItems.Count);
@@ -872,41 +869,9 @@ namespace File_Explorer
                             delete_dirs.Add(((ListViewItem)i).ContentStringFormat);
                         }
                     }
-                    foreach (var i in delete_files)
-                        DeleteFile(i, un_done);
-                    foreach (var i in delete_dirs)
-                        DeleteDirectory(i, un_done);
+                    new File_Operation(delete_files, delete_dirs).Show();
                 }
-                while (un_done.Count > 0)
-                {
-                    var retry = new File_s_transferring_Error(un_done, "Some items have not deleted successfully.<note: default option is skip>").ShowThisDialog();
-                    for (int i = retry.Count - 1; i >= 0; i--)
-                    {
-                        if (retry[i])
-                            if (un_done[i].IsDirectory)
-                                DeleteDirectory(un_done[i].files_full_name, un_done);
-                            else
-                                DeleteFile(un_done[i].files_full_name, un_done);
-                        un_done.RemoveAt(i);
-                    }
-                } //MessageBox.Show("Some files haven't been deleted successfully", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
-        }
-
-        private void DeleteFile(string file_name, List<UnCompleatOperation> un_done)
-        {
-            try
-            { File.Delete(file_name); }
-            catch (Exception ex)
-            { un_done.Add(new UnCompleatOperation(file_name, ex.Message, false)); }
-        }
-
-        private void DeleteDirectory(string directory_name, List<UnCompleatOperation> un_done)
-        {
-            try
-            { Directory.Delete(directory_name, false); }
-            catch (Exception ex)
-            { un_done.Add(new UnCompleatOperation(directory_name, ex.Message, true)); }
         }
 
         private void OpenFileorDirectory()
@@ -932,7 +897,7 @@ namespace File_Explorer
                                 new_window = true;
                             }
                         }
-                        catch (Exception ex) { MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Stop); }
+                        catch (Exception ex) { new My_MessageBox("Error", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Explorer;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
                 }
                 else
                 {
@@ -954,7 +919,7 @@ namespace File_Explorer
                                 }
                             }
                         }
-                        catch (Exception ex) { MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Stop); }
+                        catch (Exception ex) { new My_MessageBox("Error", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Explorer;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
                 }
             }
         }
@@ -1204,7 +1169,7 @@ namespace File_Explorer
                         Functions.AddAllFiles(j, i.ContentStringFormat, false, to_copy);
                     try
                     { Directory.CreateDirectory(paste_in); }
-                    catch (Exception ex) { MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error); return; }
+                    catch (Exception ex) { new My_MessageBox("Error", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Explorer;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); return; }
                     File_Operation window = new File_Operation(to_copy);
                     window.Show(paste_in);
                 }
@@ -1313,12 +1278,12 @@ namespace File_Explorer
                 if (new_name != null)
                     new DriveInfo(((ListViewItem)Explorer.SelectedItem).ContentStringFormat).VolumeLabel = new_name;
             }
-            catch (Exception ex) { MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error); }
+            catch (Exception ex) { new My_MessageBox("Error", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Explorer;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
         }
 
         private void CopyTo_Click(object sender, RoutedEventArgs e)
         {
-            string copy_to = new Folder_Picker("Select directory to copy to").ShowThisDialog();
+            string copy_to = new Folder_Picker("Select directory to copy to", true).ShowThisDialog();
             if (copy_to != null)
             {
                 List<FileElement> to_copy = new List<FileElement>();
@@ -1339,7 +1304,7 @@ namespace File_Explorer
             if (Explorer.SelectedItems.Count == 1)
                 PreviewItem();
             else
-                MessageBox.Show("You can not preview more than one item in same time.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                new My_MessageBox("Viewer", "You can not preview more than one item in same time.", new BitmapImage(new Uri("pack://application:,,,/File Explorer;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
         }
 
         private void OpenInNewWindow_Click(object sender, RoutedEventArgs e)
@@ -1349,7 +1314,7 @@ namespace File_Explorer
                 foreach (var i in Explorer.SelectedItems)
                     Functions.OpenWith(((ListViewItem)i).ContentStringFormat, Functions.GetItemType(((ListViewItem)i).ContentStringFormat));
             }
-            catch (Exception ex) { MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error); }
+            catch (Exception ex) { new My_MessageBox("Error", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Explorer;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
         }
 
         private void Open_Click(object sender, RoutedEventArgs e)
@@ -1387,12 +1352,12 @@ namespace File_Explorer
                     else
                         file_name = path + "\\" + new_name + extension;
                     try { if (file_name != null) File.Create(file_name); }
-                    catch (Exception ex) { MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error); }
+                    catch (Exception ex) { new My_MessageBox("Error", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Explorer;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
                     Refresh();
                 }
             }
             else
-                MessageBox.Show("You can not create any file here", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                new My_MessageBox("Create new file", "You can not create any file here!", new BitmapImage(new Uri("pack://application:,,,/File Explorer;component/Images/Appearance/dialog-warning.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-warning.wav")).ShowDialog();
         }
 
         private void NewDirectory(string new_name)
@@ -1410,7 +1375,7 @@ namespace File_Explorer
                 else
                     dir_name = path + "\\" + new_name;
                 try { if (dir_name != null) Directory.CreateDirectory(dir_name); }
-                catch (Exception ex) { MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error); }
+                catch (Exception ex) { new My_MessageBox("Error", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Explorer;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
             }
         }
 
@@ -1460,770 +1425,3 @@ namespace File_Explorer
         }
     }
 }
-
-        //private void SelectItem(string to_select_file)
-        //{
-        //    int dir_numbers = 0;
-        //    foreach (var i in Directory.GetDirectories(path))
-        //        if (hiddenfiles || (!hiddenfiles && !new DirectoryInfo(i).Attributes.HasFlag(FileAttributes.Hidden)))
-        //            dir_numbers++;
-        //    int file_index = 0;
-        //    var files = Directory.GetFiles(path);
-        //    for (int i = 0; files[i] != path; i++)
-        //        if (hiddenfiles || (!hiddenfiles && !File.GetAttributes(files[i]).HasFlag(FileAttributes.Hidden)))
-        //            file_index++;
-        //    Explorer.SelectedIndex = file_index + dir_numbers;
-        //}
-
-//DriveInfo[] Drives;
-//List<string> directorys;
-//List<string> files;
-//DirectoryInfo current_Directory, View_Directory;
-//FileInfo View_File;
-//string copydir, , ;
-//, to_copy_directory;
-//int sub_dirs, sub_files;
-//long to_copy_files_Size;
-//static public string to_go_path, new_Name = null;
-//static public bool go_to_path;
-//
-//string , PrimPath;
-//string file_name = null;
-//string Path
-//{
-//    set
-//    {
-//        if (value == String.Empty)
-//            this.Address.Text = "Computer";
-//        else
-//            this.Address.Text = value;
-//    }
-//    get
-//    { return this.Address.Text; }
-//}
-//
-
-
-
-
-
-
-//private ItemType GetDriveType(string path)
-//{
-//    DriveInfo d = new DriveInfo(path);
-//    if (d.DriveType == DriveType.Fixed)
-//        if (d.IsReady)
-//            return ItemType.HardDrive;
-//        else
-//            return ItemType.NotReadyHardDrive;
-//    else if (d.DriveType == DriveType.CDRom)
-//        if (d.IsReady)
-//            return ItemType.DVDRom;
-//        else
-//            return ItemType.NotReadyDVDRom;
-//    else if (d.DriveType == DriveType.Removable)
-//        if (d.IsReady)
-//            return ItemType.Removable;
-//        else
-//            return ItemType.NotReadyRemovable;
-//    else if (d.DriveType == DriveType.Ram)
-//        return ItemType.Ram;
-//    else
-//        return ItemType.Unknown;
-//}
-
-
-
-
-
-
-
-//internal static string GetImageSource(string imagesource, string type, bool Condition)
-//{
-//    if (type.Length > 0 && type[type.Length - 1] == '_')
-//        imagesource = imagesource + "archive-cab.png";
-//    else
-//        switch (type.ToLower())
-//        {
-//            case "computer":
-//                imagesource = imagesource + "computer.png";
-//                break;
-//            case "fixed":
-//                if (Condition)
-//                    imagesource = imagesource + "system-hard-disk.png";
-//                else
-//                    imagesource = imagesource + "hard-disk.png";
-//                break;
-//            case "cdrom":
-//                if (Condition)
-//                    imagesource = imagesource + "dvd-media.png";
-//                else
-//                    imagesource = imagesource + "optical-drive.png";
-//                break;
-//            case "removable":
-//                if (Condition)
-//                    imagesource = imagesource + "removable-usb.png";
-//                else
-//                    imagesource = imagesource + "removable-media.png";
-//                break;
-//            case "folder":
-//                imagesource = imagesource + "folder.png";
-//                break;
-//            case ".txt":
-//                imagesource = imagesource + "text-file.png";
-//                break;
-//            case ".log":
-//                imagesource = imagesource + "text-file.png";
-//                break;
-//            case ".sh":
-//                imagesource = imagesource + "text-file.png";
-//                break;
-//            case ".bsh":
-//                imagesource = imagesource + "text-file.png";
-//                break;
-//            case ".bat":
-//                imagesource = imagesource + "text-x.png";
-//                break;
-//            case ".cmd":
-//                imagesource = imagesource + "text-x.png";
-//                break;
-//            case ".nt":
-//                imagesource = imagesource + "text-x.png";
-//                break;
-//            case ".c":
-//                imagesource = imagesource + "text-c.png";
-//                break;
-//            case ".cpp":
-//                imagesource = imagesource + "text-c++.png";
-//                break;
-//            case ".cs":
-//                imagesource = imagesource + "text-cs.png";
-//                break;
-//            case ".html":
-//                imagesource = imagesource + "text-html.png";
-//                break;
-//            case ".mht":
-//                imagesource = imagesource + "text-html.png";
-//                break;
-//            case ".htm":
-//                imagesource = imagesource + "text-html.png";
-//                break;
-//            case ".shtml":
-//                imagesource = imagesource + "text-html.png";
-//                break;
-//            case ".shtm":
-//                imagesource = imagesource + "text-html.png";
-//                break;
-//            case ".xhtml":
-//                imagesource = imagesource + "text-html.png";
-//                break;
-//            case ".hta":
-//                imagesource = imagesource + "text-html.png";
-//                break;
-//            case ".ini":
-//                imagesource = imagesource + "text-script.png";
-//                break;
-//            case ".inf":
-//                imagesource = imagesource + "text-script.png";
-//                break;
-//            case ".reg":
-//                imagesource = imagesource + "text-reg.png";
-//                break;
-//            case ".url":
-//                imagesource = imagesource + "text-html.png";
-//                break;
-//            case ".java":
-//                imagesource = imagesource + "text-java.png";
-//                break;
-//            case ".js":
-//                imagesource = imagesource + "text-script.png";
-//                break;
-//            case ".nfo":
-//                imagesource = imagesource + "text-script.png";
-//                break;
-//            case ".pas":
-//                imagesource = imagesource + "text-file.png";
-//                break;
-//            case ".inc":
-//                imagesource = imagesource + "text-file.png";
-//                break;
-//            case ".pl":
-//                imagesource = imagesource + "text-file.png";
-//                break;
-//            case ".pm":
-//                imagesource = imagesource + "text-file.png";
-//                break;
-//            case ".plx":
-//                imagesource = imagesource + "text-file.png";
-//                break;
-//            case ".php":
-//                imagesource = imagesource + "text-file.png";
-//                break;
-//            case ".php3":
-//                imagesource = imagesource + "text-file.png";
-//                break;
-//            case ".phtml":
-//                imagesource = imagesource + "text-file.png";
-//                break;
-//            case ".ps":
-//                imagesource = imagesource + "text-file.png";
-//                break;
-//            case ".ps1":
-//                imagesource = imagesource + "text-file.png";
-//                break;
-//            case ".py":
-//                imagesource = imagesource + "text-python.png";
-//                break;
-//            case ".pyw":
-//                imagesource = imagesource + "text-python.png";
-//                break;
-//            case ".sql":
-//                imagesource = imagesource + "text-file.png";
-//                break;
-//            case ".tex":
-//                imagesource = imagesource + "text-file.png";
-//                break;
-//            case ".vb":
-//                imagesource = imagesource + "text-script.png";
-//                break;
-//            case ".vbs":
-//                imagesource = imagesource + "text-script.png";
-//                break;
-//            case ".v":
-//                imagesource = imagesource + "text-file.png";
-//                break;
-//            case ".vhdl":
-//                imagesource = imagesource + "text-file.png";
-//                break;
-//            case ".xml":
-//                imagesource = imagesource + "text-script.png";
-//                break;
-//            case ".xsml":
-//                imagesource = imagesource + "text-script.png";
-//                break;
-//            case ".xsl":
-//                imagesource = imagesource + "text-script.png";
-//                break;
-//            case ".xsd":
-//                imagesource = imagesource + "text-script.png";
-//                break;
-//            case ".kml":
-//                imagesource = imagesource + "text-script.png";
-//                break;
-//            case ".wsdl":
-//                imagesource = imagesource + "text-script.png";
-//                break;
-//            case ".yml":
-//                imagesource = imagesource + "text-file.png";
-//                break;
-//            case ".docx":
-//                imagesource = imagesource + "text-richtext.png";
-//                break;
-//            case ".doc":
-//                imagesource = imagesource + "text-richtext.png";
-//                break;
-//            case ".odt":
-//                imagesource = imagesource + "text-richtext.png";
-//                break;
-//            case ".rtf":
-//                imagesource = imagesource + "text-richtext.png";
-//                break;
-//            case ".docm":
-//                imagesource = imagesource + "text-richtext.png";
-//                break;
-//            case ".dot":
-//                imagesource = imagesource + "text-richtext.png";
-//                break;
-//            case ".dotx":
-//                imagesource = imagesource + "text-richtext.png";
-//                break;
-//            case ".ppsx":
-//                imagesource = imagesource + "text-presentation.png";
-//                break;
-//            case ".pptx":
-//                imagesource = imagesource + "text-presentation.png";
-//                break;
-//            case ".pps":
-//                imagesource = imagesource + "text-presentation.png";
-//                break;
-//            case ".ppt":
-//                imagesource = imagesource + "text-presentation.png";
-//                break;
-//            case ".pptm":
-//                imagesource = imagesource + "text-presentation.png";
-//                break;
-//            case ".potx":
-//                imagesource = imagesource + "text-presentation.png";
-//                break;
-//            case ".pot":
-//                imagesource = imagesource + "text-presentation.png";
-//                break;
-//            case ".odp":
-//                imagesource = imagesource + "text-presentation.png";
-//                break;
-//            case ".xlsx":
-//                imagesource = imagesource + "text-spreadsheet.png";
-//                break;
-//            case ".xlsm":
-//                imagesource = imagesource + "text-spreadsheet.png";
-//                break;
-//            case ".xlsb":
-//                imagesource = imagesource + "text-spreadsheet.png";
-//                break;
-//            case ".xls":
-//                imagesource = imagesource + "text-spreadsheet.png";
-//                break;
-//            case ".xltx":
-//                imagesource = imagesource + "text-spreadsheet.png";
-//                break;
-//            case ".xltm":
-//                imagesource = imagesource + "text-spreadsheet.png";
-//                break;
-//            case ".xlt":
-//                imagesource = imagesource + "text-spreadsheet.png";
-//                break;
-//            case ".ods":
-//                imagesource = imagesource + "text-spreadsheet.png";
-//                break;
-//            case ".accdb":
-//                imagesource = imagesource + "text-database.png";
-//                break;
-//            case ".mdl":
-//                imagesource = imagesource + "text-database.png";
-//                break;
-//            case ".odbc":
-//                imagesource = imagesource + "text-database.png";
-//                break;
-//            case ".accdt":
-//                imagesource = imagesource + "text-database.png";
-//                break;
-//            case ".mdb":
-//                imagesource = imagesource + "text-database.png";
-//                break;
-//            case ".pdf":
-//                imagesource = imagesource + "text-pdf.png";
-//                break;
-//            case ".xps":
-//                imagesource = imagesource + "text-xps.png";
-//                break;
-//            case ".oxps":
-//                imagesource = imagesource + "text-xps.png";
-//                break;
-//            case ".djvu":
-//                imagesource = imagesource + "text-file.png";
-//                break;
-//            case ".comic":
-//                imagesource = imagesource + "text-file.png";
-//                break;
-//            case ".chm":
-//                imagesource = imagesource + "text-help.png";
-//                break;
-//            case ".mobi":
-//                imagesource = imagesource + "text-file.png";
-//                break;
-//            case ".epub":
-//                imagesource = imagesource + "text-file.png";
-//                break;
-//            case ".vdi":
-//                imagesource = imagesource + "disk-vdi.png";
-//                break;
-//            case ".vhd":
-//                imagesource = imagesource + "disk-vhd.png";
-//                break;
-//            case ".hdd":
-//                imagesource = imagesource + "disk-hdd.png";
-//                break;
-//            case ".iso":
-//                imagesource = imagesource + "disk-iso.png";
-//                break;
-//            case ".bin":
-//                imagesource = imagesource + "disk-iso.png";
-//                break;
-//            case ".isz":
-//                imagesource = imagesource + "disk-iso.png";
-//                break;
-//            case ".img":
-//                imagesource = imagesource + "disk-iso.png";
-//                break;
-//            case ".dmg":
-//                imagesource = imagesource + "archive-file.png";
-//                break;
-//            case ".nrg":
-//                imagesource = imagesource + "disk-iso.png";
-//                break;
-//            case ".mou":
-//                imagesource = imagesource + "disk-mou.png";
-//                break;
-//            case ".zip":
-//                imagesource = imagesource + "archive-zip.png";
-//                break;
-//            case ".cab":
-//                imagesource = imagesource + "archive-cab.png";
-//                break;
-//            case ".7z":
-//                imagesource = imagesource + "archive-7z.png";
-//                break;
-//            case ".rar":
-//                imagesource = imagesource + "archive-rar.png";
-//                break;
-//            case ".tar":
-//                imagesource = imagesource + "archive-tar.png";
-//                break;
-//            case ".deb":
-//                imagesource = imagesource + "archive-deb.png";
-//                break;
-//            case ".xz":
-//                imagesource = imagesource + "archive-file.png";
-//                break;
-//            case ".txz":
-//                imagesource = imagesource + "archive-file.png";
-//                break;
-//            case ".lzma":
-//                imagesource = imagesource + "archive-lzma.png";
-//                break;
-//            case ".cpio":
-//                imagesource = imagesource + "archive-file.png";
-//                break;
-//            case ".bz2":
-//                imagesource = imagesource + "archive-bz2.png";
-//                break;
-//            case ".bzip2":
-//                imagesource = imagesource + "archive-bz2.png";
-//                break;
-//            case ".gz":
-//                imagesource = imagesource + "archive-gz.png";
-//                break;
-//            case ".taz":
-//                imagesource = imagesource + "archive-file.png";
-//                break;
-//            case ".fat":
-//                imagesource = imagesource + "archive-file.png";
-//                break;
-//            case ".ntfs":
-//                imagesource = imagesource + "archive-file.png";
-//                break;
-//            case ".hfs":
-//                imagesource = imagesource + "archive-file.png";
-//                break;
-//            case ".rpm":
-//                imagesource = imagesource + "archive-rpm.png";
-//                break;
-//            case ".wim":
-//                imagesource = imagesource + "archive-file.png";
-//                break;
-//            case ".ace":
-//                imagesource = imagesource + "archive-ace.png";
-//                break;
-//            case ".jar":
-//                imagesource = imagesource + "archive-jar.png";
-//                break;
-//            case ".uha":
-//                imagesource = imagesource + "archive-file.png";
-//                break;
-//            case ".squashfs":
-//                imagesource = imagesource + "archive-file.png";
-//                break;
-//            case ".mp3":
-//                imagesource = imagesource + "multimedia-mp3.png";
-//                break;
-//            case ".3gp":
-//                imagesource = imagesource + "multimedia-video.png";
-//                break;
-//            case ".3ggp2":
-//                imagesource = imagesource + "multimedia-video.png";
-//                break;
-//            case ".3gpp":
-//                imagesource = imagesource + "multimedia-video.png";
-//                break;
-//            case ".acc":
-//                imagesource = imagesource + "multimedia-audio.png";
-//                break;
-//            case ".ac3":
-//                imagesource = imagesource + "multimedia-audio.png";
-//                break;
-//            case ".adt":
-//                imagesource = imagesource + "multimedia-video.png";
-//                break;
-//            case ".adts":
-//                imagesource = imagesource + "multimedia-video.png";
-//                break;
-//            case ".amr":
-//                imagesource = imagesource + "multimedia-audio.png";
-//                break;
-//            case ".amv":
-//                imagesource = imagesource + "multimedia-video.png";
-//                break;
-//            case ".avi":
-//                imagesource = imagesource + "multimedia-video.png";
-//                break;
-//            case ".flv":
-//                imagesource = imagesource + "multimedia-flv.png";
-//                break;
-//            case ".hdmov":
-//                imagesource = imagesource + "multimedia-video.png";
-//                break;
-//            case ".mid":
-//                imagesource = imagesource + "multimedia-audio.png";
-//                break;
-//            case ".midi":
-//                imagesource = imagesource + "multimedia-audio.png";
-//                break;
-//            case ".mka":
-//                imagesource = imagesource + "multimedia-video.png";
-//                break;
-//            case ".mkv":
-//                imagesource = imagesource + "multimedia-audio.png";
-//                break;
-//            case ".mp2":
-//                imagesource = imagesource + "multimedia-mp3.png";
-//                break;
-//            case ".mp4":
-//                imagesource = imagesource + "multimedia-video.png";
-//                break;
-//            case ".mp4v":
-//                imagesource = imagesource + "multimedia-video.png";
-//                break;
-//            case ".mpeg":
-//                imagesource = imagesource + "multimedia-video.png";
-//                break;
-//            case ".mpg":
-//                imagesource = imagesource + "multimedia-video.png";
-//                break;
-//            case ".ogg":
-//                imagesource = imagesource + "multimedia-ogg.png";
-//                break;
-//            case ".ogm":
-//                imagesource = imagesource + "multimedia-video.png";
-//                break;
-//            case ".ogv":
-//                imagesource = imagesource + "multimedia-video.png";
-//                break;
-//            case ".opus":
-//                imagesource = imagesource + "multimedia-audio.png";
-//                break;
-//            case ".ra":
-//                imagesource = imagesource + "multimedia-audio.png";
-//                break;
-//            case ".ram":
-//                imagesource = imagesource + "multimedia-audio.png";
-//                break;
-//            case ".rm":
-//                imagesource = imagesource + "multimedia-video.png";
-//                break;
-//            case ".wav":
-//                imagesource = imagesource + "multimedia-wav.png";
-//                break;
-//            case ".wma":
-//                imagesource = imagesource + "multimedia-wma.png";
-//                break;
-//            case ".wmv":
-//                imagesource = imagesource + "multimedia-video.png";
-//                break;
-//            case ".wv":
-//                imagesource = imagesource + "multimedia-wav.png";
-//                break;
-//            case ".vob":
-//                imagesource = imagesource + "multimedia-video.png";
-//                break;
-//            case ".mov":
-//                imagesource = imagesource + "multimedia-video.png";
-//                break;
-//            case ".swf":
-//                imagesource = imagesource + "multimedia-flv.png";
-//                break;
-//            case ".aac":
-//                imagesource = imagesource + "multimedia-audio.png";
-//                break;
-//            case ".jpg":
-//                imagesource = imagesource + "multimedia-jpg.png";
-//                break;
-//            case ".png":
-//                imagesource = imagesource + "multimedia-png.png";
-//                break;
-//            case ".ico":
-//                imagesource = imagesource + "multimedia-ico.png";
-//                break;
-//            case ".bmp":
-//                imagesource = imagesource + "multimedia-bmp.png";
-//                break;
-//            case ".gif":
-//                imagesource = imagesource + "multimedia-gif.png";
-//                break;
-//            case ".tif":
-//                imagesource = imagesource + "multimedia-tif.png";
-//                break;
-//            case ".tiff":
-//                imagesource = imagesource + "multimedia-tif.png";
-//                break;
-//            case ".dib":
-//                imagesource = imagesource + "multimedia-image.png";
-//                break;
-//            case ".jpe":
-//                imagesource = imagesource + "multimedia-jpg.png";
-//                break;
-//            case ".jpeg":
-//                imagesource = imagesource + "multimedia-jpg.png";
-//                break;
-//            case ".jfif":
-//                imagesource = imagesource + "multimedia-image.png";
-//                break;
-//            case ".svg":
-//                imagesource = imagesource + "multimedia-image.png";
-//                break;
-//            case ".jxr":
-//                imagesource = imagesource + "multimedia-image.png";
-//                break;
-//            case ".wdp":
-//                imagesource = imagesource + "multimedia-image.png";
-//                break;
-//            case ".psd":
-//                imagesource = imagesource + "multimedia-psd.png";
-//                break;
-//            case ".pcx":
-//                imagesource = imagesource + "multimedia-image.png";
-//                break;
-//            case ".tga":
-//                imagesource = imagesource + "multimedia-image.png";
-//                break;
-//            case ".fon":
-//                imagesource = imagesource + "x-fon.png";
-//                break;
-//            case ".ttc":
-//                imagesource = imagesource + "x-fon.png";
-//                break;
-//            case ".ttf":
-//                imagesource = imagesource + "x-fon.png";
-//                break;
-//            case ".dll":
-//                imagesource = imagesource + "x-dll.png";
-//                break;
-//            case ".exe":
-//                imagesource = imagesource + "x-exe.png";
-//                break;
-//            case ".cpl":
-//                imagesource = imagesource + "x-dll.png";
-//                break;
-//            case ".h":
-//                imagesource = imagesource + "text-script.png";
-//                break;
-//            case ".drv":
-//                imagesource = imagesource + "x-dll.png";
-//                break;
-//            case ".msc":
-//                imagesource = imagesource + "x-exe.png";
-//                break;
-//            case ".com":
-//                imagesource = imagesource + "text-x.png";
-//                break;
-//            case ".scr":
-//                imagesource = imagesource + "x-scr.png";
-//                break;
-//            case ".msi":
-//                imagesource = imagesource + "x-package.png";
-//                break;
-//            case ".sys":
-//                imagesource = imagesource + "x-sys.png";
-//                break;
-//            case ".db":
-//                imagesource = imagesource + "x-sys.png";
-//                break;
-//            case ".pnf":
-//                imagesource = imagesource + "x-sys.png";
-//                break;
-//            case ".dat":
-//                imagesource = imagesource + "file.png";
-//                break;
-//            case "":
-//                imagesource = imagesource + "file.png";
-//                break;
-//            default:
-//                imagesource = imagesource + "unknown-file.png";
-//                break;
-//        }
-//    return imagesource;
-//}
-
-//internal static bool IsImage(string extension)
-//{
-//    extension = extension.ToLower();
-//    if (extension.Equals(".png") || extension.Equals(".jpg") || extension.Equals(".bmp") || extension.Equals(".gif") || extension.Equals(".ico") || extension.Equals(".tif") || extension.Equals(".dib") || extension.Equals(".jfif") || extension.Equals(".jpe") || extension.Equals(".jpeg") || extension.Equals(".jxr") || extension.Equals(".tiff") || extension.Equals(".wdp"))
-//        return true;
-//    return false;
-//}
-
-//internal static bool IsVedio(string extension)
-//{
-//    extension = extension.ToLower();
-//    if (extension.Equals(".avi") || extension.Equals(".wmv") || extension.Equals(".3gp") || extension.Equals(".mov") || extension.Equals(".mp4") || extension.Equals(".3g2") || extension.Equals(".3gp2") || extension.Equals(".3gpp") || extension.Equals(".bdmv") || extension.Equals(".flv") || extension.Equals(".hdmov") || extension.Equals(".mpe") || extension.Equals(".mpeg") || extension.Equals(".mpg") || extension.Equals(".ogm") || extension.Equals(".ogv") || extension.Equals(".rm") || extension.Equals(".vob"))
-//        return true;
-//    return false;
-//}
-
-//internal static bool IsAudio(string extension)
-//{
-//    extension = extension.ToLower();
-//    if (extension.Equals(".mp3") || extension.Equals(".wma") || extension.Equals(".acc") || extension.Equals(".ogg") || extension.Equals(".amr") || extension.Equals(".ac3") || extension.Equals(".mp2") || extension.Equals(".oga") || extension.Equals(".ra") || extension.Equals(".ram") || extension.Equals(".wav") || extension.Equals(".wv") || extension.Equals(".mid") || extension.Equals(".midi"))
-//        return true;
-//    return false;
-//}
-
-//internal static bool IsHtml(string extension)
-//{
-//    extension = extension.ToLower();
-//    if (extension.Equals(".svg") || extension.Equals(".swf") || extension.Equals(".htm") || extension.Equals(".html") || extension.Equals(".hta") || extension.Equals(".mht") || extension.Equals(".shtml") || extension.Equals(".shtm") || extension.Equals(".xhtml") || extension.Equals(".php") || extension.Equals(".php3") || extension.Equals(".phtml") || extension.Equals(".xml") || extension.Equals(".xsml") || extension.Equals(".xsl"))
-//        return true;
-//    return false;
-//}
-
-//internal static bool IsText(string extension)
-//{
-//    extension = extension.ToLower();
-//    if (extension.Equals(".txt") || extension.Equals(".cs") || extension.Equals(".cpp") || extension.Equals(".log") || extension.Equals(".sh") || extension.Equals(".bsh") || extension.Equals(".bat") || extension.Equals(".cmd") || extension.Equals(".nt") || extension.Equals(".c") || extension.Equals(".ini") || extension.Equals(".inf") || extension.Equals(".reg") || extension.Equals(".url") || extension.Equals(".java") || extension.Equals(".js") || extension.Equals(".nfo") || extension.Equals(".pas") || extension.Equals(".inc") || extension.Equals(".pl") || extension.Equals(".pm") || extension.Equals(".plx") || extension.Equals(".ps") || extension.Equals(".ps1") || extension.Equals(".py") || extension.Equals(".pyw") || extension.Equals(".tex") || extension.Equals(".vb") || extension.Equals(".vbs") || extension.Equals(".v") || extension.Equals(".vhdl") || extension.Equals(".xsd") || extension.Equals(".kml") || extension.Equals(".wsdl") || extension.Equals(".yml"))
-//        return true;
-//    return false;
-//}
-
-//internal static bool IsArchive(string extension)
-//{
-//    extension = extension.ToLower();
-//    if ((extension.Length > 0 && extension[extension.Length - 1] == '_') || extension.Equals(".7z") || extension.Equals(".zip") || extension.Equals(".rar") || extension.Equals(".001") || extension.Equals(".cab") || extension.Equals(".xz") || extension.Equals(".txz") || extension.Equals(".lzma") || extension.Equals(".tar") || extension.Equals(".cpio") || extension.Equals(".bz2") || extension.Equals(".bzip2") || extension.Equals(".tbz2") || extension.Equals(".tbz") || extension.Equals(".gz") || extension.Equals(".gzip") || extension.Equals(".tgz") || extension.Equals(".tpz") || extension.Equals(".z") || extension.Equals(".taz") || extension.Equals(".lzh") || extension.Equals(".lha") || extension.Equals(".rpm") || extension.Equals(".deb") || extension.Equals(".arj") || extension.Equals(".wim") || extension.Equals(".swm") || extension.Equals(".fat") || extension.Equals(".ntfs") || extension.Equals(".dmg") || extension.Equals(".hfs") || extension.Equals(".xar") || extension.Equals(".squashfs") || extension.Equals(".ace") || extension.Equals(".uha") || extension.Equals(".kgp") || extension.Equals(".kge"))
-//        return true;
-//    return false;
-//}
-
-//internal static bool IsFont(string extension)
-//{
-//    extension = extension.ToLower();
-//    if (extension.Equals(".ttf") || extension.Equals(".fon") || extension.Equals(".ttc"))
-//        return true;
-//    return false;
-//}
-
-//private void Get_all_files(string dir)
-//{
-//    to_copy_directory.Add(dir);
-//    var sub_dirs = Directory.GetDirectories(dir);
-//    DirectoryInfo directory = new DirectoryInfo(dir);
-//    to_copy_files_Size = 0;
-//    foreach (var i in directory.GetFiles())
-//    {
-//        to_copy_files.Add(i.FullName);
-//        to_copy_files_Size += (i.Length);
-//    }
-//    if (sub_dirs.Length == 0)
-//        return;
-//    else
-//        foreach (var i in sub_dirs)
-//            Get_all_files(i);
-//}
-
-//private void Refresh(object sender, KeyEventArgs e)
-//{
-//    if (e.Key == Key.F5)
-//        Refresh();
-//}
-
-        //private string SubName(string name, string toRemove)
-        //{
-        //    return name.Remove(0, toRemove.Length);
-        //}

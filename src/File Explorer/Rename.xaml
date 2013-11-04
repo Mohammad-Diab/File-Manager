@@ -4,8 +4,9 @@
         x:Name="_name" Title="Name" Height="120" Width="350" ResizeMode="NoResize" ShowInTaskbar="False" WindowStartupLocation="CenterScreen" Loaded="Window_Loaded_1" PreviewKeyUp="_name_PreviewKeyUp" Icon="Images/Appearance/rename.png">
     <Grid>
         <Button Content="OK" Margin="135,55,135,0" VerticalAlignment="Top" IsDefault="True" Click="OK_Click" Height="21"/>
-        <Label Content="Enter the Name:" HorizontalAlignment="Left" Margin="5,5,0,0" VerticalAlignment="Top"/>
-        <TextBox x:Name="name" Margin="20,28,20,0" Text="New Name" VerticalAlignment="Top" SpellCheck.IsEnabled="True" TabIndex="10" AutoWordSelection="True" MaxLines="1" MaxLength="255" TextChanged="Name_TextChanged"/>
+        <Label Content="Enter the Name:" HorizontalAlignment="Left" Margin="47,2,0,0" VerticalAlignment="Top"/>
+        <TextBox x:Name="name" Margin="55,28,10,0" Text="New Name" VerticalAlignment="Top" SpellCheck.IsEnabled="True" TabIndex="10" AutoWordSelection="True" MaxLines="1" MaxLength="255" TextChanged="Name_TextChanged"/>
         <TextBlock x:Name="Label1" Text="File name can't contain any of these characters:&#xD;&#xA;\ / : * ? &quot; > |" VerticalAlignment="Top" Foreground="Tomato" TextAlignment="Center" Visibility="Collapsed" TextWrapping="Wrap" Margin="0,90,0,0"/>
+        <Image HorizontalAlignment="Left" Height="32" Margin="10,10,0,0" VerticalAlignment="Top" Width="32" Source="Images/Appearance/rename.png"/>
     </Grid>
 </Window>

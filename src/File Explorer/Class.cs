@@ -11,6 +11,8 @@ namespace File_Explorer
 {
     public class FileElement : IComparable
     {
+        public bool? over;
+        public string extension;
         public string files_full_name;
         public string file_short_name;
         public long files_size;
@@ -20,27 +22,45 @@ namespace File_Explorer
         {
             files_full_name = "";
             file_short_name = "";
+            extension = "";
             files_size = 0;
             remove_file = false;
+            over = false;
             done = false;
         }
 
         public FileElement(string file_path, string short_name, bool remove)
         {
+            FileInfo f = new FileInfo(file_path);
             files_full_name = file_path;
             file_short_name = short_name;
-            files_size = new FileInfo(file_path).Length;
+            files_size = f.Length;
+            extension = f.Extension;
             remove_file = remove;
             done = false;
+            over = false;
         }
 
-        public FileElement(string file_path, long file_Size, string short_name, bool remove)
+        public FileElement(string file_path, long file_Size, string extension, string short_name, bool remove)
         {
+            this.extension = extension;
             files_full_name = file_path;
             file_short_name = short_name;
             files_size = file_Size;
             remove_file = remove;
             done = false;
+            over = false;
+        }
+
+        public FileElement(string file_path, long file_Size, string extension, string short_name, bool remove, bool? over)
+        {
+            this.extension = extension;
+            files_full_name = file_path;
+            file_short_name = short_name;
+            files_size = file_Size;
+            remove_file = remove;
+            done = false;
+            this.over = over;
         }
 
         public int CompareTo(object obj)
@@ -61,6 +81,7 @@ namespace File_Explorer
         public string files_full_name;
         public string file_short_name;
         public long files_size;
+        public string extension;
         public bool remove_file;
         public string error_message;
         public bool IsDirectory;
@@ -68,7 +89,8 @@ namespace File_Explorer
         {
             files_full_name = "";
             file_short_name = "";
-            files_size = -1;
+            extension = "";
+            files_size = 0;
             remove_file = false;
             error_message = "";
             IsDirectory = false;
@@ -76,9 +98,10 @@ namespace File_Explorer
 
         public UnCompleatOperation(string file_path, string error_message, bool IsDirectory)
         {
+            this.extension = "";
             files_full_name = file_path;
             file_short_name = "";
-            files_size = -1;
+            files_size = 0;
             remove_file = false;
             this.IsDirectory = IsDirectory;
             this.error_message = error_message;
@@ -86,18 +109,21 @@ namespace File_Explorer
 
         public UnCompleatOperation(string file_path, string short_name, bool remove, string error_message)
         {
+            FileInfo f = new FileInfo(file_path);
             files_full_name = file_path;
+            this.extension = f.Extension;
             file_short_name = short_name;
-            files_size = new FileInfo(file_path).Length;
+            files_size = f.Length;
             remove_file = remove;
             IsDirectory = false;
             this.error_message = error_message;
         }
 
-        public UnCompleatOperation(string file_path, long file_Size, string short_name, bool remove, string error_message)
+        public UnCompleatOperation(string file_path, long file_Size, string extension, string short_name, bool remove, string error_message)
         {
             files_full_name = file_path;
             file_short_name = short_name;
+            this.extension = extension;
             files_size = file_Size;
             remove_file = remove;
             IsDirectory = false;
@@ -256,10 +282,10 @@ namespace File_Explorer
                 return StandardImageSource + "";
         }
 
-        public static string GetFileType(int i, string extension)
+        public static string GetFileType(int file_index, string extension)
         {
-            if (i != (FileInformation.file_extentions.Length - 1))
-                return FileInformation.file_description[i];
+            if (file_index != (FileInformation.file_extentions.Length - 1))
+                return FileInformation.file_description[file_index];
             else
                 if (extension.Length > 2)
                     return extension.ToUpper().Remove(0, 1) + " File";
@@ -296,13 +322,15 @@ namespace File_Explorer
         {
             DirectoryInfo dir = new DirectoryInfo(directory);
             foreach (var i in dir.GetDirectories())
-                AddAllFiles(i.FullName, parent_path, remove, list);
+                try
+                { AddAllFiles(i.FullName, parent_path, remove, list); }
+                catch (Exception) { }
             foreach (var i in dir.GetFiles())
             {
                 string file_short_name = i.FullName.Remove(0, parent_path.Length);
                 if (parent_path == "")
                 { file_short_name = file_short_name.Remove(1, 1); }
-                list.Add(new FileElement(i.FullName, i.Length, file_short_name, remove));
+                list.Add(new FileElement(i.FullName, i.Length, i.Extension, file_short_name, remove));
             }
         }
 
@@ -319,8 +347,12 @@ namespace File_Explorer
         {
             foreach (var i in Directory.GetDirectories(directory))
             {
-                AddAllDirectories(i, list);
-                list.Add(i);
+                try
+                {
+                    AddAllDirectories(i, list);
+                    list.Add(i);
+                }
+                catch (Exception) { }
             }
         }
 
@@ -363,6 +395,61 @@ namespace File_Explorer
                 for (int i = 1; i < strs.Length - 1; i++)
                     strs[i] = strs[i - 1] + "\\" + strs[i];
             return strs;
+        }
+    }
+
+    public class BigItemElement
+    {
+        public FileSystemInfo file_system;
+        public long size;
+        public bool is_directory;
+
+        public BigItemElement(FileSystemInfo dir, long size, bool is_directory)
+        {
+            this.file_system = dir;
+            this.size = size;
+            this.is_directory = is_directory;
+        }
+    }
+
+    public class Tree : IComparable
+    {
+        public List<Tree> children;
+        public Tree parent;
+        public BigItemElement content;
+
+        internal Tree(Tree parent, BigItemElement content)
+        {
+            this.parent = parent;
+            this.content = content;
+            children = new List<Tree>();
+        }
+
+        internal void AddChild(BigItemElement content)
+        {
+            children.Add(new Tree(this, content));
+        }
+
+        internal void AddChild(Tree child)
+        {
+            children.Add(child);
+        }
+
+        internal void SetSize(long full_size)
+        {
+            content.size = full_size;
+        }
+
+        public int CompareTo(object obj)
+        {
+            if (obj == null)
+                return 0;
+            if (((Tree)obj).content.size == this.content.size)
+                return 0;
+            else if (((Tree)obj).content.size > this.content.size)
+                return 1;
+            else
+                return -1;
         }
     }
 }

@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -28,6 +31,217 @@ namespace File_Manager
         Brush[] brushes = { new SolidColorBrush(Color.FromArgb(180, 255, 255, 255)), new SolidColorBrush(Color.FromArgb(180, 255, 255, 245)), new SolidColorBrush(Color.FromArgb(180, 255, 250, 235)), new SolidColorBrush(Color.FromArgb(180, 255, 245, 220)), new SolidColorBrush(Color.FromArgb(180, 255, 230, 180)), new SolidColorBrush(Color.FromArgb(180, 255, 220, 140)), new SolidColorBrush(Color.FromArgb(180, 255, 200, 80)), new SolidColorBrush(Color.FromArgb(180, 255, 190, 75)), new SolidColorBrush(Color.FromArgb(180, 255, 175, 50)), new SolidColorBrush(Color.FromArgb(180, 255, 160, 50)), new SolidColorBrush(Color.FromArgb(180, 255, 140, 50)), new SolidColorBrush(Color.FromArgb(180, 255, 120, 30)), new SolidColorBrush(Color.FromArgb(180, 255, 100, 30)), new SolidColorBrush(Color.FromArgb(180, 255, 85, 20)), new SolidColorBrush(Color.FromArgb(180, 255, 75, 0)), new SolidColorBrush(Color.FromArgb(180, 255, 65, 0)), new SolidColorBrush(Color.FromArgb(180, 255, 55, 0)), new SolidColorBrush(Color.FromArgb(180, 255, 45, 0)), new SolidColorBrush(Color.FromArgb(180, 255, 35, 0)), new SolidColorBrush(Color.FromArgb(180, 255, 20, 0)) };
         public Big_File_Finder()
         { InitializeComponent(); }
+
+        double process_value;
+        public TimeSpan timespan = new TimeSpan(1);
+        ObservableCollection<BigFileListView> list_to_view = new ObservableCollection<BigFileListView>();
+        Dictionary<string, List<BigItemElement>> dic;
+
+        public void findBigItems_Click(object sender, RoutedEventArgs e)
+        {
+            string path = new Folder_Picker().ShowThisDialog();
+            if (path != null)
+            {
+                dic = new Dictionary<string, List<BigItemElement>>();
+                process_value = 0;
+                progressbar.Value = 0;
+                progressbar.Visibility = Visibility.Visible;
+                DirectoryInfo root_directory = new DirectoryInfo(path);
+                current_path.Text = path;
+                BackgroundWorker bw = new BackgroundWorker();
+                bw.WorkerSupportsCancellation = true;
+                bw.WorkerReportsProgress = true;
+                bw.DoWork += bw_DoWork;
+                bw.RunWorkerCompleted += bw_RunWorkerCompleted;
+                bw.RunWorkerAsync(root_directory);
+                BackgroundWorker process_bar = new BackgroundWorker();
+                process_bar.WorkerSupportsCancellation = true;
+                process_bar.WorkerReportsProgress = true;
+                process_bar.DoWork += processbar_DoWork;
+                process_bar.ProgressChanged += process_bar_ProgressChanged;
+                process_bar.RunWorkerAsync(root_directory);
+                if (ItemsTree.Items.Count > 0)
+                {DeleteItems.IsEnabled = true;}
+                else
+                { DeleteItems.IsEnabled = false; }
+            }
+        }
+
+        private void process_bar_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        {
+            process_value = e.ProgressPercentage;
+            progressbar.Value = e.ProgressPercentage;
+        }
+
+        private void processbar_DoWork(object sender, DoWorkEventArgs e)
+        {
+            for (int i = 0; i < 5000 && process_value < 5100; i++)
+            {
+                int sleep_time = i < 4500 ? i / 500 : i / 200;
+                ((BackgroundWorker)sender).ReportProgress(i);
+                Thread.Sleep(sleep_time);
+            }
+        }
+
+        private void bw_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            if (!e.Cancelled)
+            {
+                list_to_view.Clear();
+                BackgroundWorker BW_Viewer = new BackgroundWorker();
+                BW_Viewer.WorkerSupportsCancellation = true;
+                BW_Viewer.WorkerReportsProgress = true;
+                BW_Viewer.ProgressChanged += bw1_ProgressChanged;
+                BW_Viewer.RunWorkerCompleted += BW_Viewer_RunWorkerCompleted;
+                BW_Viewer.DoWork += bw1_DoWork;
+                BW_Viewer.RunWorkerAsync(current_path.Text);
+            }
+        }
+
+        private void BW_Viewer_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            progressbar.Value = 5100;
+            process_value = 5100;
+            Thread.Sleep(1);
+            progressbar.Visibility = Visibility.Hidden;
+        }
+
+        private void bw1_DoWork(object sender, DoWorkEventArgs e)
+        {
+            string dir = e.Argument.ToString();
+            BackgroundWorker bw = (BackgroundWorker)sender;
+            dic[dir].Sort();
+            foreach (var i in dic[dir])
+                if (i.file_system.Exists)
+                {
+                    bw.ReportProgress(0, i);
+                    Thread.Sleep(timespan);
+                }
+        }
+
+        private void bw1_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        {
+            BigItemElement i = ((BigItemElement)e.UserState);
+            int index = (i.file_system is FileInfo) ? Functions.GetFileIndex(i.file_system.Extension) : FileInformation.file_extentions.Length - 2;
+            double perc = Math.Round((i.size * 100.0) / (full_size), 2);
+            double brush_index = Math.Round((20.0 * i.size / full_size /*Current Size*/), 0);
+            list_to_view.Add(new BigFileListView(i.file_system.FullName, i.file_system.Name, FileInformation.file_bitmap_24[index], FileInformation.file_description[index], Functions.FileSize(i.size), 5.88 + " %", perc + " %", brush_index > 19 ? brushes[19] : brush_index < 0 ? brushes[0] : brushes[(int)brush_index], i.file_system is DirectoryInfo));
+            //list_to_view[list_to_view.Count - 1].Tap += Big_File_Finder_MouseDoubleClick;
+        }
+
+        private void Big_File_Finder_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            MessageBox.Show("Hello");
+        }
+
+        private void bw_DoWork(object sender, DoWorkEventArgs e)
+        {
+            try
+            {
+                DirectoryInfo dir = (DirectoryInfo)e.Argument;
+                full_size = getAllFiles(dir);
+            }
+            catch (Exception ex) { MessageBox.Show(ex.Message); }
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            item_list.DataContext = list_to_view;
+        }
+
+        public long getAllFiles(DirectoryInfo directory)
+        {
+            long size = 0;
+            foreach (var i in directory.GetDirectories())
+                try
+                {
+                    long current_size = getAllFiles(i);
+                    size += current_size;
+                    if (dic.Keys.Contains(directory.FullName))
+                        dic[directory.FullName].Add(new BigItemElement(i, current_size, true));
+                    else
+                    {
+                        List<BigItemElement> list = new List<BigItemElement>();
+                        list.Add(new BigItemElement(i, current_size, true));
+                        dic.Add(directory.FullName, list);
+                    }
+                }
+                catch (Exception ex) { /*MessageBox.Show(ex.Message);*/ }
+            FileInfo[] files = new FileInfo[0];
+            try { files = directory.GetFiles(); }
+            catch (Exception ex) { /*MessageBox.Show(ex.Message);*/}
+            foreach (var i in files)
+            {
+                size += i.Length;
+                if (dic.Keys.Contains(directory.FullName))
+                    dic[directory.FullName].Add(new BigItemElement(i, i.Length, true));
+                else
+                {
+                    List<BigItemElement> list = new List<BigItemElement>();
+                    list.Add(new BigItemElement(i, i.Length, true));
+                    dic.Add(directory.FullName, list);
+                }
+            }
+            return size;
+        }
+
+        private void item_list_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (item_list.SelectedItem != null)
+            {
+                BigFileListView item = (BigFileListView)item_list.SelectedItem;
+                if (item.isDirectory)
+                {
+                    current_path.Text = item.FullPath;
+                    list_to_view.Clear();
+                    BackgroundWorker BW_Viewer = new BackgroundWorker();
+                    BW_Viewer.WorkerSupportsCancellation = true;
+                    BW_Viewer.WorkerReportsProgress = true;
+                    BW_Viewer.ProgressChanged += bw1_ProgressChanged;
+                    BW_Viewer.DoWork += bw1_DoWork;
+                    BW_Viewer.RunWorkerAsync(current_path.Text);
+                }
+            }
+        }
+
+        private void GoUp_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                string parent_path = new DirectoryInfo(current_path.Text).Parent.FullName;
+                if (dic.Keys.Contains(parent_path))
+                {
+                    current_path.Text = parent_path;
+                    list_to_view.Clear();
+                    BackgroundWorker BW_Viewer = new BackgroundWorker();
+                    BW_Viewer.WorkerSupportsCancellation = true;
+                    BW_Viewer.WorkerReportsProgress = true;
+                    BW_Viewer.ProgressChanged += bw1_ProgressChanged;
+                    BW_Viewer.DoWork += bw1_DoWork;
+                    BW_Viewer.RunWorkerAsync(current_path.Text);
+                }
+            }
+            catch (Exception) { }
+        }
+
+        private void current_path_PreviewKeyUp(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Return && dic != null)
+                if (dic.Keys.Contains(current_path.Text))
+                {
+                    list_to_view.Clear();
+                    BackgroundWorker BW_Viewer = new BackgroundWorker();
+                    BW_Viewer.WorkerSupportsCancellation = true;
+                    BW_Viewer.WorkerReportsProgress = true;
+                    BW_Viewer.ProgressChanged += bw1_ProgressChanged;
+                    BW_Viewer.DoWork += bw1_DoWork;
+                    BW_Viewer.RunWorkerAsync(current_path.Text);
+                }
+                else
+                    MessageBox.Show("Invalid Path");
+        }
+
+
 
         private long GetAllFiles(DirectoryInfo directory, Tree parent)
         {
@@ -149,13 +363,6 @@ namespace File_Manager
 
             Grid container = new Grid();
             container.Height = 115;
-            int brush = (int)Math.Round((20.0 * item.content.size / parent_size), 0);
-            if (brush > 19)
-                container.Background = brushes[19];
-            else if (brush < 0)
-                container.Background = brushes[0];
-            else
-                container.Background = brushes[brush];
             container.Width = ItemsTree.ActualWidth - level;
             container.Children.Add(ch);
             container.Children.Add(image);
@@ -233,7 +440,10 @@ namespace File_Manager
                 else
                     messagebox = new My_MessageBox(new DirectoryInfo(dires[0]));
                 if (messagebox.ShowThisDialog() == MyMessageBoxResult.Yes)
-                    new File_Operation(files, dires).ShowDialog();
+                {
+                    File_Operation window = new File_Operation();
+                    window.DeleteDialogShow(files, dires);
+                }
                 foreach (TreeViewItem i in ItemsTree.Items)
                 {
                     if (((CheckBox)((Grid)i.Header).Children[0]).IsChecked == true && (!File.Exists(i.HeaderStringFormat) && (!Directory.Exists(i.HeaderStringFormat))))
@@ -324,5 +534,7 @@ namespace File_Manager
         {
             ItemsTree.Items.Clear();
         }
+
+
     }
 }

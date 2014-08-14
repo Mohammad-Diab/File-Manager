@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
@@ -36,7 +37,7 @@ namespace File_Manager
         ContextMenu context_menu;
         bool sun_bridle = false, bridle_father = false, show_message_again = true;
 
-        List<List<string>> Identical_Files;
+        List<List<string>> dublicate_Files;
 
         public Identical_File_Remover()
         {
@@ -60,7 +61,7 @@ namespace File_Manager
                 process.Visibility = Visibility.Visible;
                 flow_shart.Visibility = Visibility.Hidden;
                 delete.IsEnabled = false;
-                Identical_Files = new List<List<string>>();
+                dublicate_Files = new List<List<string>>();
                 BackgroundWorker bw = new BackgroundWorker();
                 TaskbarItemInfo.ProgressValue = 0;
                 bw.WorkerReportsProgress = true;
@@ -146,15 +147,23 @@ namespace File_Manager
             double dublicate_size = 0;
             double deleted_size = 0;
             double total_size = 0;
-            foreach (TreeViewItem i in ItemsTree.Items)
+            //foreach (TreeViewItem i in ItemsTree.Items)
+            foreach (DublicateFiles_ListView i in list_to_view)
             {
-                ((CheckBox)((Grid)((TreeViewItem)i.Items[0]).Header).Children[0]).IsChecked = false;
-                Point p = (Point)i.Tag;
+                i.IsChecked = false;
+                Point p = i.Point;
                 total_size += (p.X * p.Y);
-                dublicate_size+=(p.X * (p.Y-1));
-                for (int j = 0; j < i.Items.Count; j++)
-                    if (((CheckBox)((Grid)((TreeViewItem)i.Items[j]).Header).Children[0]).IsChecked == true)
+                dublicate_size += (p.X * (p.Y - 1));
+                for (int j = 0; j < i.Dublicats.Count; j++)
+                    //if (((CheckBox)((Grid)((TreeViewItem)i.Items[j]).Header).Children[0]).IsChecked == true)
                         deleted_size += p.X;
+                //((CheckBox)((Grid)((TreeViewItem)i.Items[0]).Header).Children[0]).IsChecked = false;
+                //Point p = (Point)i.Tag;
+                //total_size += (p.X * p.Y);
+                //dublicate_size += (p.X * (p.Y - 1));
+                //for (int j = 0; j < i.Items.Count; j++)
+                //    if (((CheckBox)((Grid)((TreeViewItem)i.Items[j]).Header).Children[0]).IsChecked == true)
+                //        deleted_size += p.X;
             }
             process.Visibility = Visibility.Hidden;
             flow_shart.Visibility = Visibility.Visible;
@@ -163,7 +172,8 @@ namespace File_Manager
             deleted_text.Text = Functions.FileSize(deleted_size) + " will be deleted";
             TaskbarItemInfo.ProgressValue = 0;
             delete.IsEnabled = true;
-            items_label.Text = ItemsTree.Items.Count > 1 ? "items" : "item";
+            items_label.Text = list_to_view.Count > 1 ? "items" : "item";
+            //items_label.Text = ItemsTree.Items.Count > 1 ? "items" : "item";
             MessageBox.Show("Done");
         }
 
@@ -185,20 +195,20 @@ namespace File_Manager
                 {
                     current_size = file_size[i]; //create edge
                     if (fileNode != null && fileNode.Count > 1) //contains at least the file itself
-                        Identical_Files.Add(fileNode);
+                        dublicate_Files.Add(fileNode);
                     fileNode = new List<string>();
                 }
                 fileNode.Add(files_name[i]);
             } //create edge for last node
             if (fileNode != null && fileNode.Count > 1) //contains at least the file itself
-                Identical_Files.Add(fileNode);
-            files_size = Identical_Files.Count;
+                dublicate_Files.Add(fileNode);
+            files_size = dublicate_Files.Count;
             SHA1 HashComputer = new SHA1Cng();
-            for (int i = 0; i < Identical_Files.Count; i++)
+            for (int i = 0; i < dublicate_Files.Count; i++)
             {
                 List<byte[]> tmp = new List<byte[]>();
-                for (int j = 0; j < Identical_Files[i].Count; j++)
-                    tmp.Add(HashComputer.ComputeHash(File.OpenRead(Identical_Files[i][j])));
+                for (int j = 0; j < dublicate_Files[i].Count; j++)
+                    tmp.Add(HashComputer.ComputeHash(File.OpenRead(dublicate_Files[i][j])));
                 SHA1s.Add(tmp);
                 ((BackgroundWorker)sender).ReportProgress(i);
             }
@@ -210,30 +220,45 @@ namespace File_Manager
             TaskbarItemInfo.ProgressValue = (i - 1.0) / files_size;
             process.Value = TaskbarItemInfo.ProgressValue * 100.0;
             number.Text = ItemsTree.Items.Count.ToString();
-            for (int j = 0; j < Identical_Files[i].Count - 1; j++)
+            for (int j = 0; j < dublicate_Files[i].Count - 1; j++)
             {
-                TreeViewItem father = MakeTreeViewItemFather(Identical_Files[i][j], Identical_Files[i].Count);
-                if (father != null)
+                DublicateFiles_ListView dub = new DublicateFiles_ListView();
+                dub.Dublicats.Add(dublicate_Files[i][j]);
+                for (int k = j + 1; k < dublicate_Files[i].Count; k++)
                 {
-                    TreeViewItem sun1 = MakeTreeViewItemSun(Identical_Files[i][j], i);
-                    if (sun1 != null)
-                        father.Items.Add(sun1);
-                    for (int k = j + 1; k < Identical_Files[i].Count; k++)
+                    if (Equals(SHA1s[i][j], SHA1s[i][k]))
                     {
-                        if (Equals(SHA1s[i][j], SHA1s[i][k]))
-                        {
-                            TreeViewItem sun = MakeTreeViewItemSun(Identical_Files[i][k], i);
-                            if (sun != null)
-                                father.Items.Add(sun);
-                            files_name.Remove(files_name[k]);
-                            SHA1s[i].Remove(SHA1s[i][k]);
-                            Identical_Files[i].Remove(Identical_Files[i][k]);
-                            k--;
-                        }
+                        dub.Dublicats.Add(dublicate_Files[i][k]);
+                        files_name.Remove(files_name[k]);
+                        SHA1s[i].Remove(SHA1s[i][k]);
+                        dublicate_Files[i].Remove(dublicate_Files[i][k]);
+                        k--;
                     }
-                    if (father.Items.Count > 1)
-                        ItemsTree.Items.Add(father);
                 }
+                if (dub.Dublicats.Count > 1)
+                    list_to_view.Add(dub);
+                //TreeViewItem father = MakeTreeViewItemFather(dublicate_Files[i][j], dublicate_Files[i].Count);
+                //if (father != null)
+                //{
+                    //TreeViewItem sun1 = MakeTreeViewItemSun(dublicate_Files[i][j], i);
+                    //if (sun1 != null)
+                    //    father.Items.Add(sun1);
+                    //for (int k = j + 1; k < dublicate_Files[i].Count; k++)
+                    //{
+                    //    if (Equals(SHA1s[i][j], SHA1s[i][k]))
+                    //    {
+                    //        TreeViewItem sun = MakeTreeViewItemSun(dublicate_Files[i][k], i);
+                    //        if (sun != null)
+                    //            father.Items.Add(sun);
+                    //        files_name.Remove(files_name[k]);
+                    //        SHA1s[i].Remove(SHA1s[i][k]);
+                    //        dublicate_Files[i].Remove(dublicate_Files[i][k]);
+                    //        k--;
+                    //    }
+                    //}
+                    //if (father.Items.Count > 1)
+                    //    ItemsTree.Items.Add(father);
+                //}
             }
         }
 
@@ -620,7 +645,10 @@ namespace File_Manager
                 else
                     messagebox = new My_MessageBox(new FileInfo(files[0]));
                 if (messagebox.ShowThisDialog() == MyMessageBoxResult.Yes)
-                    new File_Operation(files, new List<string>()).ShowDialog();
+                {
+                    File_Operation window = new File_Operation();
+                    window.DeleteDialogShow(files, new List<string>());
+                }
                 foreach (TreeViewItem i in ItemsTree.Items)
                     foreach (TreeViewItem j in i.Items)
                         if (((CheckBox)((Grid)j.Header).Children[0]).IsChecked == true && !File.Exists(j.HeaderStringFormat))
@@ -663,6 +691,20 @@ namespace File_Manager
         {
             foreach (TreeViewItem i in ItemsTree.Items)
                 ((CheckBox)((Grid)i.Header).Children[0]).IsChecked = false;
+        }
+
+
+
+        ObservableCollection<DublicateFiles_ListView> list_to_view = new ObservableCollection<DublicateFiles_ListView>();
+        private void Window_Loded(object sender, RoutedEventArgs e)
+        {
+            item_viewer.DataContext = list_to_view;
+            //Suns.DataContext = null;
+        }
+
+        private void item_list_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+
         }
     }
 }

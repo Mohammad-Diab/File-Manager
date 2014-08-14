@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
@@ -21,6 +22,7 @@ namespace File_Manager
     /// </summary>
     public partial class MultiDirectoriesSelector : Window
     {
+        ObservableCollection<RenamerListView> list_to_add = new ObservableCollection<RenamerListView>();
         bool accept = false;
         Thickness[] margins = { new Thickness(5, 3, 0, 0), new Thickness(35, 5, 0, 0) };
         public MultiDirectoriesSelector()
@@ -33,8 +35,8 @@ namespace File_Manager
             ShowDialog();
             if (accept)
             {
-                foreach (Grid i in list_of_directories.Items)
-                    paths.Add(i.ToolTip.ToString());
+                foreach (RenamerListView i in list_of_directories.Items)
+                    paths.Add(i.FullPath);
             }
             return accept;
         }
@@ -70,28 +72,29 @@ namespace File_Manager
         private void AddFolder_Click(object sender, RoutedEventArgs e)
         {
             string path = new Folder_Picker().ShowThisDialog();
-            if (path != null)   //check if user chick ok in folder picker
+            if (path != null)   //check if user click ok in folder picker
                 AddDirectoryToList(path);
         }
 
         private void AddDirectoryToList(string path)
         {
-            bool? isExist = false;  //true:Exist  false:notExist  null:is afather of one of directory in the list
+            bool? isExist = false;  //true:Exist  false:notExist  null:is a father of one of directory in the list
             if (path[path.Length - 1] != '\\') //add slash to end of the path, then we can check if directory is exist or its a child of any existing directory
                 path = path + "\\";
-            foreach (Grid i in list_of_directories.Items)
-                if (path.ToLower().Contains(i.ToolTip.ToString().ToLower()))
+            foreach (RenamerListView i in list_to_add)
+                if (path.ToLower().Contains(i.FullPath.ToLower()))
                 {
                     isExist = true;
                     break;
                 }
-                else if (i.ToolTip.ToString().ToLower().Contains(path.ToLower()))
+                else if (i.FullPath.ToLower().Contains(path.ToLower()))
                 {
                     isExist = null;
                     break;
                 }
-            if (isExist==false)
-                list_of_directories.Items.Add(MakeGridForDirectoriesItem(path));
+            if (isExist == false)
+                list_to_add.Add(new RenamerListView(path, null, null));
+                //list_to_add.Items.Add(MakeGridForDirectoriesItem(path));
             else if (isExist == true)
                 MessageBox.Show("Directory is already Exist in list");
             else
@@ -126,13 +129,13 @@ namespace File_Manager
 
         private void ClearList_Click(object sender, RoutedEventArgs e)
         {
-            list_of_directories.Items.Clear();
+            list_to_add.Clear();
         }
 
         private void RemoveSelected_Click(object sender, RoutedEventArgs e)
         {
             for (int i = list_of_directories.SelectedItems.Count - 1; i > -1; i--)
-                list_of_directories.Items.Remove(list_of_directories.SelectedItems[i]);
+                list_to_add.Remove((RenamerListView)list_of_directories.SelectedItems[i]);
         }
 
         private void ListOfDirectories_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -145,8 +148,8 @@ namespace File_Manager
 
         private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            foreach (Grid i in list_of_directories.Items)
-                i.Width = list_of_directories.ActualWidth - 45;
+            //foreach (Grid i in list_of_directories.Items)
+            //    i.Width = list_of_directories.ActualWidth - 45;
         }
 
         private void search_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -177,6 +180,11 @@ namespace File_Manager
                 AddDirectoryToList(to_add_path.Text);
             else
                 MessageBox.Show("path not found");
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            list_of_directories.DataContext = list_to_add;
         }
     }
 }

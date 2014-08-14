@@ -1,0 +1,319 @@
+﻿File
+7z Split Archive File
+Rhino 3D Model 
+3D Studio Scene 
+3GPP2 Multimedia File
+3GPP2 Audio/Video
+3GPP Audio/Video
+3GPP Audio/Video
+7Z Archive File
+ADTS Audio File
+AC3 Audio File
+ACC File
+Microsoft Access Database
+Microsoft Access Template
+Winace Archive File
+ADTS Audio File
+ADTS Audio File
+Audio Interchange File Format
+ActiveX Layout Control File
+AMR Audio File
+AMV Video File
+Windows Animated Cursor
+Monkey's Audio
+Android Application Package
+Mac OS X Application 
+FreeARC Archive‬
+ARJ Archive File
+Advanced Systems Format File
+Assembler Source
+SSA Subtitles File
+Microsoft ASF Redirector File
+Video Clip File
+Backup File
+Backup File
+BALZ Archive
+Batch File
+BIN File
+Bitmap Image File
+Unix Script File
+BZ2 Archive File
+BZIP2 Archive File
+'C' Source File
+Cabinet File
+Cache File
+Comic Book RAR Archive 
+Configuration File
+Compiled HTML Help File
+Java Class
+Command Script
+C/C++ Code Listing
+MS-DOS Application
+Comic Document
+CPIO Archive File
+Windows Control Panel Item
+'C++' Source File
+Chrome Partially Downloaded File 
+'C#' Source File
+Visual C# Project
+CSS Stylesheet
+Comma Separated Values Document
+Windows Cursor
+Data File
+Database File
+Database File
+Database Project
+DirectDraw Surface
+Debian Application Package
+Video Game Demo File
+Windows 8 Desktop Theme Pack File 
+Android Application Package
+Bitmap Image File
+Djvu Document
+Dynamic Link Library
+Mac OS X Disk Image
+Windows Memory Dump 
+Microsoft Word 97 - 2003 Document
+Microsoft Word Macro-Enabled Document
+Microsoft Word Document
+Microsoft Word 97 - 2003 Template
+Microsoft Word Template
+Device Driver
+AutoCAD Drawing Database File
+Drawing Exchange Format File 
+Open eBook File
+Windows Application
+Fat Archive File
+Adobe Flash Animation 
+FLAC Audio
+Flash Video File
+Windows Font File
+Font File
+Windows Gadget 
+Saved Game File 
+Game Boy Advance ROM
+GC Wii Rom
+Compressed GC Wii Rom
+Symantex Ghost image file
+Symantex Ghost image file
+GIF Image File
+Gnu Zipped Archive 
+Gnu Zipped Archive 
+C++ Library Source File
+Virtual Hard Disk
+HDMOV Video File
+HFS Archive File
+Windows Help File 
+HTML Application
+HTML (Hyper Text Markup Language) Document
+HTML (Hyper Text Markup Language) Document
+Mac OS X Icon Resource File 
+Icon File
+Interchange File Format
+Disc Image File
+Pascal Source File
+Setup Information
+Configuration Settings
+iOS Application Package
+BlackBerry Backup File
+Disc Image File
+Compressed Disc Image File
+JAD document
+Executable Jar File
+java Source File
+JPEG Image File
+JPEG Image File
+JPEG Image File
+JPEG Image File
+java Script File
+Windows Media Photo File
+Mac OS X Keychain File
+KGE Archive Files
+KGP Archive File
+Extensible Markup Language File
+LHA Archive File
+Windows Link
+Log File
+Lua Source File 
+LZH Archive File
+LZMA Archive File
+Objective-C Implementation File
+Media Playlist File
+MPEG-4 Audio
+iPhone Ringtone File
+iTunes Video File 
+3ds Max Scene File
+Microsoft Access 97-2003 Database
+Media Disc Image File 
+MathWorks Simulink Model
+HTML Archive File
+MIDI Sequence File
+MIDI Sequence File
+Matroska Audio File
+Matroska Video File
+SMAF Audio
+Mobipocket eBook
+WinMount archiver
+QuickTime Movie
+MP3 Format Sound
+MP3 Format Sound
+MP4 Video File
+MP4 Video File
+MPEG-2 Audio File
+Movie Clip File
+Movie Clip File
+Microsoft Common Console Document
+Outlook Mail Message
+Windows Installer Package
+Nintendo DS ROM
+NES ROM
+System Information File
+Nero Burning ROM
+Batch File
+NTFS Archive File
+Wavefront 3D Object File 
+.odbc
+Open Document Presentation
+Open Document Spreadsheet
+Open Document Text
+Ogg Vorbis Codec Compressed File
+Ogg Vorbis Audio File
+Ogg Video File
+Ogg Video File
+Ogg Vorbis Codec Compressed File
+Opus Audio File
+OpenType‬ Font
+Open XPS Document
+Pages Document
+Partially Downloaded File
+Pascal Source File
+.pcx
+Portable Document Format File
+PEA Archive
+PHP Hypertext Preprocessor File
+PHP Hypertext Preprocessor File
+PHP Hypertext Preprocessor File
+Mac OS X Installer Package 
+Perl Source File
+Perl Source File
+Perl Source File
+Precompiled Setup Information
+PNG Image File
+Microsoft PowerPoint 97-2003 Template
+Microsoft PowerPoint Template
+Microsoft PowerPoint 97-2003 Slide Show
+Microsoft PowerPoint Slide Show
+Microsoft PowerPoint 97-2003 Presentation
+Microsoft PowerPoint Macro-Enabled Presentation
+Microsoft PowerPoint Presentation
+Post Script File
+Windows PowerShell Script
+Adobe Photoshop Document
+PaintShop Pro Image
+Python File
+Python File
+Qcow Disk Image 
+RealMedia Audio File
+RealMedia File
+Winrar Archive File
+Registration Entries
+Blackberry Application Package
+RealMedia Video File
+RMVB Vedio
+N64 Game ROM File 
+Red Hat Application Package
+Rich Text Format
+SPSS Data File
+Screen Saver File
+Standard Data File 
+SGML Document
+Bash Shell Script 
+HTML Document
+HTML Document
+Symbian Application Package
+Symbian Application Package
+StuffIt X Archive 
+Visual Studio Solution
+Sega Mega Drive ROM
+Sega Master System-Game Gear ROM
+Structured Query Language File
+Visual Studio SQL Server Project
+Squashfs Image File
+SubRip Subtitle File
+Standard Vector Graphics
+Compressed Standard Vector Graphics
+Shockwave Flash Object
+Swift Source Code File
+System File
+TAR Archive File
+TurboTax 2012 Tax Return
+TAZ Archive File
+TPZ Archive File
+TBZ2 Archive File
+Temporary File
+LaTeX Source Document
+Targa Graphic
+Tarball Gnu Zipped Archive File
+Theme
+Thumbnail Image File
+TIFF Image File
+TIFF Image File
+Temporary File
+Toast Disc Image 
+BitTorrent Solo File
+TPZ Archive File
+TrueType Collection Font File
+TrueType Font File
+Plan Text File
+TXZ Archive File
+Uha Archive File
+Internet Shortcut
+Verilog file
+Nintendo 64 Rom
+Visual Basic File
+Visual Basic Project
+Visual Basic File
+Virtual CD 
+vCard File 
+eVC 3/4 Project‬
+VC++ Project
+VC++ Projec
+Virtual Disk Image
+Virtual Hard Disk
+VHSIC Hardware Description Language File
+DVD VOB File
+Wave Sound File
+Windows Media Photo File
+WebM Video
+Symbian Web Runtime Widget Package
+Wim Image File
+Windows Media Audio File
+Windows Media Audio/Video File
+WordPerfect Document
+Microsoft Works Word Processor Document
+Extensible Markup Language File
+Windows Script File
+WavPack Audio File
+XAR Archive File
+XHTML Document
+Works Spreadsheet 
+Microsoft Excel 97-2003 Worksheet
+Microsoft Excel Binary Worksheet
+Microsoft Excel Macro-Enabled Worksheet
+Microsoft Excel Worksheet
+Microsoft Excel Template
+Microsoft Excel Macro-Enabled Template
+Microsoft Excel 97-2003 Template
+Extensible Markup Language File
+XPS Document
+Extensible Markup Language File
+Extensible Markup Language File
+Extensible Markup Language File
+XZ Archive File
+YAML Ain't Markup Language
+YUV Encoded Image File 
+Z Archive File
+Zim Notebook
+Compressed Zipped File
+Extended Zip File
+Files Directory

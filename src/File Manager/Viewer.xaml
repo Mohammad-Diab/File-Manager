@@ -7,7 +7,7 @@
     </Window.TaskbarItemInfo>
     <Window.Resources>
         <ControlTemplate x:Key="roundButtonTemplate" TargetType="{x:Type Button}">
-            <Grid MouseEnter="Grid_MouseOver" MouseLeave="Grid_MouseLeave" MouseLeftButtonDown="Grid_MouseDown" MouseLeftButtonUp="Grid_MouseUp">
+            <Grid MouseEnter="Grid_MouseOver" MouseLeave="Grid_MouseLeave" MouseLeftButtonDown="Grid_MouseDown" MouseLeftButtonUp="Grid_MouseUp" Background="#FF111111">
                 <Ellipse Width="60" Height="60" Fill="{x:Null}" Stroke="Snow" StrokeThickness="5"/>
                 <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="14"/>
             </Grid>
@@ -126,41 +126,41 @@
                     </LinearGradientBrush>
                 </Rectangle.Fill>
             </Rectangle>
-            <TextBlock x:Name="failed" Text="Caution: This file maybe contain a virus or damage your computer" Foreground="WhiteSmoke" FontSize="16" TextAlignment="Center" HorizontalAlignment="Left" Width="800" Height="24" VerticalAlignment="Top" Margin="0,3,0,0" FontWeight="SemiBold"/>
+            <TextBlock x:Name="failed" Text="Caution: This file type maybe contain a virus or damage your computer" Foreground="WhiteSmoke" FontSize="16" TextAlignment="Center" HorizontalAlignment="Left" Width="800" Height="24" VerticalAlignment="Top" Margin="0,3,0,0" FontWeight="SemiBold"/>
         </Grid>
-        <Grid x:Name="main_menu" Width="0" HorizontalAlignment="Left" Background="#FF111111" Margin="0,0,0,0" MouseLeave="HideMenu_MouseLeave">
-            <StackPanel x:Name="main_menu_stack" Opacity="0">
-                <Button x:Name="open_button" Height="64" VerticalAlignment="Top" Margin="0,15,0,0" Background="#FF333333" Template="{StaticResource roundButtonTemplate}" ToolTip="Open" Click="Open_Click">
+        <Grid x:Name="main_menu" Width="64" HorizontalAlignment="Left" Background="#FF111111" Margin="-64,0,0,0" MouseLeave="HideMenu_MouseLeave">
+            <StackPanel x:Name="main_menu_stack">
+                <Button x:Name="open_button" Height="64" VerticalAlignment="Top" Margin="-64,15,64,0" Background="#FF333333" Template="{StaticResource roundButtonTemplate}" ToolTip="Open" Click="Open_Click">
                     <Button.Content>
                         <Image x:Name="open_button_image" Source="Images/Menu/open-file.png"/>
                     </Button.Content>
                 </Button>
-                <Button x:Name="open_with_button" Height="64" VerticalAlignment="Top" Margin="0,0,0,0" Background="{x:Null}" Template="{StaticResource roundButtonTemplate}" ToolTip="Open with" Click="OpenWith_Click">
+                <Button x:Name="open_with_button" Height="64" VerticalAlignment="Top" Margin="-64,0,64,0" Background="{x:Null}" Template="{StaticResource roundButtonTemplate}" ToolTip="Open with" Click="OpenWith_Click">
                     <Button.Content>
                         <Image x:Name="open_with_button_image" Source="Images/Menu/open-with.png"/>
                     </Button.Content>
                 </Button>
-                <Button x:Name="explore_button" Height="64" VerticalAlignment="Top" Margin="0,0,0,0" Background="{x:Null}" Template="{StaticResource roundButtonTemplate}">
+                <Button x:Name="explore_button" Height="64" VerticalAlignment="Top" Margin="-64,0,64,0" Background="{x:Null}" Template="{StaticResource roundButtonTemplate}">
                     <Button.Content>
                         <Image x:Name="explore_button_image" Source="Images/Menu/copy-stop.png"/>
                     </Button.Content>
                 </Button>
-                <Button x:Name="extract_button" Height="64" VerticalAlignment="Top" Margin="0,0,0,0" Background="{x:Null}" Template="{StaticResource roundButtonTemplate}">
+                <Button x:Name="extract_button" Height="64" VerticalAlignment="Top" Margin="-64,0,64,0" Background="{x:Null}" Template="{StaticResource roundButtonTemplate}">
                     <Button.Content>
                         <Image x:Name="extract_button_image" Source="Images/Menu/copy-stop.png"/>
                     </Button.Content>
                 </Button>
-                <Button x:Name="move_to_button" Height="64" VerticalAlignment="Top" Margin="0,0,0,0" Background="{x:Null}" Template="{StaticResource roundButtonTemplate}" ToolTip="Move to" Click="MoveTo_Click">
+                <Button x:Name="move_to_button" Height="64" VerticalAlignment="Top" Margin="-64,0,64,0" Background="{x:Null}" Template="{StaticResource roundButtonTemplate}" ToolTip="Move to" Click="MoveTo_Click">
                     <Button.Content>
                         <Image x:Name="move_to_button_image" Source="Images/Menu/file-move.png"/>
                     </Button.Content>
                 </Button>
-                <Button x:Name="copy_to_button" Height="64" VerticalAlignment="Top" Margin="0,0,0,0" Background="{x:Null}" Template="{StaticResource roundButtonTemplate}" ToolTip="Copy to" Click="CopyTo_Click">
+                <Button x:Name="copy_to_button" Height="64" VerticalAlignment="Top" Margin="-64,0,64,0" Background="{x:Null}" Template="{StaticResource roundButtonTemplate}" ToolTip="Copy to" Click="CopyTo_Click">
                     <Button.Content>
                         <Image x:Name="copy_to_button_image" Source="Images/Menu/file-copy.png"/>
                     </Button.Content>
                 </Button>
-                <Button x:Name="delete_button" Height="64" VerticalAlignment="Top" Margin="0,0,0,0" Background="{x:Null}" Template="{StaticResource roundButtonTemplate}" ToolTip="Delete" Click="Delete_Click">
+                <Button x:Name="delete_button" Height="64" VerticalAlignment="Top" Margin="-64,0,64,0" Background="{x:Null}" Template="{StaticResource roundButtonTemplate}" ToolTip="Delete" Click="Delete_Click">
                     <Button.Content>
                         <Image x:Name="delete_button_image" Source="Images/Menu/file-delete.png"/>
                     </Button.Content>

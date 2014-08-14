@@ -40,9 +40,14 @@
     <ApplicationIcon>App Icon.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Icons, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>bin\Debug\Icons.dll</HintPath>
+    </Reference>
     <Reference Include="ReachFramework" />
     <Reference Include="System" />
     <Reference Include="System.Data" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Management" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
@@ -62,10 +67,16 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Make File Structure.xaml.cs">
+      <DependentUpon>Make File Structure.xaml</DependentUpon>
+    </Compile>
     <Compile Include="MultiDirectoriesSelector.xaml.cs">
       <DependentUpon>MultiDirectoriesSelector.xaml</DependentUpon>
     </Compile>
     <Compile Include="My Classes.cs" />
+    <Compile Include="Preview.xaml.cs">
+      <DependentUpon>Preview.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Rename.xaml.cs">
       <DependentUpon>Rename.xaml</DependentUpon>
     </Compile>
@@ -146,11 +157,19 @@
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Page Include="Make File Structure.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="MultiDirectoriesSelector.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="My MessageBox.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Preview.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -496,6 +515,31 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Images\Appearance\list-add.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\save-as.png" />
+    <Resource Include="Images\Appearance\save.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\compress.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\open.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\new-archive.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\error.png" />
+    <Resource Include="Images\Appearance\tick.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Menu\media-pause.png" />
+    <Resource Include="Images\Menu\media-play.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Menu\media-skip-backward.png" />
+    <Resource Include="Images\Menu\media-skip-forward.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

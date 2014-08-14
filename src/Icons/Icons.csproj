@@ -1,0 +1,277 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{3631A0F3-CCF6-4C7A-ABC3-AA2A8EA9D480}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Icons</RootNamespace>
+    <AssemblyName>Icons</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
+    <WarningLevel>4</WarningLevel>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="System.Xaml">
+      <RequiredTargetFramework>4.0</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="WindowsBase" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+  </ItemGroup>
+  <ItemGroup>
+    <ApplicationDefinition Include="App.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </ApplicationDefinition>
+    <Compile Include="App.xaml.cs">
+      <DependentUpon>App.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="GetIcons.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Include="Properties\Settings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+    <AppDesigner Include="Properties\" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\16\archive-file.png" />
+    <Resource Include="Images\16\bootmarck.png" />
+    <Resource Include="Images\16\CD.png" />
+    <Resource Include="Images\16\computer.png" />
+    <Resource Include="Images\16\directory.png" />
+    <Resource Include="Images\16\disk-file.png" />
+    <Resource Include="Images\16\disk-vcd-file.png" />
+    <Resource Include="Images\16\file.png" />
+    <Resource Include="Images\16\floppy.png" />
+    <Resource Include="Images\16\hard-disk.png" />
+    <Resource Include="Images\16\memory-card.png" />
+    <Resource Include="Images\16\multimedia-audio.png" />
+    <Resource Include="Images\16\multimedia-flash.png" />
+    <Resource Include="Images\16\multimedia-image.png" />
+    <Resource Include="Images\16\multimedia-video.png" />
+    <Resource Include="Images\16\optical-drive.png" />
+    <Resource Include="Images\16\project-file.png" />
+    <Resource Include="Images\16\removable-media.png" />
+    <Resource Include="Images\16\removable-usb.png" />
+    <Resource Include="Images\16\text-book.png" />
+    <Resource Include="Images\16\text-code.png" />
+    <Resource Include="Images\16\text-database.png" />
+    <Resource Include="Images\16\text-file.png" />
+    <Resource Include="Images\16\text-help.png" />
+    <Resource Include="Images\16\text-html-app.png" />
+    <Resource Include="Images\16\text-html.png" />
+    <Resource Include="Images\16\text-pdf.png" />
+    <Resource Include="Images\16\text-presentation.png" />
+    <Resource Include="Images\16\text-reg.png" />
+    <Resource Include="Images\16\text-richtext.png" />
+    <Resource Include="Images\16\text-spreadsheet.png" />
+    <Resource Include="Images\16\text-torrent.png" />
+    <Resource Include="Images\16\text-x.png" />
+    <Resource Include="Images\16\text-xps.png" />
+    <Resource Include="Images\16\x-dll.png" />
+    <Resource Include="Images\16\x-exe.png" />
+    <Resource Include="Images\16\x-font.png" />
+    <Resource Include="Images\16\x-game.png" />
+    <Resource Include="Images\16\x-link.png" />
+    <Resource Include="Images\16\x-memory-file.png" />
+    <Resource Include="Images\16\x-package.png" />
+    <Resource Include="Images\16\x-scr.png" />
+    <Resource Include="Images\16\x-temp.png" />
+    <Resource Include="Images\16\x-theme.png" />
+    <Resource Include="Images\24\archive-file.png" />
+    <Resource Include="Images\24\bootmarck.png" />
+    <Resource Include="Images\24\CD.png" />
+    <Resource Include="Images\24\computer.png" />
+    <Resource Include="Images\24\directory.png" />
+    <Resource Include="Images\24\disk-file.png" />
+    <Resource Include="Images\24\disk-vcd-file.png" />
+    <Resource Include="Images\24\file.png" />
+    <Resource Include="Images\24\floppy.png" />
+    <Resource Include="Images\24\hard-disk.png" />
+    <Resource Include="Images\24\memory-card.png" />
+    <Resource Include="Images\24\multimedia-audio.png" />
+    <Resource Include="Images\24\multimedia-flash.png" />
+    <Resource Include="Images\24\multimedia-image.png" />
+    <Resource Include="Images\24\multimedia-video.png" />
+    <Resource Include="Images\24\optical-drive.png" />
+    <Resource Include="Images\24\project-file.png" />
+    <Resource Include="Images\24\removable-media.png" />
+    <Resource Include="Images\24\removable-usb.png" />
+    <Resource Include="Images\24\text-book.png" />
+    <Resource Include="Images\24\text-code.png" />
+    <Resource Include="Images\24\text-database.png" />
+    <Resource Include="Images\24\text-file.png" />
+    <Resource Include="Images\24\text-help.png" />
+    <Resource Include="Images\24\text-html-app.png" />
+    <Resource Include="Images\24\text-html.png" />
+    <Resource Include="Images\24\text-pdf.png" />
+    <Resource Include="Images\24\text-presentation.png" />
+    <Resource Include="Images\24\text-reg.png" />
+    <Resource Include="Images\24\text-richtext.png" />
+    <Resource Include="Images\24\text-spreadsheet.png" />
+    <Resource Include="Images\24\text-torrent.png" />
+    <Resource Include="Images\24\text-x.png" />
+    <Resource Include="Images\24\text-xps.png" />
+    <Resource Include="Images\24\x-dll.png" />
+    <Resource Include="Images\24\x-exe.png" />
+    <Resource Include="Images\24\x-font.png" />
+    <Resource Include="Images\24\x-game.png" />
+    <Resource Include="Images\24\x-link.png" />
+    <Resource Include="Images\24\x-memory-file.png" />
+    <Resource Include="Images\24\x-package.png" />
+    <Resource Include="Images\24\x-scr.png" />
+    <Resource Include="Images\24\x-temp.png" />
+    <Resource Include="Images\24\x-theme.png" />
+    <Resource Include="Images\256\archive-file.png" />
+    <Resource Include="Images\256\bootmarck.png" />
+    <Resource Include="Images\256\CD.png" />
+    <Resource Include="Images\256\computer.png" />
+    <Resource Include="Images\256\directory.png" />
+    <Resource Include="Images\256\disk-file.png" />
+    <Resource Include="Images\256\disk-vcd-file.png" />
+    <Resource Include="Images\256\file.png" />
+    <Resource Include="Images\256\floppy.png" />
+    <Resource Include="Images\256\hard-disk.png" />
+    <Resource Include="Images\256\memory-card.png" />
+    <Resource Include="Images\256\multimedia-audio.png" />
+    <Resource Include="Images\256\multimedia-flash.png" />
+    <Resource Include="Images\256\multimedia-image.png" />
+    <Resource Include="Images\256\multimedia-video.png" />
+    <Resource Include="Images\256\optical-drive.png" />
+    <Resource Include="Images\256\project-file.png" />
+    <Resource Include="Images\256\removable-media.png" />
+    <Resource Include="Images\256\removable-usb.png" />
+    <Resource Include="Images\256\text-book.png" />
+    <Resource Include="Images\256\text-code.png" />
+    <Resource Include="Images\256\text-database.png" />
+    <Resource Include="Images\256\text-file.png" />
+    <Resource Include="Images\256\text-help.png" />
+    <Resource Include="Images\256\text-html-app.png" />
+    <Resource Include="Images\256\text-html.png" />
+    <Resource Include="Images\256\text-pdf.png" />
+    <Resource Include="Images\256\text-presentation.png" />
+    <Resource Include="Images\256\text-reg.png" />
+    <Resource Include="Images\256\text-richtext.png" />
+    <Resource Include="Images\256\text-spreadsheet.png" />
+    <Resource Include="Images\256\text-torrent.png" />
+    <Resource Include="Images\256\text-x.png" />
+    <Resource Include="Images\256\text-xps.png" />
+    <Resource Include="Images\256\x-dll.png" />
+    <Resource Include="Images\256\x-exe.png" />
+    <Resource Include="Images\256\x-font.png" />
+    <Resource Include="Images\256\x-game.png" />
+    <Resource Include="Images\256\x-link.png" />
+    <Resource Include="Images\256\x-memory-file.png" />
+    <Resource Include="Images\256\x-package.png" />
+    <Resource Include="Images\256\x-scr.png" />
+    <Resource Include="Images\256\x-temp.png" />
+    <Resource Include="Images\256\x-theme.png" />
+    <Resource Include="Images\64\archive-file.png" />
+    <Resource Include="Images\64\bootmarck.png" />
+    <Resource Include="Images\64\CD.png" />
+    <Resource Include="Images\64\computer.png" />
+    <Resource Include="Images\64\directory.png" />
+    <Resource Include="Images\64\disk-file.png" />
+    <Resource Include="Images\64\disk-vcd-file.png" />
+    <Resource Include="Images\64\file.png" />
+    <Resource Include="Images\64\floppy.png" />
+    <Resource Include="Images\64\hard-disk.png" />
+    <Resource Include="Images\64\memory-card.png" />
+    <Resource Include="Images\64\multimedia-audio.png" />
+    <Resource Include="Images\64\multimedia-flash.png" />
+    <Resource Include="Images\64\multimedia-image.png" />
+    <Resource Include="Images\64\multimedia-video.png" />
+    <Resource Include="Images\64\optical-drive.png" />
+    <Resource Include="Images\64\project-file.png" />
+    <Resource Include="Images\64\removable-media.png" />
+    <Resource Include="Images\64\removable-usb.png" />
+    <Resource Include="Images\64\text-book.png" />
+    <Resource Include="Images\64\text-code.png" />
+    <Resource Include="Images\64\text-database.png" />
+    <Resource Include="Images\64\text-file.png" />
+    <Resource Include="Images\64\text-help.png" />
+    <Resource Include="Images\64\text-html-app.png" />
+    <Resource Include="Images\64\text-html.png" />
+    <Resource Include="Images\64\text-pdf.png" />
+    <Resource Include="Images\64\text-presentation.png" />
+    <Resource Include="Images\64\text-reg.png" />
+    <Resource Include="Images\64\text-richtext.png" />
+    <Resource Include="Images\64\text-spreadsheet.png" />
+    <Resource Include="Images\64\text-torrent.png" />
+    <Resource Include="Images\64\text-x.png" />
+    <Resource Include="Images\64\text-xps.png" />
+    <Resource Include="Images\64\x-dll.png" />
+    <Resource Include="Images\64\x-exe.png" />
+    <Resource Include="Images\64\x-font.png" />
+    <Resource Include="Images\64\x-game.png" />
+    <Resource Include="Images\64\x-link.png" />
+    <Resource Include="Images\64\x-memory-file.png" />
+    <Resource Include="Images\64\x-package.png" />
+    <Resource Include="Images\64\x-scr.png" />
+    <Resource Include="Images\64\x-temp.png" />
+    <Resource Include="Images\64\x-theme.png" />
+    <Resource Include="Images\app.png" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

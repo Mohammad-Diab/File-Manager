@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
@@ -23,12 +24,12 @@ namespace File_Manager
     /// </summary>
     public partial class Folder_Picker : Window
     {
+        ObservableCollection<RenamerListView> list_to_rename = new ObservableCollection<RenamerListView>();
         BitmapImage folder_source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Icons/16/folder.png"));
         Thickness icon_Margin = new Thickness(0, 0, 0, 0);
         Thickness header_Margin = new Thickness(20, 0, 0, 0);
         bool writable = false;
         string returnd_path = null;
-        double left;
         public Folder_Picker()
         {
             InitializeComponent();
@@ -43,31 +44,15 @@ namespace File_Manager
 
         private void Window_Loaded_1(object sender, RoutedEventArgs e)
         {
+            //FolderExplorer.DataContext = list_to_rename;
             foreach (var i in DriveInfo.GetDrives())
                 if (i.IsReady)
-                    FolderExplorer.Items.Add(make_grid(new BitmapImage(new Uri(Functions.GetDriveImage(i.Name, "pack://application:,,,/File Manager;component/Images/Icons/16/"))), i.VolumeLabel + " (" + i.Name + ")", i.Name));
+                    FolderExplorer.Items.Add(make_grid(new BitmapImage(new Uri(Functions.GetDriveImage(i.DriveType,false,i.IsReady, "pack://application:,,,/File Manager;component/Images/Icons/16/"))), i.VolumeLabel + " (" + i.Name + ")", new DirectoryInfo(i.Name)));
                 else
-                    FolderExplorer.Items.Add(make_grid(new BitmapImage(new Uri(Functions.GetDriveImage(i.Name, "pack://application:,,,/File Manager;component/Images/Icons/16/"))), i.Name, i.Name));
+                    FolderExplorer.Items.Add(make_grid(new BitmapImage(new Uri(Functions.GetDriveImage(i.DriveType, false, i.IsReady, "pack://application:,,,/File Manager;component/Images/Icons/16/"))), i.Name, new DirectoryInfo(i.Name)));
         }
 
-        private void AddFolders(object sender, MouseButtonEventArgs e)
-        {
-            DriveInfo driver = null;
-            ((TreeViewItem)(FolderExplorer.SelectedItem)).Items.Clear();
-            try
-            { driver = new DriveInfo(((TreeViewItem)FolderExplorer.SelectedItem).HeaderStringFormat); }
-            catch (Exception) { }
-            if (driver == null || (driver != null && driver.IsReady))
-                try
-                {
-                    DirectoryInfo dir = new DirectoryInfo(((TreeViewItem)FolderExplorer.SelectedItem).HeaderStringFormat);
-                    foreach (var j in dir.GetDirectories())
-                        ((TreeViewItem)FolderExplorer.SelectedItem).Items.Add(make_grid(folder_source, j.Name, j.FullName));
-                }
-                catch (Exception) { }
-        }
-
-        private TreeViewItem make_grid(BitmapImage icon, string header, string full_path)
+        private TreeViewItem make_grid(BitmapImage icon, string header, DirectoryInfo full_path)
         {
             Image img = new Image();
             img.Width = img.Height = 14;
@@ -88,8 +73,9 @@ namespace File_Manager
                 grid.Width = 200;
             TreeViewItem TreeItem = new TreeViewItem();
             TreeItem.Header = grid;
-            TreeItem.HeaderStringFormat = full_path;
-            TreeItem.PreviewMouseDoubleClick += AddFolders;
+            TreeItem.Tag = full_path;
+            TreeItem.Items.Add("*");
+            //TreeItem.PreviewMouseDoubleClick += AddFolders;
             return TreeItem;
         }
 
@@ -206,7 +192,7 @@ namespace File_Manager
                         dir_name = ((TreeViewItem)FolderExplorer.SelectedItem).HeaderStringFormat + "\\" + new_name;
                     try { if (dir_name != null) Directory.CreateDirectory(dir_name); }
                     catch (Exception ex) { new My_MessageBox("Error", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
-                    AddFolders(null, null);
+                    Add_Folders(null, null);
                 }
             }
         }
@@ -219,10 +205,44 @@ namespace File_Manager
 
         private void FolderExplorer_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
-            if(FolderExplorer.SelectedItem!=null)
+            if (FolderExplorer.SelectedItem != null)
+                path.Text = ((DirectoryInfo)((TreeViewItem)(FolderExplorer.SelectedItem)).Tag).FullName;
+        }
+
+        private void Add_Folders(object sender, RoutedEventArgs e)
+        {
+            TreeViewItem item;
+            if (e == null)
+                item = (TreeViewItem)FolderExplorer.SelectedItem;
+            else
+                item = (TreeViewItem)e.OriginalSource;
+            item.Items.Clear();
+            DirectoryInfo dir;
+            if (item.Tag is DriveInfo)
             {
-                path.Text = ((TreeViewItem)(FolderExplorer.SelectedItem)).HeaderStringFormat;
+                DriveInfo drive = (DriveInfo)item.Tag;
+                dir = drive.RootDirectory;
             }
+            else
+                dir = (DirectoryInfo)item.Tag;
+            try
+            {
+                foreach (DirectoryInfo subDir in dir.GetDirectories())
+                    item.Items.Add((make_grid(folder_source, subDir.Name, subDir)));
+            }
+            catch (Exception) { }
+
+            //try
+            //{ driver = new DriveInfo(((TreeViewItem)FolderExplorer.SelectedItem).HeaderStringFormat); }
+            //catch (Exception) { }
+            //if (driver == null || (driver != null && driver.IsReady))
+            //    try
+            //    {
+            //        dir = new DirectoryInfo(((TreeViewItem)FolderExplorer.SelectedItem).HeaderStringFormat);
+            //        foreach (var j in dir.GetDirectories())
+            //            ((TreeViewItem)FolderExplorer.SelectedItem).Items.Add(make_grid(folder_source, j.Name, j.FullName));
+            //    }
+            //    catch (Exception) { }
         }
     }
 }

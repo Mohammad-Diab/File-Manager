@@ -52,7 +52,10 @@ namespace File_Manager
                 else
                     messagebox = new My_MessageBox(new DirectoryInfo(dires[0]));
                 if (messagebox.ShowThisDialog() == MyMessageBoxResult.Yes)
-                    new File_Operation(files, dires).ShowDialog();
+                {
+                    File_Operation window=new File_Operation();
+                    window.DeleteDialogShow(files, dires);
+                }
                 foreach (TreeViewItem i in ItemsTree.Items)
                 {
                     if (((CheckBox)((Grid)i.Header).Children[0]).IsChecked == true && (!File.Exists(i.HeaderStringFormat) && (!Directory.Exists(i.HeaderStringFormat))))

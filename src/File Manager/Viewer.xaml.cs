@@ -25,7 +25,9 @@ namespace File_Manager
     /// </summary>
     public partial class Viewer : Window
     {
-        List<FileElement> files;
+        bool stop_animate = false;
+
+        List<FileOperationItem> files;
         List<string> dirs;
         MediaElement media;
         FileInfo file;
@@ -33,7 +35,7 @@ namespace File_Manager
         FileSystemInfo file_system;
         DriveInfo drive;
         ItemType file_type;
-        int sub_dir_count, file_count, wait_for = 3000;
+        int sub_dir_count, file_count, wait_for = 3000, main_menu_item_count = 7;
         long files_size = 0;
         bool isOn = false, isplay = true, mouse_move = false;
         string path;
@@ -218,6 +220,7 @@ namespace File_Manager
                     open_button.Margin = new Thickness(0, 79, 0, 0);
                 }
             }
+            main_menu_item_count = main_menu_stack.Children.Count;
         }
 
         private void ConvertToISO_Click(object sender, RoutedEventArgs e)
@@ -254,7 +257,7 @@ namespace File_Manager
             delete_button.Visibility = Visibility.Collapsed;
             move_to_button.Visibility = Visibility.Collapsed;
             open_button.Margin = new Thickness(0, 143, 0, 0);
-            ItemImage.Source = item_image.Source = new BitmapImage(new Uri(Functions.GetDriveImage(path, MainWindow.StandardImageSource + "256/")));
+            ItemImage.Source = item_image.Source = new BitmapImage(new Uri(Functions.GetDriveImage(drive.DriveType, Functions.SystemDrive.Equals(drive.Name.ToLower()), drive.IsReady, Functions.StandardImageSource + "256/")));
             modified_all.Visibility = Visibility.Collapsed;
             accessed_all.Visibility = Visibility.Collapsed;
             if (drive.IsReady)
@@ -293,6 +296,7 @@ namespace File_Manager
                 drive_usage.Visibility = Visibility.Collapsed;
             }
             Change_Name.Visibility = Visibility.Hidden;
+            main_menu_item_count = main_menu_stack.Children.Count;
         }
 
         private void MakeGridForDirectory()
@@ -319,11 +323,12 @@ namespace File_Manager
             dirs_size_worker.RunWorkerAsync();
             ItemImage.Source = item_image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Icons/256/directory.png"));
             MakeGridForFileSystem();
+            main_menu_item_count = main_menu_stack.Children.Count;
         }
 
         private void dirs_size_worker_DoWork(object sender, DoWorkEventArgs e)
         {
-            files = new List<FileElement>();
+            files = new List<FileOperationItem>();
             dirs = new List<string>();
             try
             {
@@ -334,7 +339,7 @@ namespace File_Manager
             file_count = files.Count;
             sub_dir_count = dirs.Count;
             foreach (var i in files)
-                files_size += i.files_size;
+                files_size += i.Size;
             dirs_size_worker.ReportProgress(0);
         }
 
@@ -762,15 +767,20 @@ namespace File_Manager
             bool?[] attributes = { read_only.IsChecked, hidden.IsChecked, system.IsChecked, archive.IsChecked, compressed.IsChecked, encrypted.IsChecked, not_content_indexed.IsChecked, normal.IsChecked };
             if (file_type == ItemType.Directory)
             {
-                List<string> dirs = new List<string>();
-                dirs.Add(FileName.Text);
-                new File_Operation(new List<FileElement>(), dirs, attributes).Show();
+                //applay only on current dirs
+                //List<string> dirs = new List<string>();
+                //dirs.Add(FileName.Text);
+                List<FileOperationItem> list = new List<FileOperationItem>();
+                list.Add(new FileOperationItem(new DirectoryInfo(FileName.Text), ""));
+                File_Operation window = new File_Operation();
+                window.SetAttributesDialogShow(list, attributes);
             }
             else if (file_type == ItemType.File)
             {
-                List<FileElement> files = new List<FileElement>();
-                files.Add(new FileElement(FileName.Text, "", false));
-                new File_Operation(files, new List<string>(), attributes).Show();
+                List<FileOperationItem> files = new List<FileOperationItem>();
+                files.Add(new FileOperationItem(new FileInfo(FileName.Text), false, false, ""));
+                File_Operation window = new File_Operation();
+                window.SetAttributesDialogShow(files, attributes);
             }
             else if (file_type == ItemType.Drive) { }
         }
@@ -783,8 +793,12 @@ namespace File_Manager
                 else
                 {
                     bool?[] attributes = { read_only.IsChecked, hidden.IsChecked, system.IsChecked, archive.IsChecked, compressed.IsChecked, encrypted.IsChecked, not_content_indexed.IsChecked, normal.IsChecked };
-                    dirs.Add(FileName.Text);
-                    new File_Operation(files, dirs, attributes).Show();
+                    //dirs.Add(FileName.Text);
+                    File_Operation window = new File_Operation();
+                    List<FileOperationItem> list = new List<FileOperationItem>();
+                    list.Add(new FileOperationItem(new DirectoryInfo(FileName.Text), ""));
+                    window.SetAttributesDialogShow(list, attributes);
+                    //new File_Operation(files, dirs, attributes).Show();
                 }
         }
 
@@ -863,7 +877,7 @@ namespace File_Manager
             Close();
             if (file_type == ItemType.Directory || (file_type == ItemType.Drive && drive.IsReady))
             {
-                MainWindow.go_to_path = true;
+                MainWindow.GoToPath = true;
                 MainWindow.to_go_path = path;
             }
             else if (file_type == ItemType.Drive && !drive.IsReady)
@@ -960,14 +974,18 @@ namespace File_Manager
 
         private void CollectFiles(bool remove, string copy_to)
         {
-            List<FileElement> to_copy = new List<FileElement>();
+            List<FileOperationItem> to_copy = new List<FileOperationItem>();
             if (file_type == ItemType.File)
-                to_copy.Add(new FileElement(file.FullName, file.Length, file.Extension, file.FullName.Remove(0, file.DirectoryName.Length - 1), remove));
+                to_copy.Add(new FileOperationItem(file, remove, false, file.FullName.Remove(0, file.DirectoryName.Length - 1)));
             else if (file_type == ItemType.Directory)
-                Functions.AddAllFiles(dir.FullName, dir.Parent.FullName, remove, to_copy);
+                to_copy.Add(new FileOperationItem(dir, ""));
+            //Functions.AddAllFiles(dir.FullName, dir.Parent.FullName, remove, to_copy);
             else if (file_type == ItemType.Drive)
-                Functions.AddAllFiles(drive.Name, "", remove, to_copy);
-            new File_Operation(to_copy).Show(copy_to);
+                to_copy.Add(new FileOperationItem(new DirectoryInfo(drive.Name), ""));
+            //Functions.AddAllFiles(drive.Name, "", remove, to_copy);
+            File_Operation window = new File_Operation();
+            window.CopyDialogShow(copy_to, to_copy);
+            //new File_Operation(to_copy).Show(copy_to);
         }
 
         private void Delete_Click(object sender, RoutedEventArgs e)
@@ -1251,25 +1269,71 @@ namespace File_Manager
 
         private void ShowMenu_MouseEnter(object sender, MouseEventArgs e)
         {
-            if (main_menu.Width < 4)
+            if (main_menu.Margin.Left < -60)
             {
-                DoubleAnimation animation2 = new DoubleAnimation(0, 64, new Duration(new TimeSpan(1000000)));
-                main_menu.BeginAnimation(Grid.WidthProperty, animation2);
-                Thread.Sleep(100);
-                DoubleAnimation animation1 = new DoubleAnimation(0, 1, new Duration(new TimeSpan(2500000)));
-                main_menu_stack.BeginAnimation(StackPanel.OpacityProperty, animation1);
+                ThicknessAnimation animation = new ThicknessAnimation(new Thickness(0, 0, 0, 0), new Duration(new TimeSpan(1000000)));
+                main_menu.BeginAnimation(Grid.MarginProperty, animation);
+                BackgroundWorker bw = new BackgroundWorker();
+                bw.DoWork += show_DoWork;
+                bw.ProgressChanged += show_ProgressChanged;
+                bw.WorkerReportsProgress = true;
+                bw.RunWorkerAsync();
+            }
+        }
+
+        void show_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        {
+            ThicknessAnimation animation = new ThicknessAnimation(new Thickness(0, ((Button)main_menu_stack.Children[e.ProgressPercentage]).Margin.Top, 0, 0), new Duration(new TimeSpan(500000)));
+            main_menu_stack.Children[e.ProgressPercentage].BeginAnimation(Button.MarginProperty, animation);
+        }
+
+        void show_DoWork(object sender, DoWorkEventArgs e)
+        {
+            int i = 0;
+            //Thread.Sleep(50);
+            while (i < main_menu_item_count)
+            {
+                ((BackgroundWorker)sender).ReportProgress(i++);
+                Thread.Sleep(55);
             }
         }
 
         private void HideMenu_MouseLeave(object sender, MouseEventArgs e)
         {
-            if (main_menu.Width > 60)
+            if (main_menu.Margin.Left > -4)
             {
-                DoubleAnimation animation1 = new DoubleAnimation(1, 0, new Duration(new TimeSpan(1000000)));
-                main_menu_stack.BeginAnimation(StackPanel.OpacityProperty, animation1);
-                Thread.Sleep(100);
-                DoubleAnimation animation2 = new DoubleAnimation(64, 0, new Duration(new TimeSpan(2500000)));
-                main_menu.BeginAnimation(Grid.WidthProperty, animation2);
+                BackgroundWorker bw = new BackgroundWorker();
+                bw.DoWork += hide_DoWork;
+                bw.ProgressChanged += hide_ProgressChanged;
+                bw.WorkerReportsProgress = true;
+                bw.RunWorkerAsync();
+                bw.RunWorkerCompleted += hide_RunWorkerCompleted;
+
+                //foreach (Button i in main_menu_stack.Children)
+                //    i.Margin = new Thickness(-64, i.Margin.Top, 0, 0);
+            }
+        }
+
+        void hide_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            ThicknessAnimation animation = new ThicknessAnimation(new Thickness(-64, 0, 0, 0), new Duration(new TimeSpan(750000)));
+            main_menu.BeginAnimation(Grid.MarginProperty, animation);
+        }
+
+        private void hide_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        {
+            ThicknessAnimation animation = new ThicknessAnimation(new Thickness(-128, ((Button)main_menu_stack.Children[e.ProgressPercentage]).Margin.Top, 0, 0), new Duration(new TimeSpan(750000)));
+            main_menu_stack.Children[e.ProgressPercentage].BeginAnimation(Button.MarginProperty, animation);
+        }
+
+        private void hide_DoWork(object sender, DoWorkEventArgs e)
+        {
+            int i = main_menu_item_count;
+            Thread.Sleep(200);
+            while (i > 0)
+            {
+                ((BackgroundWorker)sender).ReportProgress(--i);
+                Thread.Sleep(55);
             }
         }
 
@@ -1287,13 +1351,50 @@ namespace File_Manager
 
         private void Button_Click(object sender, RoutedEventArgs e)
         {
-            SizeAnimation animation = new SizeAnimation(new Size(800, 480), new Size(50, 38), new Duration(new TimeSpan(0, 0, 0, 0, 100)));
-            BeginAnimation(Window.ResizeModeProperty, animation);
-            Parallel.For(0, 1, (i) =>
+            BackgroundWorker BW = new BackgroundWorker();
+            BW.DoWork += BW_DoWork;
+            BW.WorkerReportsProgress = true;
+            BW.ProgressChanged += BW_ProgressChanged;
+            BW.RunWorkerCompleted += BW_RunWorkerCompleted;
+            BW.RunWorkerAsync();
+            //SizeAnimation animation = new SizeAnimation(new Size(800, 480), new Size(50, 38), new Duration(new TimeSpan(0, 0, 0, 0, 100)));
+            //BeginAnimation(Window., animation);
+            //Parallel.For(0, 1, (i) =>
+            //{
+            //    Thread.Sleep(200);
+            //    this.Close();
+            //});
+        }
+
+        void BW_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            Close();
+        }
+
+        void BW_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        {
+            if (!stop_animate)
             {
-                Thread.Sleep(200);
-                this.Close();
-            });
+                Width -= e.ProgressPercentage;
+                Height -= e.ProgressPercentage * 0.5625;    //  9 / 16 = 0.5625;
+                Left += e.ProgressPercentage / 2;
+                Top += e.ProgressPercentage * 0.28125;       //  (9 / 16) / 2 = 0.28125;
+                Opacity = ActualHeight / 600;
+                if (ActualHeight < 151)
+                    stop_animate = true;
+            }
+        }
+
+        void BW_DoWork(object sender, DoWorkEventArgs e)
+        {
+            BackgroundWorker BW = (BackgroundWorker)sender;
+            for (int i = 50; !stop_animate; i -= 10)
+            {
+                while (i <= 0)
+                    i += 10;
+                BW.ReportProgress(i);
+                Thread.Sleep(5);
+            }
         }
     }
 }

@@ -1,11 +1,11 @@
-﻿<Window x:Class="WpfApplication1.MainWindow"
+﻿<Window x:Class="FileManager.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="MainWindow" Height="553" Width="1300" Loaded="Window_Loaded_1" PreviewMouseMove="Grid_PreviewMouseMove">
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="599*"/>
-            <ColumnDefinition Width="693*"/>
+            <ColumnDefinition />
+            <ColumnDefinition Width="0"/>
         </Grid.ColumnDefinitions>
 
         <Button Content="Button" Margin="10,10,0,0" Click="Button_Click_1" HorizontalAlignment="Left" Width="120" Height="38" VerticalAlignment="Top"/>
@@ -24,19 +24,19 @@
                         <TranslateTransform/>
                     </TransformGroup>
                 </TextBlock.RenderTransform><Run Language="ar-sy" Text="المطففين"/></TextBlock>
-            <TextBlock Margin="115,10,10,10" TextWrapping="Wrap" FontSize="14"><Run FlowDirection="RightToLeft" Language="ar-sy" Text="نحن الملوك."/></TextBlock>
+            <TextBlock Margin="115,10,10,10" TextWrapping="Wrap" FontSize="14"><Run FlowDirection="RightToLeft" Language="ar-sy" Text="ويل للمطففين."/></TextBlock>
         </Grid>
         <Button Content="Button" HorizontalAlignment="Left" Height="41" Margin="10,69,0,0" VerticalAlignment="Top" Width="120" Click="Button_Click_2"/>
         <Button x:Name="xx" Content="Doc deserilize" HorizontalAlignment="Left" Height="49" Margin="10,130,0,0" VerticalAlignment="Top" Width="120" Click="Button_Click_3"/>
-        <RichTextBox x:Name="RTF" HorizontalAlignment="Left" Height="189" Margin="154,130,0,0" VerticalAlignment="Top" Width="363" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Visible">
+        <RichTextBox x:Name="RTF" HorizontalAlignment="Left" Height="161" Margin="154,130,0,0" VerticalAlignment="Top" Width="363" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Visible" Grid.ColumnSpan="2">
             <FlowDocument>
                 <Paragraph>
                     <Run FlowDirection="RightToLeft" Language="ar-sy" Text="محمد قوي"/>
                 </Paragraph>
             </FlowDocument>
         </RichTextBox>
-        <WebBrowser x:Name="frame" Margin="597,75,12,12" Navigated="frame_Navigating" Grid.ColumnSpan="2"/>
-        <Button x:Name="jjjjj" Content="Sort String" HorizontalAlignment="Left" Height="51" Margin="275,113,0,0" VerticalAlignment="Top" Width="120" Click="Button_Click_4" Grid.Column="1"/>
+        <WebBrowser x:Name="frame" Margin="529,27,10,0" Navigated="frame_Navigating" Grid.Column="1" Height="198" VerticalAlignment="Top"/>
+        <Button x:Name="jjjjj" Content="Sort String" HorizontalAlignment="Left" Height="51" Margin="547,130,0,0" VerticalAlignment="Top" Width="120" Click="Button_Click_4" Grid.Column="1"/>
         <TextBox x:Name="ggg" Height="22" Margin="23,0,0,0" TextWrapping="Wrap" Text="C:\" VerticalAlignment="Top" Grid.Column="1" PreviewKeyUp="TextBox_PreviewKeyUp_1"/>
         <!--<Canvas>
             <Canvas x:Name="MainImageCanvas" Canvas.Left="40" Canvas.Top="120">
@@ -68,7 +68,7 @@
         <Button Content="Button" Click="Button_Click_010" HorizontalAlignment="Left" Width="111" Height="56" VerticalAlignment="Top" Margin="10,184,0,0"/>
         <Button Content="جمع ملفات" HorizontalAlignment="Left" Height="36" Margin="10,245,0,0" VerticalAlignment="Top" Width="111" Click="Button_Click_5"/>
         <Button Content="اخفاء مجلدات" HorizontalAlignment="Left" Height="36" Margin="10,286,0,0" VerticalAlignment="Top" Width="111" Click="Button_Click6"/>
-        <Grid HorizontalAlignment="Left" Height="20" Margin="164,324,0,0" VerticalAlignment="Top" Width="282">
+        <Grid HorizontalAlignment="Left" Height="20" Margin="388,311,0,0" VerticalAlignment="Top" Width="282">
             <Rectangle x:Name="container" Fill="#FFF4F4F5" Height="6" Margin="10,7,10,0" VerticalAlignment="Top" StrokeThickness="1" Stroke="Black" RadiusY="3" RadiusX="3"/>
             <Rectangle x:Name="rec" Fill="LightSkyBlue" HorizontalAlignment="Left" Height="4" Margin="11,8,0,0" VerticalAlignment="Top" Width="0" StrokeThickness="1" RadiusY="2" RadiusX="2"/>
             <Grid x:Name="mo" HorizontalAlignment="Left" Width="20" MouseEnter="Grid_MouseEnter" MouseLeave="Grid_MouseLeave" PreviewMouseLeftButtonDown="Grid_PreviewMouseLeftButtonDown" PreviewMouseLeftButtonUp="Grid_PreviewMouseLeftButtonUp" >
@@ -94,7 +94,47 @@
         <TreeView x:Name="l" HorizontalAlignment="Left" Margin="10,404,0,10" Width="148"/>
         <Button Content="Button" HorizontalAlignment="Left" Height="27" Margin="154,347,0,0" VerticalAlignment="Top" Width="57" Click="Button_Click_6"/>
         <Button Content="Compress files" HorizontalAlignment="Right" Height="53" Margin="0,460,10,0" VerticalAlignment="Top" Width="162" Click="Button_Click_7"/>
-        <Button Content="Button" HorizontalAlignment="Left" Height="57" Margin="427,398,0,0" VerticalAlignment="Top" Width="154" Click="Button_Click_8"/>
+        <Button Content="Get Icon Form Iconat" HorizontalAlignment="Left" Height="57" Margin="585,130,0,0" VerticalAlignment="Top" Width="154" Click="Button_Click_8"/>
         <Button Content="Get All Files" HorizontalAlignment="Left" Margin="10,327,0,0" VerticalAlignment="Top" Width="111" Height="47" Click="Button_Click"/>
+        <Rectangle Grid.Column="1" Fill="#FFF4F4F5" Height="22" Margin="18,471,2,0" Stroke="Black" VerticalAlignment="Top" RadiusY="8" RadiusX="8"/>
+        <Grid Grid.Column="1" HorizontalAlignment="Left" Height="20" Margin="18,472,0,0" VerticalAlignment="Top" Width="446">
+            <Rectangle Height="20" Stroke="Black" VerticalAlignment="Top" RadiusY="8" RadiusX="8" StrokeThickness="0">
+                <Rectangle.Fill>
+                    <LinearGradientBrush EndPoint="0.5,1" MappingMode="RelativeToBoundingBox" StartPoint="0.5,0">
+                        <GradientStop Color="#FFE7F1FF" Offset="1"/>
+                        <GradientStop Color="#FF6D7AFF"/>
+                    </LinearGradientBrush>
+                </Rectangle.Fill>
+            </Rectangle>
+        </Grid>
+        <Rectangle Grid.Column="1" HorizontalAlignment="Left" Height="22" Margin="61,471,0,0" Stroke="Black" StrokeThickness="0" VerticalAlignment="Top" Width="5" RenderTransformOrigin="0.5,0.5" Fill="#FF9E9595" RadiusY="1.799" RadiusX="1.799">
+            <Rectangle.RenderTransform>
+                <TransformGroup>
+                    <ScaleTransform/>
+                    <SkewTransform/>
+                    <RotateTransform Angle="-36.487"/>
+                    <TranslateTransform/>
+                </TransformGroup>
+            </Rectangle.RenderTransform>
+        </Rectangle>
+        <ListBox x:Name="ll" Margin="650,193,42,93" Drop="ListBox_Drop" AllowDrop="True" RenderTransformOrigin="0.5,0.5">
+            <ListBox.RenderTransform>
+                <TransformGroup>
+                    <ScaleTransform ScaleX="-1"/>
+                    <SkewTransform/>
+                    <RotateTransform/>
+                    <TranslateTransform/>
+                </TransformGroup>
+            </ListBox.RenderTransform>
+        </ListBox>
+        <Button Content="Button" Grid.Column="1" HorizontalAlignment="Left" Margin="529,235,0,0" VerticalAlignment="Top" Width="104" Click="Button_Click_9" Height="56"/>
+        <Button Content="(3) make files info" HorizontalAlignment="Left" Margin="10,296,0,0" VerticalAlignment="Top" Width="148" Height="36" Click="Button_Click_10" Grid.Column="1"/>
+        <TextBox  Name="num" HorizontalAlignment="Left" Margin="10,76,0,0" TextWrapping="Wrap" Text="11" VerticalAlignment="Top" Width="514" Grid.Column="1"/>
+        <TextBox Name="ext" HorizontalAlignment="Left" Margin="10,99,0,0" TextWrapping="Wrap" Text="m4a" VerticalAlignment="Top" Width="514" Grid.Column="1"/>
+        <TextBox Name="id" HorizontalAlignment="Left" Margin="10,122,0,0" TextWrapping="Wrap" Text="00 00 00 18 66 74 79 70 4D 34 41" VerticalAlignment="Top" Width="514" Grid.Column="1" FontSize="14" Height="169"/>
+        <Button Content="save file" Grid.Column="1" HorizontalAlignment="Left" Margin="449,51,0,0" VerticalAlignment="Top" Width="75" Click="Button_Click_11"/>
+        <ListBox x:Name="gggg" HorizontalAlignment="Left" Height="127" Margin="216,365,0,0" VerticalAlignment="Top" Width="396"/>
+        <Button Grid.ColumnSpan="2" Content="(1) read files id" HorizontalAlignment="Left" Margin="10,44,0,0" VerticalAlignment="Top" Width="102" Click="Button_Click_12"/>
+        <Button Grid.ColumnSpan="2" Content="(4) save new file" HorizontalAlignment="Left" Margin="206,307,0,0" VerticalAlignment="Top" Width="117" Click="Button_Click_13" Height="27"/>
     </Grid>
 </Window>

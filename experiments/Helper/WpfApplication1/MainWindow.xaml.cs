@@ -17,15 +17,16 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Xps.Packaging;
-using System.Windows.Media;
 using System.Runtime.InteropServices;
-namespace WpfApplication1
+using Iconat;
+namespace FileManager
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
     public partial class MainWindow : Window
     {
+        List<FilesID> f = new List<FilesID>();
         Point old_point;
         bool go = false;
         public MainWindow()
@@ -372,13 +373,24 @@ namespace WpfApplication1
         public static extern int MyNewMessageBoxMethod(IntPtr hWnd, String text, String caption, uint type);
         private void Button_Click_8(object sender, RoutedEventArgs e)
         {
+            new Class1().CallWindow();
             MyNewMessageBoxMethod(new IntPtr(0), "Hello World!", "Hello Dialog", 7);
+            Image j = new Image();
+            j.Source = new Class1().getIcon("exe");
+            ll.Items.Add(j);
 
+            j = new Image();
+            j.Source = new Class1().getIcon("png");
+            ll.Items.Add(j);
+
+            j = new Image();
+            j.Source = new Class1().getIcon("msi");
+            ll.Items.Add(j);
         }
 
         private void Button_Click(object sender, RoutedEventArgs e)
         {
-            FolderBrowserDialog gg=new FolderBrowserDialog();
+            FolderBrowserDialog gg = new FolderBrowserDialog();
             if (gg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
                 DirectoryInfo folder = new DirectoryInfo(gg.SelectedPath);
@@ -388,5 +400,145 @@ namespace WpfApplication1
                 System.Windows.MessageBox.Show(folderSize.ToString());
             }
         }
+
+        private void ListBox_Drop(object sender, System.Windows.DragEventArgs e)
+        {
+            ((System.Windows.Controls.ListBox)sender).Items.Add(((string[])e.Data.GetData(System.Windows.DataFormats.FileDrop))[0]);
+            System.Windows.MessageBox.Show(((System.Windows.Controls.ListBox)sender).Items.CurrentItem.ToString());
+        }
+
+        private void Button_Click_9(object sender, RoutedEventArgs e)
+        {
+            System.Windows.MessageBox.Show(System.Windows.Clipboard.GetFileDropList()[0] + "/n" + System.Windows.Clipboard.GetFileDropList()[1]);
+        }
+
+        private void Button_Click_10(object sender, RoutedEventArgs e)
+        {
+            char[] cc = { ' ' };
+            var jj = id.Text.Split(cc, StringSplitOptions.RemoveEmptyEntries);
+            int[] a = new int[jj.Length];
+            for (int i = 0; i < jj.Length; i++)
+            {
+                if (jj[i][0] >= 48 && jj[i][0] <= 57)//number in ascii
+                    a[i] = 16 * (jj[i][0] - 48);
+                else if (jj[i][0] >= 65 && jj[i][0] <= 70)
+                    a[i] = 16 * (jj[i][0] - 55);
+                else
+                    System.Windows.MessageBox.Show(jj[i][0].ToString());
+
+
+                if (jj[i][1] >= 48 && jj[i][1] <= 57)//number in ascii
+                    a[i] += (jj[i][1] - 48);
+                else if (jj[i][1] >= 65 && jj[i][1] <= 70)
+                    a[i] += (jj[i][1] - 55);
+                else
+                    System.Windows.MessageBox.Show((jj[i][1]).ToString());
+            }
+            gggg.Items.Insert(0, ext.Text);
+            f.Add(new FilesID(ext.Text, a, num.Text));
+        }
+
+        private void Button_Click_11(object sender, RoutedEventArgs e)
+        {
+            Stream st = File.OpenWrite(@"C:\Users\pal\Documents\12.txt");
+            //BinaryWriter m = new BinaryWriter(st);
+            StreamWriter m = new StreamWriter(st);
+            m.Write("///This file is a part of Files Manager version 1.0\r\n");
+            m.Write("///and it contains the ID of various files types (this version contain only 0065 file type IDs)\r\n");
+            m.Write("///with updating this file Super extension changer can guess more files types.\r\n");
+            m.Write("///Dr.Mohammad, ©Legend\r\n");
+            st.Position =256;
+            //st.Seek(0, SeekOrigin.End);
+            BinaryFormatter bf = new BinaryFormatter();
+            bf.Serialize(st, f);
+            st.Close();
+        }
+
+        private void Button_Click_12(object sender, RoutedEventArgs e)
+        {
+            //Stream st = File.OpenRead(@"C:\Users\pal\Documents\my file(edit).txt");
+            //st.Position = 256;
+            ////st.Seek(0, SeekOrigin.End);
+            //BinaryFormatter bf = new BinaryFormatter();
+            //f = (List<FilesID>)bf.Deserialize(st);
+            //st.Close();
+            //foreach (var i in f)
+            //    gggg.Items.Add(i.ext);
+
+            BinaryReader BR = new BinaryReader(File.OpenRead(@"C:\Users\pal\Documents\Old_ExtIDs.dat"));
+            int count = BR.ReadInt32();
+            BR.ReadString();
+            BR.ReadInt32();
+            BR.ReadString();
+            BR.BaseStream.Position = 1024;
+            for (int i = 0; i < count; i++)
+            {
+                string ext = BR.ReadString();
+                BR.ReadByte();
+                string discription = BR.ReadString();
+                int length = BR.ReadInt32();
+                List<int> IDs = new List<int>();
+                for (int j = 0; j < length; j++)
+                    IDs.Add(BR.ReadInt32());
+                f.Add(new FilesID(ext, discription, IDs));
+            }
+        }
+
+        private void Button_Click_13(object sender, RoutedEventArgs e)
+        {
+            BinaryWriter m = new BinaryWriter(File.OpenWrite(@"C:\Users\pal\Documents\New_ExtIDs.dat"));
+            m.Write(f.Count);
+            m.Write((byte)68);
+            m.Write((byte)114);
+            m.Write((byte)46);
+            m.Write((byte)77);
+            m.Write((byte)111);
+            m.Write((byte)104);
+            m.Write((byte)97);
+            m.Write((byte)109);
+            m.Write((byte)109);
+            m.Write((byte)97);
+            m.Write((byte)100);
+            m.Write("///This file is a part of Files Manager version 1.0\r\n");
+            m.Write("///and it contains the ID of various files types (this version contain only " + f.Count + " file type IDs)\r\n");
+            m.Write("///with updating this file Super extension changer can guess more files types.\r\n");
+            m.Write("///Dr.Mohammad, ©Legend\r\n");
+            while (m.BaseStream.Length < 1024)
+                m.Write((byte)0);
+            foreach (var i in f)
+            {
+                m.Write(i.ext);
+                m.Write((byte)0);
+                m.Write(i.discription);
+                m.Write(i.ID.Count);
+                foreach (var j in i.ID)
+                    m.Write(j);
+            }
+            m.Close();
+        }
+    }
+
+    [Serializable]
+    class FilesID
+    {
+        public FilesID(string ext, int[] id, string discription)
+        {
+            this.ext = ext;
+            ID = new List<int>();
+            this.discription = discription;
+            foreach (int i in id)
+                ID.Add(i);
+        }
+
+        public FilesID(string ext1, string discription1, List<int> IDs)
+        {
+            this.ext = ext1;
+            this.discription = discription1;
+            this.ID = IDs;
+        }
+
+        public string ext;
+        public string discription;
+        public List<int> ID;
     }
 }

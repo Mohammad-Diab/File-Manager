@@ -1,7 +1,7 @@
 ﻿<Window x:Class="File_Manager.Preview"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Preview" Height="553" Width="806" WindowStartupLocation="CenterScreen" ResizeMode="NoResize" Icon="Images/Menu/file-preview.png" FontSize="14">
+        Title="Preview" Height="553" Width="806" WindowStartupLocation="CenterScreen" ResizeMode="NoResize" Icon="Images/Menu/file-preview.png" FontSize="14" Closing="Window_Closing">
     <Window.Resources>
         <ControlTemplate x:Key="roundButtonTemplate" TargetType="{x:Type Button}">
             <Grid MouseEnter="RoundButton_MouseOver" MouseLeave="RoundButton_MouseLeave" MouseLeftButtonDown="RoundButton_MouseDown" MouseLeftButtonUp="RoundButton_MouseUp">
@@ -24,7 +24,7 @@
     </Window.Resources>
     <Grid>
         <Grid x:Name="mother_of_all_grid" Margin="0,0,0,0" HorizontalAlignment="Left" Width="4800">
-            <Grid HorizontalAlignment="Left" Width="800" Margin="0,44,0,0">
+            <Grid x:Name="preview_grid" HorizontalAlignment="Left" Width="800" Margin="0,44,0,0">
                 <Grid x:Name="image_viewer_grid" MouseMove="Control_MouseMove" KeyDown="ImageViewer_KeyDown" Width="790" Margin="0,0,10,0" Visibility="Collapsed">
                     <ScrollViewer Margin="0,0,0,0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" MouseLeave="ImageScrol_MouseLeave" PreviewMouseDown="ImageScrol_MouseDown" PreviewMouseUp="ImageScrol_MouseUp" MouseMove="ImageScrol_MouseMove">
                         <Image x:Name="image_view" Stretch="None"/>
@@ -127,17 +127,33 @@
                         </Grid>
                     </Grid>
                 </Grid>
+                <Grid x:Name="font_viewer" Visibility="Collapsed" Width="790" Margin="0,0,10,0" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.CanContentScroll="True" Grid.IsSharedSizeScope="True">
+                    <ListBox Background="#FF404040">
+                        <TextBlock TextWrapping="NoWrap" Text="Font Name: Name" Foreground="White" FontSize="18"/>
+                        <TextBlock TextWrapping="NoWrap" Text="Version: 1.3" Foreground="White" FontSize="18"/>
+                        <TextBlock TextWrapping="NoWrap" Text="__________________________________________________________" Foreground="White" FontSize="18"/>
+                        <TextBlock TextWrapping="NoWrap" Text="abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ" Foreground="White" FontSize="18"/>
+                        <TextBlock TextWrapping="NoWrap" Text="0123456789.:,;(!?)+-*/=" Foreground="White" FontSize="18"/>
+                        <TextBlock TextWrapping="NoWrap" Text="أبجد هوز حطي كلمن سعفص قرشت ثخذ ضظغ" Foreground="White" FontSize="18"/>
+                        <TextBlock TextWrapping="NoWrap" Text="__________________________________________________________" Foreground="White" FontSize="18"/>
+                        <TextBlock TextWrapping="NoWrap" Text="12-  The Quick brown fox jumps over the lazy dog. 0123456789   فلج الثغور إذا ابتسمن ضواحكا   هيف الخصور نواعم الأبدان" Foreground="White" FontSize="12"/>
+                        <TextBlock TextWrapping="NoWrap" Text="18-  The Quick brown fox jumps over the lazy dog. 0123456789   فلج الثغور إذا ابتسمن ضواحكا   هيف الخصور نواعم الأبدان" Foreground="White" FontSize="18"/>
+                        <TextBlock TextWrapping="NoWrap" Text="24-  The Quick brown fox jumps over the lazy dog. 0123456789   فلج الثغور إذا ابتسمن ضواحكا   هيف الخصور نواعم الأبدان" Foreground="White" FontSize="24"/>
+                        <TextBlock TextWrapping="NoWrap" Text="36-  The Quick brown fox jumps over the lazy dog. 0123456789   فلج الثغور إذا ابتسمن ضواحكا   هيف الخصور نواعم الأبدان" Foreground="White" FontSize="36"/>
+                        <TextBlock TextWrapping="NoWrap" Text="48-  The Quick brown fox jumps over the lazy dog. 0123456789   فلج الثغور إذا ابتسمن ضواحكا   هيف الخصور نواعم الأبدان" Foreground="White" FontSize="48"/>
+                        <TextBlock TextWrapping="NoWrap" Text="60-  The Quick brown fox jumps over the lazy dog. 0123456789   فلج الثغور إذا ابتسمن ضواحكا   هيف الخصور نواعم الأبدان" Foreground="White" FontSize="60"/>
+                        <TextBlock TextWrapping="NoWrap" Text="72-  The Quick brown fox jumps over the lazy dog. 0123456789   فلج الثغور إذا ابتسمن ضواحكا   هيف الخصور نواعم الأبدان" Foreground="White" FontSize="72"/>
+                    </ListBox>
+                </Grid>
             </Grid>
             <Grid Margin="800,44,0,0" HorizontalAlignment="Left" Width="800">
-                <Image x:Name="item_image" HorizontalAlignment="Left" Height="256" VerticalAlignment="Top" Width="256" Source="Images/Icons/256/disk-iso.png" Margin="10,46,0,0"/>
+                <Image x:Name="item_image" HorizontalAlignment="Left" Height="256" VerticalAlignment="Top" Width="256" Margin="10,46,0,0"/>
                 <TextBox x:Name="item_path" Margin="30,6,30,0" TextWrapping="Wrap" Text="C:\Users\pal\Desktop\cd.iso" VerticalAlignment="Top" FontSize="16" IsReadOnly="True"/>
                 <TextBlock Margin="271,227,0,0" TextWrapping="Wrap" Foreground="ForestGreen" FontSize="16" Text="Size:" VerticalAlignment="Top" HorizontalAlignment="Left"/>
-                <TextBlock x:Name="created_all_Copy" Margin="311,346,0,0"  TextWrapping="Wrap" Foreground="ForestGreen" FontSize="16" VerticalAlignment="Top" HorizontalAlignment="Left" Text="Time:"/>
-                <TextBlock x:Name="creation_time" Margin="330,372,0,0"  TextWrapping="Wrap" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="Creation: 30/2/2007 8:12" HorizontalAlignment="Left"/>
                 <TextBlock Margin="271,116,0,0" TextWrapping="Wrap" Foreground="ForestGreen" FontSize="16" VerticalAlignment="Top" Text="Type:" HorizontalAlignment="Left"/>
                 <TextBlock x:Name="item_type_discriotion" Margin="290,166,0,0" TextWrapping="Wrap" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="ISO Standard File Type." HorizontalAlignment="Left"/>
                 <TextBlock x:Name="item_category" Margin="290,190,0,0" TextWrapping="Wrap" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="Disk Image." HorizontalAlignment="Left"/>
-                <TextBlock Margin="500,116,0,0" TextWrapping="Wrap" Foreground="ForestGreen" FontSize="16" VerticalAlignment="Top" Text="Apps can open this file:" HorizontalAlignment="Left"/>
+                <TextBlock Margin="500,116,0,0" TextWrapping="Wrap" Foreground="ForestGreen" FontSize="16" VerticalAlignment="Top" Text="Apps can open this type:" HorizontalAlignment="Left"/>
                 <ListBox x:Name="app_can_open_this_type" Height="72" Margin="500,142,30,0" VerticalAlignment="Top"/>
                 <TextBlock x:Name="item_type" Margin="290,142,0,0" TextWrapping="Wrap" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text=".iso" HorizontalAlignment="Left"/>
                 <Rectangle Height="3" Margin="271,219,50,0" Stroke="#FF404040" VerticalAlignment="Top" StrokeThickness="0">
@@ -163,29 +179,7 @@
                 </Rectangle>
                 <TextBlock x:Name="item_size" Margin="290,253,0,0" TextWrapping="Wrap" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="4.1 GB (4402341478 bytes)" HorizontalAlignment="Left"/>
                 <TextBlock x:Name="directory_content" Margin="290,301,0,0" TextWrapping="Wrap" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="Directory contains 312 files &amp; 75 directories" HorizontalAlignment="Left"/>
-                <Rectangle Height="3" Margin="277,338,44,0" Stroke="#FF404040" VerticalAlignment="Top" StrokeThickness="0">
-                    <Rectangle.Fill>
-                        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
-                            <LinearGradientBrush.RelativeTransform>
-                                <TransformGroup>
-                                    <ScaleTransform CenterY="0.5" CenterX="0.5"/>
-                                    <SkewTransform CenterY="0.5" CenterX="0.5"/>
-                                    <RotateTransform Angle="-85.03" CenterY="0.5" CenterX="0.5"/>
-                                    <TranslateTransform/>
-                                </TransformGroup>
-                            </LinearGradientBrush.RelativeTransform>
-                            <GradientStop Color="SkyBlue" Offset="0"/>
-                            <GradientStop Color="White" Offset="1"/>
-                            <GradientStop Color="#FFA0D8EF" Offset="0.329"/>
-                            <GradientStop Color="#FFCEEBF6" Offset="0.855"/>
-                            <GradientStop Color="#FF93D2EC" Offset="0.177"/>
-                            <GradientStop Color="#FFB1DFF1" Offset="0.502"/>
-                            <GradientStop Color="#FFC0E5F3" Offset="0.675"/>
-                        </LinearGradientBrush>
-                    </Rectangle.Fill>
-                </Rectangle>
-                <TextBlock x:Name="modified_time" Margin="330,396,0,0"  TextWrapping="Wrap" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="Modified: 30/2/2007 8:12" HorizontalAlignment="Left"/>
-                <TextBlock x:Name="last_accessed_time" Margin="330,420,0,0"  TextWrapping="Wrap" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="Last accessed: 30/2/2007 8:12" HorizontalAlignment="Left"/>
+
                 <TextBlock x:Name="item_ondisk_size" Margin="290,277,0,0" TextWrapping="Wrap" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="on disk: 3.42 GB  20% of used space on disk" HorizontalAlignment="Left"/>
                 <TextBlock Margin="271,34,0,0" TextWrapping="Wrap" Foreground="ForestGreen" FontSize="16" VerticalAlignment="Top" Text="Item:" HorizontalAlignment="Left"/>
                 <TextBlock x:Name="item_name" Margin="290,60,0,0" TextWrapping="Wrap" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="Name: cd.iso" HorizontalAlignment="Left"/>
@@ -211,20 +205,14 @@
                         </LinearGradientBrush>
                     </Rectangle.Fill>
                 </Rectangle>
-                <DatePicker HorizontalAlignment="Left" Margin="643,397,0,0" VerticalAlignment="Top"/>
-                <Button Content="Change" FontSize="11" Margin="564,374,0,0" Visibility="Visible" Background="{x:Null}" BorderBrush="#FFFF8000" Foreground="#FFFF8B00" HorizontalAlignment="Left" VerticalAlignment="Top" Width="60" Height="19"/>
-                <Button Content="Change" FontSize="11" Margin="564,398,0,0" Visibility="Visible" Background="{x:Null}" BorderBrush="#FFFF8000" Foreground="#FFFF8B00" HorizontalAlignment="Left" VerticalAlignment="Top" Width="60" Height="19"/>
-                <Button Content="Change" FontSize="11" Margin="564,422,0,0" Visibility="Visible" Background="{x:Null}" BorderBrush="#FFFF8000" Foreground="#FFFF8B00" HorizontalAlignment="Left" VerticalAlignment="Top" Width="60" Height="19"/>
-                <Button Content="OK" FontSize="11" Margin="0,429,72,0" Visibility="Visible" Background="{x:Null}" BorderBrush="#FFFF8000" Foreground="Magenta" HorizontalAlignment="Right" VerticalAlignment="Top" Width="60" Height="19"/>
                 <Expander x:Name="change_name_expander" Header="Change Name:" HorizontalAlignment="Left" Margin="10,307,0,0" VerticalAlignment="Top" Width="262" Foreground="YellowGreen" FontSize="16">
                     <Grid>
                         <TextBlock x:Name="name_error" FontSize="12" Margin="5,82,0,0" Visibility="Visible" TextWrapping="Wrap" VerticalAlignment="Top" Foreground="Red"  TextAlignment="Center"><Run Text="File name can't contain any of these characters:"/><LineBreak/><Run FontSize="16" Text=" '\' , '/' , ':' , '*' , '?' , '\' , '&lt;' , '&gt;' , '|'"/></TextBlock>
                         <TextBox x:Name="rename_textbox" Margin="10,31,10,0" Text="cd.iso" VerticalAlignment="Top" FontSize="14" TextChanged="RenameTextbox_TextChanged"/>
-                        <Button x:Name="rename_button" Content="Rename" FontSize="12" Margin="0,57,10,0" Visibility="Visible" Background="{x:Null}" BorderBrush="#FFFF8000" Foreground="Magenta" HorizontalAlignment="Right" VerticalAlignment="Top" Width="60" Height="20"/>
+                        <Button x:Name="rename_button" Content="Rename" FontSize="12" Margin="0,57,10,0" Visibility="Visible" Background="{x:Null}" BorderBrush="#FFFF8000" Foreground="Magenta" HorizontalAlignment="Right" VerticalAlignment="Top" Width="60" Height="20" Click="RenameButton_Click"/>
                         <TextBlock FontSize="12" HorizontalAlignment="Left" Margin="10,10,0,0" TextWrapping="Wrap" Text="Enter new name then click 'Rename'" VerticalAlignment="Top" Foreground="Black"/>
                     </Grid>
                 </Expander>
-                <TextBlock HorizontalAlignment="Left" Margin="643,373,0,0" TextWrapping="Wrap" Text="on new window" VerticalAlignment="Top"/>
                 <Grid x:Name="size_flowshart" Height="116" Margin="0,222,10,0" VerticalAlignment="Top" HorizontalAlignment="Right" Width="134">
                     <Ellipse HorizontalAlignment="Left" Height="100" Margin="25,15,0,0" Stroke="#FF34A41B" VerticalAlignment="Top" Width="100"/>
                     <Rectangle HorizontalAlignment="Left" Height="1" Margin="26,65,0,0" Stroke="#FF404040" VerticalAlignment="Top" Width="50" Fill="Black" StrokeThickness="0" RenderTransformOrigin="0.5,0.5"/>
@@ -251,19 +239,49 @@
                     <Rectangle HorizontalAlignment="Left" Height="1" Stroke="#FF404040" VerticalAlignment="Top" Width="28" Fill="Black" StrokeThickness="0" RenderTransformOrigin="0.5,0.5" Margin="8,15,0,0"/>
                     <TextBlock Margin="10,1,0,0" TextWrapping="Wrap" Foreground="Black" FontSize="10" VerticalAlignment="Top" Text="cd.iso" HorizontalAlignment="Left"/>
                 </Grid>
+                <Grid x:Name="time_region" HorizontalAlignment="Left" Margin="277,339,0,0" Width="493" Height="127" VerticalAlignment="Top">
+                    <TextBlock Margin="10,8,0,0"  TextWrapping="Wrap" Foreground="ForestGreen" FontSize="16" VerticalAlignment="Top" HorizontalAlignment="Left" Text="Time:"/>
+                    <TextBlock x:Name="creation_time" Margin="26,34,0,0" TextWrapping="Wrap" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="Creation: 30/2/2007 8:12" HorizontalAlignment="Left"/>
+                    <TextBlock x:Name="modified_time" Margin="26,58,0,0" TextWrapping="Wrap" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="Modified: 30/2/2007 8:12" HorizontalAlignment="Left"/>
+                    <TextBlock x:Name="last_accessed_time" Margin="26,82,0,0"  TextWrapping="Wrap" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="Last accessed: 30/2/2007 8:12" HorizontalAlignment="Left"/>
+                    <Button Content="Change" FontSize="11" Margin="279,35,0,0" Visibility="Visible" Background="{x:Null}" BorderBrush="#FFFF8000" Foreground="#FFFF8B00" HorizontalAlignment="Left" VerticalAlignment="Top" Width="60" Height="19" Click="CreationChange_Click"/>
+                    <Button Content="Change" FontSize="11" Margin="279,59,0,0" Visibility="Visible" Background="{x:Null}" BorderBrush="#FFFF8000" Foreground="#FFFF8B00" HorizontalAlignment="Left" VerticalAlignment="Top" Width="60" Height="19" Click="ModifiedChange_Click"/>
+                    <Button Content="Change" FontSize="11" Margin="279,83,0,0" Visibility="Visible" Background="{x:Null}" BorderBrush="#FFFF8000" Foreground="#FFFF8B00" HorizontalAlignment="Left" VerticalAlignment="Top" Width="60" Height="19" Click="AccessedChange_Click"/>
+                    <Rectangle Height="3" Margin="0,0,0,0" Stroke="#FF404040" VerticalAlignment="Top" StrokeThickness="0">
+                        <Rectangle.Fill>
+                            <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                <LinearGradientBrush.RelativeTransform>
+                                    <TransformGroup>
+                                        <ScaleTransform CenterY="0.5" CenterX="0.5"/>
+                                        <SkewTransform CenterY="0.5" CenterX="0.5"/>
+                                        <RotateTransform Angle="-85.03" CenterY="0.5" CenterX="0.5"/>
+                                        <TranslateTransform/>
+                                    </TransformGroup>
+                                </LinearGradientBrush.RelativeTransform>
+                                <GradientStop Color="SkyBlue" Offset="0"/>
+                                <GradientStop Color="White" Offset="1"/>
+                                <GradientStop Color="#FFA0D8EF" Offset="0.329"/>
+                                <GradientStop Color="#FFCEEBF6" Offset="0.855"/>
+                                <GradientStop Color="#FF93D2EC" Offset="0.177"/>
+                                <GradientStop Color="#FFB1DFF1" Offset="0.502"/>
+                                <GradientStop Color="#FFC0E5F3" Offset="0.675"/>
+                            </LinearGradientBrush>
+                        </Rectangle.Fill>
+                    </Rectangle>
+                </Grid>
             </Grid>
-            <Grid Margin="1600,44,0,0" HorizontalAlignment="Left" Width="800">
+            <Grid x:Name="attribute_grid" Margin="1600,44,0,0" HorizontalAlignment="Left" Width="800">
                 <StackPanel HorizontalAlignment="Right" Height="32" Margin="0,0,10,40" VerticalAlignment="Bottom" Width="276" Orientation="Horizontal" FlowDirection="RightToLeft">
-                    <Button Content="Save" HorizontalAlignment="Right" Margin="2" Width="60" Background="{x:Null}" Foreground="#FF0F0A0A" BorderBrush="#FF0023FF" Visibility="Visible"/>
-                    <Button x:Name="apply_to_all" Content="Apply to all containt" HorizontalAlignment="Right" Margin="2" Width="140" Background="{x:Null}" Foreground="#FF0F0A0A" BorderBrush="Blue" Visibility="Visible"/>
-                    <Button x:Name="reverse" Content="Reverse" HorizontalAlignment="Right" Margin="2" Width="60" Background="{x:Null}" Foreground="#FF0F0A0A" BorderBrush="#FF0023FF" Visibility="Collapsed"/>
+                    <Button Content="Save" HorizontalAlignment="Right" Margin="2" Width="60" Background="{x:Null}" Foreground="Blue" BorderBrush="#FF0023FF" Visibility="Visible" Click="ApplyAttrepute_Click"/>
+                    <Button x:Name="apply_to_all" Content="Apply to all content" HorizontalAlignment="Right" Margin="2" Width="140" Background="{x:Null}" Foreground="Blue" BorderBrush="Blue" Visibility="Visible" Click="ApplyAttreputeToAllContent_Click"/>
+                    <Button x:Name="reverse" Content="Reverse" HorizontalAlignment="Right" Margin="2" Width="60" Background="{x:Null}" Foreground="Blue" BorderBrush="#FF0023FF" Visibility="Collapsed" Click="ReverseAttribute_Click"/>
                 </StackPanel>
-                <RadioButton x:Name="normal" Content="Normal" HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="#FF404040" FontSize="20" Background="{x:Null}" Margin="10,10,0,0"/>
-                <TextBlock FontSize="16" Margin="40,41,0,0" HorizontalAlignment="Left" Text="The mean that the file is a standard file." Foreground="#FF0B6AA4" Height="19" VerticalAlignment="Top"/>
-                <RadioButton x:Name="other" Content="Some thing other" HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="#FF404040" FontSize="20" Background="{x:Null}" Margin="410,10,0,0"/>
-                <CheckBox x:Name="read_only" Content="Read Only" HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="#FF404040" FontSize="16" Margin="430,41,0,0" Background="{x:Null}"/>
-                <CheckBox x:Name="hidden" Content="Hidden" HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="#FF404040" FontSize="16" Margin="430,66,0,0" Background="{x:Null}"/>
-                <CheckBox x:Name="archive" Content="Archive" HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="#FF404040" FontSize="16"  Margin="430,91,0,0" Background="{x:Null}"/>
+                <RadioButton x:Name="normal" Content="Normal" HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="#FF404040" FontSize="20" Background="{x:Null}" Margin="10,10,0,0" Checked="NormalAttribute_Checked"/>
+                <TextBlock FontSize="16" Margin="40,41,0,0" HorizontalAlignment="Left" Foreground="#FF0B6AA4" VerticalAlignment="Top"><Run Text="This mean that the file is a standard file."/><LineBreak/><LineBreak/><Run Foreground="Red" FontSize="14" Text="NOT read only"/><LineBreak/><Run Foreground="Red" FontSize="14" Text="NOT hidden"/><LineBreak/><Run Foreground="#FF4B8F2C" FontSize="14" Text="Archive"/><LineBreak/><Run Foreground="Red" FontSize="14" Text="NOT compressed"/><LineBreak/><Run Foreground="Red" FontSize="14" Text="NOT encrypted"/><LineBreak/><Run Foreground="Red" FontSize="14" Text="NOT system"/><LineBreak/><Run Foreground="#FF4B8F2C" FontSize="14" Text="Content indexed"/><LineBreak/><Run x:Name="directory_attribute" Foreground="#FF4B8F2C" FontSize="14"/></TextBlock>
+                <RadioButton x:Name="other" Content="Some thing other" HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="#FF404040" FontSize="20" Background="{x:Null}" Margin="410,10,0,0" Checked="OtherAttributes_Checked"/>
+                <CheckBox x:Name="read_only" Content="Read Only" HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="#FF404040" FontSize="16" Margin="430,41,0,0" Background="{x:Null}" Checked="AnyAttributes_Checked"/>
+                <CheckBox x:Name="hidden" Content="Hidden" HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="#FF404040" FontSize="16" Margin="430,66,0,0" Background="{x:Null}" Checked="AnyAttributes_Checked"/>
+                <CheckBox x:Name="archive" Content="Archive" HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="#FF404040" FontSize="16"  Margin="430,91,0,0" Background="{x:Null}" Checked="AnyAttributes_Checked"/>
                 <Rectangle Margin="0,116,10,0" Height="2" VerticalAlignment="Top" HorizontalAlignment="Right" Width="360">
                     <Rectangle.Fill>
                         <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
@@ -284,13 +302,14 @@
                         </LinearGradientBrush>
                     </Rectangle.Fill>
                 </Rectangle>
-                <Grid Margin="0,123,10,0" HorizontalAlignment="Right" Width="360" Height="45" VerticalAlignment="Top">
-                    <RadioButton x:Name="compressed" Content="Compressed" HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="#FF404040" FontSize="16" Margin="0,0,0,0" Background="{x:Null}"/>
-                    <RadioButton x:Name="encrypted" Content="Encrypted" HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="#FF404040" FontSize="16" Margin="0,25,0,0" Background="{x:Null}"/>
+                <Grid Margin="0,123,10,0" HorizontalAlignment="Right" Width="360" Height="75" VerticalAlignment="Top">
+                    <RadioButton x:Name="compressed" Content="Compressed" HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="#FF404040" FontSize="16" Checked="AnyAttributes_Checked"/>
+                    <RadioButton x:Name="encrypted" Content="Encrypted" HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="#FF404040" FontSize="16" Margin="0,25,0,0" Checked="AnyAttributes_Checked"/>
+                    <RadioButton x:Name="not_encrypted_compressed" Content="Not compressed or encrypted" HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="#FF404040" FontSize="16" Margin="0,50,0,-25" Checked="AnyAttributes_Checked"/>
                 </Grid>
-                <CheckBox x:Name="system" Content="System" HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="#FF404040" FontSize="16" Margin="430,180,0,0" Background="{x:Null}"/>
-                <TextBlock Foreground="LightSkyBlue" FontSize="14" TextWrapping="Wrap" Margin="0,205,20,0" HorizontalAlignment="Right" Width="320" Height="56" VerticalAlignment="Top"><Run Foreground="#FF0B6AA4" Text="The file is part of the operating system or is used exclusively by the operating system."/><LineBreak/><Run Foreground="#FF0B6AA4"/><Run Foreground="#FFFF2700" Text="&#x9;   &quot;Caution: use with attention!&quot;."/></TextBlock>
-                <Rectangle Margin="0,173,10,0" Height="2" VerticalAlignment="Top" HorizontalAlignment="Right" Width="360">
+                <CheckBox x:Name="system" Content="System" HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="#FF404040" FontSize="16" Margin="430,203,0,0" Checked="AnyAttributes_Checked"/>
+                <TextBlock Foreground="LightSkyBlue" FontSize="14" TextWrapping="Wrap" Margin="0,228,20,0" HorizontalAlignment="Right" Width="320" Height="56" VerticalAlignment="Top"><Run Foreground="#FF0B6AA4" Text="The file is part of the operating system or is used exclusively by the operating system."/><LineBreak/><Run Foreground="#FF0B6AA4"/><Run Foreground="#FFFF2700" Text="&#x9;   &quot;Caution: use with attention!&quot;."/></TextBlock>
+                <Rectangle Margin="0,196,10,0" Height="2" VerticalAlignment="Top" HorizontalAlignment="Right" Width="360">
                     <Rectangle.Fill>
                         <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
                             <LinearGradientBrush.RelativeTransform>
@@ -310,7 +329,7 @@
                         </LinearGradientBrush>
                     </Rectangle.Fill>
                 </Rectangle>
-                <Rectangle Margin="0,266,10,0" Height="2" VerticalAlignment="Top" HorizontalAlignment="Right" Width="360">
+                <Rectangle Margin="0,289,10,0" Height="2" VerticalAlignment="Top" HorizontalAlignment="Right" Width="360">
                     <Rectangle.Fill>
                         <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
                             <LinearGradientBrush.RelativeTransform>
@@ -330,8 +349,8 @@
                         </LinearGradientBrush>
                     </Rectangle.Fill>
                 </Rectangle>
-                <CheckBox x:Name="not_content_indexed" Content="Not Content Indexed" HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="#FF404040" FontSize="16" Margin="430,273,0,0" Background="{x:Null}"/>
-                <TextBlock Text="The file will not be indexed by the operating system's content indexing service." Foreground="#FF0D6DA8" FontSize="14" TextWrapping="Wrap"  Margin="0,298,20,0" HorizontalAlignment="Right" Width="320" Height="38" VerticalAlignment="Top"/>
+                <CheckBox x:Name="not_content_indexed" Content="Not Content Indexed" HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="#FF404040" FontSize="16" Margin="430,296,0,0" Checked="AnyAttributes_Checked"/>
+                <TextBlock Text="The file will not be indexed by the operating system's content indexing service." Foreground="#FF0D6DA8" FontSize="14" TextWrapping="Wrap"  Margin="0,321,20,0" HorizontalAlignment="Right" Width="320" Height="38" VerticalAlignment="Top"/>
                 <Rectangle x:Name="Rectangle1_Copy2" Margin="399,41,0,20" HorizontalAlignment="Left" Width="2">
                     <Rectangle.Fill>
                         <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
@@ -354,7 +373,7 @@
                 </Rectangle>
             </Grid>
             <Grid Margin="2400,44,0,0" HorizontalAlignment="Left" Width="800">
-                <Button x:Name="apply_to_all_Copy" Content="Calculate" Margin="10,390,630,0" Background="{x:Null}" Foreground="#FF0F0A0A" FontSize="16" BorderBrush="#FF2AB048" Visibility="Visible" Height="32" VerticalAlignment="Top"/>
+                <Button x:Name="apply_to_all_Copy" Content="Calculate" Margin="10,390,630,0" Background="{x:Null}" Foreground="#FF2AB048" FontSize="16" BorderBrush="#FF2AB048" Visibility="Visible" Height="32" VerticalAlignment="Top"/>
                 <TextBox Margin="86,49,10,0" TextWrapping="Wrap" Text="MD5" VerticalAlignment="Top" FontSize="24"/>
                 <TextBox Margin="86,10,10,0" TextWrapping="Wrap" Text="MD4" VerticalAlignment="Top" FontSize="24"/>
                 <TextBox Margin="86,147,10,0" TextWrapping="Wrap" Text="SHA1" VerticalAlignment="Top" FontSize="24"/>
@@ -363,7 +382,6 @@
                 <TextBox Margin="86,264,10,0" TextWrapping="Wrap" Text="SHA1 512" VerticalAlignment="Top" FontSize="24"/>
                 <TextBox Margin="86,323,10,0" TextWrapping="Wrap" Text="CRC32" VerticalAlignment="Top" FontSize="24"/>
                 <TextBox Margin="86,186,10,0" TextWrapping="Wrap" Text="SHA1 256" VerticalAlignment="Top" FontSize="24"/>
-
             </Grid>
             <Grid Margin="3200,44,0,0" HorizontalAlignment="Left" Width="800"/>
             <Grid Margin="4000,44,0,0" HorizontalAlignment="Left" Width="800">
@@ -389,10 +407,10 @@
         <Grid HorizontalAlignment="Left" Width="5" MouseEnter="MainMenu_MouseEnter" Background="#FF41403B" Margin="0,0,0,0" Opacity="0"/>
         <Grid x:Name="main_menu" Width="64" HorizontalAlignment="Left" Background="#FF000000" Margin="-64,0,0,0" MouseLeave="MainMenu_MouseLeave">
             <StackPanel x:Name="main_menu_stack" Margin="0,20,0,0">
-                <Button x:Name="open_button" Height="64" VerticalAlignment="Top" Margin="-64,15,64,0" Background="#FF333333" Template="{StaticResource roundButtonTemplate}" ToolTip="Open" Click="MainMenu_Open_Click">
+                <Button x:Name="open_button" Height="64" VerticalAlignment="Top" Margin="-64,15,64,0" Background="#FF333333" Template="{StaticResource roundButtonTemplate}" ToolTip="Open" Click="MainMenuOpen_Click">
                     <Image x:Name="open_button_image" Source="Images/Menu/open-file.png"/>
                 </Button>
-                <Button x:Name="open_with_button" Height="64" VerticalAlignment="Top" Margin="-64,0,64,0" Background="{x:Null}" Template="{StaticResource roundButtonTemplate}" ToolTip="Open with" Click="MainMenu_OpenWith_Click">
+                <Button x:Name="open_with_button" Height="64" VerticalAlignment="Top" Margin="-64,0,64,0" Background="{x:Null}" Template="{StaticResource roundButtonTemplate}" ToolTip="Open with" Click="MainMenuOpenWith_Click">
                     <Image x:Name="open_with_button_image" Source="Images/Menu/open-with.png"/>
                 </Button>
                 <Button x:Name="explore_button" Height="64" VerticalAlignment="Top" Margin="-64,0,64,0" Background="{x:Null}" Template="{StaticResource roundButtonTemplate}">
@@ -401,13 +419,13 @@
                 <Button x:Name="extract_button" Height="64" VerticalAlignment="Top" Margin="-64,0,64,0" Background="{x:Null}" Template="{StaticResource roundButtonTemplate}">
                     <Image x:Name="extract_button_image" Source="Images/Menu/copy-stop.png"/>
                 </Button>
-                <Button x:Name="move_to_button" Height="64" VerticalAlignment="Top" Margin="-64,0,64,0" Background="{x:Null}" Template="{StaticResource roundButtonTemplate}" ToolTip="Move to" Click="MainMenu_MoveTo_Click">
+                <Button x:Name="move_to_button" Height="64" VerticalAlignment="Top" Margin="-64,0,64,0" Background="{x:Null}" Template="{StaticResource roundButtonTemplate}" ToolTip="Move to" Click="MainMenuMoveTo_Click">
                     <Image x:Name="move_to_button_image" Source="Images/Menu/file-move.png"/>
                 </Button>
-                <Button x:Name="copy_to_button" Height="64" VerticalAlignment="Top" Margin="-64,0,64,0" Background="{x:Null}" Template="{StaticResource roundButtonTemplate}" ToolTip="Copy to" Click="MainMenu_CopyTo_Click">
+                <Button x:Name="copy_to_button" Height="64" VerticalAlignment="Top" Margin="-64,0,64,0" Background="{x:Null}" Template="{StaticResource roundButtonTemplate}" ToolTip="Copy to" Click="MainMenuCopyTo_Click">
                     <Image x:Name="copy_to_button_image" Source="Images/Menu/file-copy.png"/>
                 </Button>
-                <Button x:Name="delete_button" Height="64" VerticalAlignment="Top" Margin="-64,0,64,0" Background="{x:Null}" Template="{StaticResource roundButtonTemplate}" ToolTip="Delete" Click="MainMenu_Delete_Click">
+                <Button x:Name="delete_button" Height="64" VerticalAlignment="Top" Margin="-64,0,64,0" Background="{x:Null}" Template="{StaticResource roundButtonTemplate}" ToolTip="Delete" Click="MainMenuDelete_Click">
                     <Image x:Name="delete_button_image" Source="Images/Menu/file-delete.png"/>
                 </Button>
             </StackPanel>

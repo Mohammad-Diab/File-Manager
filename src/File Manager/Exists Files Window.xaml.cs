@@ -23,24 +23,47 @@ namespace File_Manager
     public partial class Exists_Files_Window : Window
     {
         ObservableCollection<ExistsItemsListView> ExistsItemsList = new ObservableCollection<ExistsItemsListView>();
-        List<UnCompleatedOperation> uncomplete;
+        ObservableCollection<ExistsItemsListView> ExistsItemsList_Copy;
         bool accept = false, user_active = false;
         string paste_in;
         List<int> same, same_size, same_size_date;
-        public Exists_Files_Window(List<UnCompleatedOperation> uncomplete, string path)
+        OperationTree root;
+
+        public Exists_Files_Window(OperationTree root, string destination)
         {
-            paste_in = path;
-            this.uncomplete = uncomplete;
             InitializeComponent();
-            foreach (var i in uncomplete)
-                if (i.ErrorMessage == "File is already exists.")
-                    ExistsItemsList.Add(new ExistsItemsListView((FileInfo)i.Item.Item, new FileInfo(paste_in + "\\" + i.Item.Item.Name)));
+            this.root = root;
+            paste_in = destination;
+            AddSuns(root);
             container.DataContext = ExistsItemsList;
+        }
+
+        private void AddSuns(OperationTree root)
+        {
+            foreach (var i in root.children)
+            {
+                if (i.children == null)
+                    ExistsItemsList.Add(new ExistsItemsListView(i, new FileInfo(paste_in + "\\" + i.short_path)));
+                else
+                    AddSuns(i);
+                i.error_message = "";
+            }
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            user_active = true;
         }
 
         private void Cancel_Click(object sender, RoutedEventArgs e)
         {
             accept = false;
+            this.Close();
+        }
+
+        private void OK_Click(object sender, RoutedEventArgs e)
+        {
+            accept = true;
             this.Close();
         }
 
@@ -81,11 +104,8 @@ namespace File_Manager
                     i.TargetIsChecked = p;
                 else if (index < 0)
                     i.SourceIsChecked = p;
+            container.Items.Refresh();
         }
-
-
-
-
 
         private void CheckUncheckSource()
         {
@@ -115,21 +135,88 @@ namespace File_Manager
                 target_checkbox.IsChecked = null;
         }
 
+        private void Container_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            container.SelectedIndex = -1;
+        }
+
+        private void SkipSame_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (user_active)
+            {
+                Functions.MarkAs(root, OperationOption.NoValue, true);
+                if (ExistsItemsList_Copy == null)
+                {
+                    ExistsItemsList_Copy = new ObservableCollection<ExistsItemsListView>();
+                    foreach (var i in ExistsItemsList)
+                        ExistsItemsList_Copy.Add(i);
+                }
+                foreach (var i in ExistsItemsList_Copy)
+                    ExistsItemsList.Add(i);
+                ExistsItemsList.Clear();
+                if (skip_items.SelectedIndex == 1)
+                {
+                    if (same != null || new My_MessageBox("File Manager", "This operation maybe take long time according to files size and amount of files, do you want to continue?", "", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/list.png")), null/*buttons*/, null/* button_actions*/).ShowThisDialog() == MyMessageBoxResult.Yes)
+                    {
+                        RemoveSame();
+                        for (int i = same.Count - 1; i > -1; i--)
+                        {
+                            ExistsItemsList[same[i]].source_item.user_option = OperationOption.Skip;
+                            ExistsItemsList.RemoveAt(same[i]);
+                        }
+                    }
+                    else
+                        skip_items.SelectedIndex = 0;
+                }
+                else if (skip_items.SelectedIndex == 2)
+                {
+                    RemoveSameSize();
+                    for (int i = same_size.Count - 1; i > -1; i--)
+                    {
+                        ExistsItemsList[same_size[i]].source_item.user_option = OperationOption.Skip;
+                        ExistsItemsList.RemoveAt(same_size[i]);
+                    }
+                }
+                else if (skip_items.SelectedIndex == 3)
+                {
+                    RemoveSameSizeDate();
+                    for (int i = same_size_date.Count - 1; i > -1; i--)
+                    {
+                        ExistsItemsList[same_size_date[i]].source_item.user_option = OperationOption.Skip;
+                        ExistsItemsList.RemoveAt(same_size_date[i]);
+                    }
+                }
+                else if (skip_items.SelectedIndex == 4)
+                    for (int i = 0; i < ExistsItemsList.Count; i++)
+                        if (ExistsItemsList[i].source_item.item.LastWriteTime.Ticks > ExistsItemsList[i].TargetFile.LastWriteTime.Ticks)
+                        {
+                            ExistsItemsList[i].TargetIsChecked = false;
+                            ExistsItemsList[i].SourceIsChecked = true;
+                        }
+                        else
+                        {
+                            ExistsItemsList[i].TargetIsChecked = true;
+                            ExistsItemsList[i].SourceIsChecked = false;
+                        }
+            }
+        }
+
         private void RemoveSame()
         {
             if (same == null)
             {
+
                 same = new List<int>();
                 for (int i = 0; i < ExistsItemsList.Count; i++)
                 {
-                    if (uncomplete[i].Item.Size == new FileInfo(paste_in + uncomplete[i].Item.Item.Name).Length)
+                    if (ExistsItemsList[i].source_item.size == ExistsItemsList[i].TargetFile.Length)
                     {
                         SHA1 HashComputer = new SHA1Cng();
                         bool equal = true;
                         try
                         {
-                            byte[] first = HashComputer.ComputeHash(File.OpenRead(uncomplete[i].Item.Item.FullName));
-                            byte[] second = HashComputer.ComputeHash(File.OpenRead(paste_in + uncomplete[i].Item.Item.Name));
+                            byte[] first = HashComputer.ComputeHash(File.OpenRead(ExistsItemsList[i].source_item.item.FullName));
+                            byte[] second = HashComputer.ComputeHash(File.OpenRead(ExistsItemsList[i].TargetFile.FullName));
                             for (int j = 0; j < first.Length; j++)
                                 if (!(first[j] == second[j]))
                                 {
@@ -151,10 +238,10 @@ namespace File_Manager
             if (same_size == null)
             {
                 same_size = new List<int>();
-                for (int i = 0; i < ExistsItemsList.Count; i++)
-                    if (uncomplete[i].Item.Size == new FileInfo(paste_in + uncomplete[i].Item.Item.Name).Length)
-                        same_size.Add(i);
-                same_file_size.Text = same_size.Count + "";
+                for (int i = ExistsItemsList.Count - 1; i >= 0; i--)
+                    if (ExistsItemsList[i].source_item.size == ExistsItemsList[i].TargetFile.Length)
+                        same_size.Add(i);   
+                same_file_size.Text = same_size.Count.ToString();
             }
         }
 
@@ -163,113 +250,150 @@ namespace File_Manager
             if (same_size_date == null)
             {
                 same_size_date = new List<int>();
-                for (int i = 0; i < ExistsItemsList.Count; i++)
-                {
-                    try
-                    {
-                        if (uncomplete[i].Item.Size == new FileInfo(paste_in + uncomplete[i].Item.Item.Name).Length)
-                            if (File.GetLastWriteTime(uncomplete[i].Item.Item.FullName).Ticks == File.GetLastWriteTime(paste_in + uncomplete[i].Item.Item.Name).Ticks)
-                                same_size_date.Add(i);
-                    }
-                    catch (Exception) { }
-                }
-                same_file_date.Text = same_size_date.Count + "";
+                for (int i = ExistsItemsList.Count - 1; i >= 0; i--)
+                    if ((ExistsItemsList[i].source_item.size == ExistsItemsList[i].TargetFile.Length) && (ExistsItemsList[i].source_item.item.LastWriteTime.Ticks == ExistsItemsList[i].TargetFile.LastWriteTime.Ticks))
+                        same_size_date.Add(i);
+                same_file_date.Text = same_size_date.Count.ToString();
             }
         }
 
-        internal List<int> ShowThisDialog()
+        internal void ShowThisDialog()
         {
-            List<int> over = new List<int>();
+            Functions.MarkAs(root, OperationOption.NoValue, true);
             this.ShowDialog();
             if (!accept)
-                foreach (var i in uncomplete)
-                    over.Add(0);
+                Functions.MarkAs(root, OperationOption.Skip, true);
             else
             {
                 foreach (ExistsItemsListView i in ExistsItemsList)
-                    if (i.SourceIsChecked == true)
-                        if (i.TargetIsChecked == true)
-                            over.Add(2);
+                    if (i.SourceIsChecked.Value)
+                        if (i.TargetIsChecked.Value)
+                            i.source_item.user_option = OperationOption.CopyWithNewName;
                         else
-                            over.Add(1);
+                            i.source_item.user_option = OperationOption.Over;
                     else
-                        over.Add(0);
-                switch (skip_items.SelectedIndex)
-                {
-                    case 1:
-                        for (int i = 0; i < same.Count; i++)
-                            over.Insert(same[i], 0);
-                        break;
-                    case 2:
-                        for (int i = 0; i < same_size.Count; i++)
-                            over.Insert(same_size[i], 0);
-                        break;
-                    case 3:
-                        for (int i = 0; i < same_size_date.Count; i++)
-                            over.Insert(same_size_date[i], 0);
-                        break;
-                    default:
-                        break;
-                }
+                        i.source_item.user_option = OperationOption.Skip;
+                Functions.MarkAs(root, OperationOption.Skip, false);
             }
-            return over;
+        }
+    }
+
+    public class ExistsItemsListView
+    {
+        public ExistsItemsListView(OperationTree source_file, FileInfo target_file)
+        {
+            FileName = source_file.item.Name;
+            SourceSize = Functions.FileSize(source_file.size, 2);
+            SourceDate = source_file.item.LastWriteTimeUtc.ToString();
+            SourceTooltip = ((FileInfo)source_file.item).DirectoryName;
+            TargetFile = target_file;
+            TargetSize = Functions.FileSize(target_file.Length, 2);
+            TargetDate = target_file.LastWriteTimeUtc.ToString();
+            TargetTooltip = target_file.DirectoryName;
+            TargetIcon = SourceIcon = Functions.GetFileImage64(source_file.item.Extension);
+            SourceType = TargetType = Functions.GetFileType(source_file.item.Extension);
+            target_ischecked = source_ischecked = false;
+            source_item = source_file;
         }
 
-        private void OK_Click(object sender, RoutedEventArgs e)
+        public OperationTree source_item;
+
+        private String file_name;
+        public string FileName
         {
-            accept = true;
-            this.Close();
+            get { return file_name; }
+            set { file_name = value; }
         }
 
-        private void skip_same_SelectionChanged(object sender, SelectionChangedEventArgs e)//dont clear
+        private BitmapImage source_icon;
+        public BitmapImage SourceIcon
         {
-            //important
-            //if (user_active)
-            //{
-            //    container.Children.Clear();
-            //    foreach (var i in full)
-            //        container.Children.Add(i);
-            //    if (skip_items.SelectedIndex == 1)
-            //    {
-            //        RemoveSame();
-            //        for (int i = same.Count - 1; i > -1; i--)
-            //            container.Children.RemoveAt(same[i]);
-            //    }
-            //    else if (skip_items.SelectedIndex == 2)
-            //    {
-            //        RemoveSameSize();
-            //        for (int i = same_size.Count - 1; i > -1; i--)
-            //            container.Children.RemoveAt(same_size[i]);
-            //    }
-            //    else if (skip_items.SelectedIndex == 3)
-            //    {
-            //        RemoveSameSizeDate();
-            //        for (int i = same_size_date.Count - 1; i > -1; i--)
-            //            container.Children.RemoveAt(same_size_date[i]);
-            //    }
-            //    else if (skip_items.SelectedIndex == 4)
-            //        for (int i = 0; i < container.Children.Count; i++)
-            //            if (File.GetLastWriteTime(uncomplete[i].files_full_name).Ticks >= File.GetLastWriteTime(paste_in + uncomplete[i].file_short_name).Ticks)
-            //            {
-            //                ((CheckBox)((Grid)container.Children[i]).Children[2]).IsChecked = true;
-            //                ((CheckBox)((Grid)container.Children[i]).Children[3]).IsChecked = false;
-            //            }
-            //            else
-            //            {
-            //                ((CheckBox)((Grid)container.Children[i]).Children[2]).IsChecked = false;
-            //                ((CheckBox)((Grid)container.Children[i]).Children[3]).IsChecked = true;
-            //            }
-            //}
+            get { return source_icon; }
+            set { source_icon = value; }
         }
 
-        private void Window_Loaded(object sender, RoutedEventArgs e)
+        private String source_type;
+        public string SourceType
         {
-            user_active = true;
+            get { return source_type; }
+            set { source_type = value; }
         }
 
-        private void container_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private String source_size;
+        public string SourceSize
         {
-            container.SelectedIndex = -1;
+            get { return source_size; }
+            set { source_size = value; }
+        }
+
+        private String source_date;
+        public string SourceDate
+        {
+            get { return source_date; }
+            set { source_date = value; }
+        }
+
+        private String source_tooltip;
+        public string SourceTooltip
+        {
+            get { return source_tooltip; }
+            set { source_tooltip = value; }
+        }
+
+        private bool? source_ischecked;
+        public Boolean? SourceIsChecked
+        {
+            get { return source_ischecked; }
+            set { source_ischecked = value; }
+        }
+
+        FileInfo target_file;
+        public FileInfo TargetFile
+        {
+            get { return target_file; }
+            set { target_file = value; }
+        }
+
+        private BitmapImage target_icon;
+        public BitmapImage TargetIcon
+        {
+            get { return target_icon; }
+            set { target_icon = value; }
+        }
+
+        private String target_type;
+        public string TargetType
+        {
+            get { return target_type; }
+            set { target_type = value; }
+        }
+
+        private String target_size;
+        public string TargetSize
+        {
+            get { return target_size; }
+            set { target_size = value; }
+        }
+
+        private String target_date;
+        public string TargetDate
+        {
+            get { return target_date; }
+            set { target_date = value; }
+        }
+
+        private String target_tooltip;
+        public string TargetTooltip
+        {
+            get { return target_tooltip; }
+            set { target_tooltip = value; }
+        }
+
+        private bool? target_ischecked;
+        public Boolean? TargetIsChecked
+        {
+            get { return target_ischecked; }
+            set { target_ischecked = value; }
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -11,6 +12,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Documents;
+using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -23,16 +25,11 @@ namespace File_Manager
     /// </summary>
     public partial class Renamer : Window
     {
-        //Thickness[] margins = { new Thickness(10, 10, 0, 0), new Thickness(31, 3, 0, 0), new Thickness(110, 10, 10, 0), new Thickness(110, 34, 10, 0), new Thickness(110, 58, 11, 0), new Thickness(10, 0, 10, 3) };
-        Dictionary<string, byte[]> files_identify = new Dictionary<string, byte[]>();
-        public TimeSpan timespan = new TimeSpan(10);
-        List<FileInfo> Undone;
-        bool? remove_old_extension = true;
-        string new_extension;
-        List<FileIDInfo> list_of_FilesID;
+        Dictionary<string, bool> list1 = new Dictionary<string, bool>();
+        Dictionary<string, bool> list2 = new Dictionary<string, bool>();
         ObservableCollection<RenamerListView> list_to_rename = new ObservableCollection<RenamerListView>();
-        ObservableCollection<Renamer2ListView> list_to_rename2 = new ObservableCollection<Renamer2ListView>();
-        Thickness[] margins = { new Thickness(10, 3, 0, 0), new Thickness(40, 5, 10, 0) };
+        ObservableCollection<RenamerListView> list_to_rename2 = new ObservableCollection<RenamerListView>();
+
         public Renamer()
         {
             InitializeComponent();
@@ -40,299 +37,168 @@ namespace File_Manager
             FilesList2.DataContext = list_to_rename2;
         }
 
-        void bw_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        void AddFiles(ObservableCollection<RenamerListView> add_in, string items_count, Dictionary<string, bool> add_in_dictionary)
         {
-            items_count.Text = list_to_rename.Count + (list_to_rename.Count > 1 ? " Items" : "item");
-        }
-
-        void bw_ProgressChanged(object sender, ProgressChangedEventArgs e)
-        {
-            FileInfo i = (FileInfo)e.UserState;
-            try
-            { list_to_rename.Add(new RenamerListView(i.FullName, FileInformation.file_bitmap_24[Functions.GetFileIndex(i.Extension)], i)); }
-            catch (Exception) { }
-        }
-
-        void bw_DoWork(object sender, DoWorkEventArgs e)
-        {
-            GetAllFiles(e.Argument.ToString(), (BackgroundWorker)sender);
-        }
-
-        private void GetAllFiles(string dir, BackgroundWorker bw)
-        {
-            string[] sub_dirs = null;
-            try { sub_dirs = Directory.GetDirectories(dir); }
-            catch (Exception) { }
-            DirectoryInfo directory = new DirectoryInfo(dir);
-            FileInfo[] files = null;
-            try { files = directory.GetFiles(); }
-            catch (Exception) { }
-            if (files != null)
-                foreach (var i in files)
-                {
-                    bw.ReportProgress(0, i);
-                    System.Threading.Thread.Sleep(timespan);
-                }
-            //FilesList.Items.Add(MakeItemFile(i));
-            if (sub_dirs == null)
-                return;
-            else
-                foreach (var i in sub_dirs)
-                    GetAllFiles(i, bw);
-        }
-
-        private void AddFile_Click(object sender, RoutedEventArgs e)
-        {
-            Microsoft.Win32.OpenFileDialog OFD = new Microsoft.Win32.OpenFileDialog();
+            OpenFileDialog OFD = new OpenFileDialog();
             OFD.Multiselect = true;
-            if (OFD.ShowDialog() == true)
+            if (OFD.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                 foreach (string i in OFD.FileNames)
                 {
-                    //FilesList.Items.Add(MakeItemFile(new FileInfo(i)));
-                    //if (list_to_rename.Contains(i))
-                    //{
-                    FileInfo file = new FileInfo(i);
-                    list_to_rename.Add(new RenamerListView(i, FileInformation.file_bitmap_24[Functions.GetFileIndex(file.Extension)], file));
-                    items_count.Text = list_to_rename.Count + (list_to_rename.Count > 1 ? " Item" : "items");
-                    //}
+                    if (!add_in_dictionary.ContainsKey(i))
+                    {
+                        add_in.Add(new RenamerListView(new FileInfo(i)));
+                        add_in_dictionary.Add(i, true);
+                        items_count = add_in_dictionary.Count + (add_in_dictionary.Count > 1 ? " Item" : " Items");
+                    }
                 }
         }
 
-        private void AddFolder_Click(object sender, RoutedEventArgs e)//cheack if item is in list or not
+        void AddDirectory(ObservableCollection<RenamerListView> add_in, string items_count, Grid rename_control, Dictionary<string, bool> add_in_dictionary)
         {
             string path = new Folder_Picker().ShowThisDialog();
             if (path != null)
             {
+                rename_control.IsEnabled = false;
                 BackgroundWorker add_all_files_in_dir_bw = new BackgroundWorker();
                 add_all_files_in_dir_bw.WorkerSupportsCancellation = true;
                 add_all_files_in_dir_bw.WorkerReportsProgress = true;
-                add_all_files_in_dir_bw.DoWork += bw_DoWork;
-                add_all_files_in_dir_bw.ProgressChanged += bw_ProgressChanged;
-                add_all_files_in_dir_bw.RunWorkerCompleted += bw_RunWorkerCompleted;
+                add_all_files_in_dir_bw.DoWork += (object sender, DoWorkEventArgs e) => { GetAllFiles(new DirectoryInfo(e.Argument.ToString()), add_in_dictionary, (BackgroundWorker)sender); };
+                add_all_files_in_dir_bw.ProgressChanged += (object sender, ProgressChangedEventArgs e) =>
+                {
+                    FileInfo i = (FileInfo)e.UserState;
+                    try
+                    { add_in.Add(new RenamerListView(i)); }
+                    catch (Exception) { }
+                };
+                add_all_files_in_dir_bw.RunWorkerCompleted += (object sender, RunWorkerCompletedEventArgs e) =>
+                {
+                    rename_control.IsEnabled = true;
+                    if (add_in_dictionary.Count > 0)
+                        items_count = add_in_dictionary.Count + (add_in_dictionary.Count > 1 ? " Items" : " Item");
+                    else
+                        items_count = "";
+                };
                 add_all_files_in_dir_bw.RunWorkerAsync(path);
             }
-            //GetAllFiles(path);
+        }
+
+        private void GetAllFiles(DirectoryInfo dir, Dictionary<string, bool> list, BackgroundWorker bw)
+        {
+            DirectoryInfo[] sub_dirs = null;
+            try { sub_dirs = dir.GetDirectories(); }
+            catch (Exception) { }
+            FileInfo[] files = null;
+            try
+            { files = dir.GetFiles(); }
+            catch (Exception) { }
+            if (files != null)
+                foreach (var i in files)
+                    if (!list.ContainsKey(i.FullName))
+                    {
+                        list.Add(i.FullName, true);
+                        bw.ReportProgress(0, i);
+                    }
+            if (sub_dirs == null)
+                return;
+            else
+                foreach (var i in sub_dirs)
+                    GetAllFiles(i, list, bw);
+        }
+
+        void ClearList(Dictionary<string, bool> l1, ObservableCollection<RenamerListView> l2, string t)
+        {
+            l1.Clear();
+            l2.Clear(); 
+            t = "";
+        }
+
+        private void RemoveItems(IList selected_list, ObservableCollection<RenamerListView> remove_from, Dictionary<string, bool> list1, string p)
+        {
+            for (int i = selected_list.Count - 1; i >= 0; i--)
+            {
+
+                list1.Remove((selected_list[i] as RenamerListView).FullPath);
+                remove_from.Remove(selected_list[i] as RenamerListView);
+            }
+            if (list1.Count > 0)
+                p = list1.Count + (list1.Count == 1 ? " Item" : " Items");
+            else
+                p = string.Empty;
+        }
+
+
+        #region Extension Changer
+
+        private void AddFile_Click(object sender, RoutedEventArgs e)
+        {
+            AddFiles(list_to_rename, items_count.Text, list1);
+        }
+
+        private void AddFolder_Click(object sender, RoutedEventArgs e)//cheack if item is in list or not
+        {
+            AddDirectory(list_to_rename, items_count.Text, rename_control, list1);
         }
 
         private void ClearList_Click(object sender, RoutedEventArgs e)
         {
-            list_to_rename.Clear();
-            items_count.Text = "";
-            //FilesList.Items.Clear();
+            ClearList(list1, list_to_rename, items_count.Text);
         }
 
-        private void Rename_Click(object sender, RoutedEventArgs e)//Move To Thread and pocesspar to background worker 
+        private void Rename_Click(object sender, RoutedEventArgs e)
         {
-            if (new My_MessageBox("Confirmation", "Are you sure you want to rename all files in list?", "Caution: you can not reverse this operation or cancel it!", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-Warning.png")), null, null).ShowThisDialog() == MyMessageBoxResult.Yes)
+            if (new My_MessageBox("Confirmation", "Are you sure you want to rename all files in list?", "Caution: you can not reverse this operation!", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-Warning.png")), null, null).ShowThisDialog() == MyMessageBoxResult.Yes)
             {
-                Undone = new List<FileInfo>();
-                BackgroundWorker bw = new BackgroundWorker();
-                bw.WorkerSupportsCancellation = true;
-                bw.WorkerReportsProgress = true;
-                bw.DoWork += RenameBW_DoWork;
-                bw.ProgressChanged += RenameBW_ProgressChanged;
-                bw.RunWorkerCompleted += RenameBW_RunWorkerCompleted;
-                remove_old_extension = remove_extension.IsChecked;
-                process.Visibility = Visibility.Visible;
-                process.Value = 0;
-                process.Maximum = list_to_rename.Count;
-                new_extension = extension.Text;
-                bw.RunWorkerAsync();
+                List<FileOperationItem> to_rename = new List<FileOperationItem>();
+                foreach (var i in list_to_rename)
+                    to_rename.Add(new FileOperationItem(i.File, false, (remove_extension.IsChecked.Value ? i.File.Name.Substring(0, i.File.Name.Length - i.File.Extension.Length) : i.File.Name) + (extension.Text.Length > 0 ? ('.' + extension.Text) : "")));
+                new Operation().CopyDialogShow(to_rename, Op.Rename, "", true);
+                ClearList(list1, list_to_rename, items_count.Text);
             }
         }
 
-        private void RenameBW_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
-        {
-            list_to_rename.Clear();
-            foreach (FileInfo i in Undone)
-                //FilesList.Items.Add(MakeItemFile(i));
-                list_to_rename.Add(new RenamerListView(i.FullName, FileInformation.file_bitmap_24[Functions.GetFileIndex(i.Extension)], i));
-            items_count.Text = list_to_rename.Count + (list_to_rename.Count > 1 ? " Item" : "items");
-            new My_MessageBox("Renamer", "Done." + (Undone.Count > 0 ? "\n But some files have not been renamed successfully, this files have been readded to the list" : ""), new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-information.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-information.wav")).ShowDialog();
-            process.Visibility = Visibility.Hidden;
-        }
-
-        private void RenameBW_ProgressChanged(object sender, ProgressChangedEventArgs e)
-        {
-            process.Value = e.ProgressPercentage + 1;
-        }
-
-        private void RenameBW_DoWork(object sender, DoWorkEventArgs e)
-        {
-            //bool show_message_again = true;
-            for (int i = 0; i < list_to_rename.Count; i++)
-                try
-                {
-                    if (File.Exists(list_to_rename[i].FullPath))
-                    {
-                        string file_path;
-                        if (remove_old_extension == false)
-                            //file_path = i.ContentStringFormat;
-                            file_path = list_to_rename[i].FullPath;
-                        else
-                            //file_path = i.ContentStringFormat.Substring(0, i.ContentStringFormat.Length - ((FileInfo)i.Tag).Extension.Length);
-                            file_path = list_to_rename[i].FullPath.Substring(0, list_to_rename[i].FullPath.Length - list_to_rename[i].File.Extension.Length);
-                        if (!File.Exists(file_path + "." + new_extension))
-                            //File.Move(i.ContentStringFormat, file_path + "." + extension.Text);
-                            File.Move(list_to_rename[i].FullPath, file_path + "." + new_extension);
-                        else
-                        {
-                            int k = 1;
-                            while (File.Exists(file_path + " (" + k + ")" + "." + new_extension)) k++;
-                            //if (!show_message_again || (show_message_again && new My_MessageBox("Rename file", "Do you want to name file '" + file_path + " (" + k + ")" + "." + new_extension + "' instat of '" + file_path + "." + new_extension + "'", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-Warning.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-Warning.wav"), true).ShowThisDialog(out show_message_again) == MyMessageBoxResult.Yes))
-                            //File.Move(i.ContentStringFormat, file_path + " (" + k + ")" + "." + extension.Text);
-                            File.Move(list_to_rename[i].FullPath, file_path + " (" + k + ")" + "." + new_extension);
-                            //else
-                            //    Undone.Add(list_to_rename[i].File);
-                        }
-                    }
-                    else
-                        Undone.Add(list_to_rename[i].File);
-                    ((BackgroundWorker)sender).ReportProgress(i);
-                }
-                catch (Exception) { Undone.Add(list_to_rename[i].File); }
-        }
-
-        private void extension_TextChanged(object sender, TextChangedEventArgs e)
+        private void Extension_TextChanged(object sender, TextChangedEventArgs e)
         {
             if (extension.Text.Contains("*") || extension.Text.Contains("/") || extension.Text.Contains("\\") || extension.Text.Contains("\"") || extension.Text.Contains("?") || extension.Text.Contains("<") || extension.Text.Contains(">") || extension.Text.Contains("|") || extension.Text.Contains("."))
             {
                 extension.Text = extension.Text.Replace("*", "").Replace("/", "").Replace("\\", "").Replace("\"", "").Replace("?", "").Replace("<", "").Replace(">", "").Replace("|", "").Replace(".", "");
-                new My_MessageBox("Renamer", "File extension can't contain any of these characters:\n\\ / : * ? \" < > | .", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                new My_MessageBox("FILE MANAGER", "File extension can't contain any of these characters:\n\\ / : * ? \" < > | .", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
             }
         }
 
-        //private ListViewItem MakeItemFile(FileInfo file)
-        //{
-        //    int file_index = 0;
-        //    file_index = Functions.GetFileIndex(file.Extension);
-
-        //    Image image = new Image();
-        //    image.HorizontalAlignment = HorizontalAlignment.Left;
-        //    image.VerticalAlignment = VerticalAlignment.Top;
-        //    image.Width = image.Height = 24;
-        //    image.Margin = margins[0];
-        //    image.Source = FileInformation.file_bitmap_24[file_index];
-
-        //    TextBlock tx1 = new TextBlock();
-        //    tx1.VerticalAlignment = VerticalAlignment.Top;
-        //    tx1.FontSize = 14;
-        //    tx1.Margin = margins[1];
-        //    tx1.TextTrimming = TextTrimming.CharacterEllipsis;
-        //    tx1.Text = file.FullName;
-
-        //    //TextBlock tx2 = new TextBlock();
-        //    //tx2.VerticalAlignment = VerticalAlignment.Top;
-        //    //tx2.FontSize = 14;
-        //    //tx2.Margin = margins[3];
-        //    //tx2.TextTrimming = TextTrimming.CharacterEllipsis;
-        //    //tx2.Text = "Old Extension: '" + file.Extension.ToUpper() + "'";
-
-        //    //TextBlock tx3 = new TextBlock();
-        //    //tx3.VerticalAlignment = VerticalAlignment.Top;
-        //    //tx3.FontSize = 14;
-        //    //tx3.Margin = margins[4];
-        //    //tx3.TextTrimming = TextTrimming.CharacterEllipsis;
-        //    //tx3.Text = "Type: " + Functions.GetFileType(file_index, file.Extension);
-
-        //    //Rectangle separator = new Rectangle();
-        //    //separator.Fill = Brushes.Silver;
-        //    //separator.Height = 1;
-        //    //separator.Margin = margins[5];
-        //    //separator.VerticalAlignment = VerticalAlignment.Bottom;
-
-        //    Grid container = new Grid();
-        //    container.Height = 30;
-        //    container.Width = FilesList.ActualWidth - 40;
-        //    container.Children.Add(image);
-        //    container.Children.Add(tx1);
-        //    //container.Children.Add(tx2);
-        //    //container.Children.Add(tx3);
-        //    //container.Children.Add(separator);
-
-        //    ListViewItem LVI = new ListViewItem();
-        //    LVI.ToolTip = file.FullName;
-        //    LVI.Tag = file;
-        //    LVI.ContentStringFormat = file.FullName;
-        //    LVI.Content = container;
-
-        //    return LVI;
-        //}
-
         private void RemoveSelected_Click(object sender, RoutedEventArgs e)
         {
-            for (int i = FilesList.SelectedItems.Count - 1; i >= 0; i--)
-                //FilesList.Items.RemoveAt(FilesList.Items.IndexOf(FilesList.SelectedItems[i]));
-                list_to_rename.RemoveAt(FilesList.Items.IndexOf(FilesList.SelectedItems[i]));
-            items_count.Text = list_to_rename.Count + (list_to_rename.Count > 1 ? " Item" : "items");
+            RemoveItems(FilesList.SelectedItems, list_to_rename, list1, items_count.Text);
         }
+
+        #endregion
+
 
         #region Suggest best possible extension
 
         private void AddFile2_Click(object sender, RoutedEventArgs e)
         {
-            System.Windows.Forms.OpenFileDialog OFD = new System.Windows.Forms.OpenFileDialog();
-            OFD.Multiselect = true;
-            if (OFD.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                foreach (string i in OFD.FileNames)
-                {
-                    FileInfo file = new FileInfo(i);
-                    list_to_rename2.Add(new Renamer2ListView(i, FileInformation.file_bitmap_24[Functions.GetFileIndex(file.Extension)], file));
-                    items_count2.Text = list_to_rename2.Count + (list_to_rename2.Count > 1 ? " Item" : "items");
-                }
+            AddFiles(list_to_rename2, items_count2.Text, list2);
         }
 
         private void AddFolder2_Click(object sender, RoutedEventArgs e)
         {
-            string path = new Folder_Picker().ShowThisDialog();
-            if (path != null)
-            {
-                BackgroundWorker add_all_files_in_dir_bw2 = new BackgroundWorker();
-                add_all_files_in_dir_bw2.WorkerSupportsCancellation = true;
-                add_all_files_in_dir_bw2.WorkerReportsProgress = true;
-                add_all_files_in_dir_bw2.DoWork += bw2_DoWork;
-                add_all_files_in_dir_bw2.ProgressChanged += bw2_ProgressChanged;
-                add_all_files_in_dir_bw2.RunWorkerCompleted += bw2_RunWorkerCompleted;
-                add_all_files_in_dir_bw2.RunWorkerAsync(path);
-            }
-        }
-
-        private void bw2_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
-        {
-            items_count2.Text = list_to_rename2.Count + (list_to_rename2.Count > 1 ? " Items" : "item");
-        }
-
-        private void bw2_ProgressChanged(object sender, ProgressChangedEventArgs e)
-        {
-            FileInfo i = (FileInfo)e.UserState;
-            try
-            { list_to_rename2.Add(new Renamer2ListView(i.FullName, FileInformation.file_bitmap_24[Functions.GetFileIndex(i.Extension)], i)); }
-            catch (Exception) { }
-        }
-
-        private void bw2_DoWork(object sender, DoWorkEventArgs e)
-        {
-            GetAllFiles(e.Argument.ToString(), (BackgroundWorker)sender);
+            AddDirectory(list_to_rename2, items_count2.Text, rename2_control, list2);
         }
 
         private void RemoveSelected2_Click(object sender, RoutedEventArgs e)
         {
-            for (int i = FilesList2.SelectedItems.Count - 1; i >= 0; i--)
-                list_to_rename2.RemoveAt(FilesList2.Items.IndexOf(FilesList2.SelectedItems[i]));
-            items_count.Text = list_to_rename2.Count + (list_to_rename2.Count > 1 ? " Item" : "items");
+            RemoveItems(FilesList2.SelectedItems, list_to_rename2, list2, items_count2.Text);
         }
 
         private void ClearList2_Click(object sender, RoutedEventArgs e)
         {
-            list_to_rename2.Clear();
+            ClearList(list2, list_to_rename2, items_count2.Text);
         }
 
         private void Rename2_Click(object sender, RoutedEventArgs e)
         {
-            if (new My_MessageBox("Confirmation", "Are you sure you want to rename all files in list?", "Caution: you can not reverse this operation or cancel it!", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-Warning.png")), null, null).ShowThisDialog() == MyMessageBoxResult.Yes)
-            {
+            if (new My_MessageBox("Confirmation", "Are you sure you want to rename all files in list?", "Caution: you can not reverse this operation!", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-Warning.png")), null, null).ShowThisDialog() == MyMessageBoxResult.Yes)
                 Suggest_Click(null, null);
-            }
         }
 
         private void Suggest_Click(object sender, RoutedEventArgs e)
@@ -345,106 +211,17 @@ namespace File_Manager
                 suggest_bw.RunWorkerCompleted += SuggestAndRename_bw_RunWorkerCompleted;
             else
                 suggest_bw.RunWorkerCompleted += SuggestBW_RunWorkerCompleted;
-            suggest_bw.RunWorkerAsync(list_of_FilesID);
+            suggest_bw.RunWorkerAsync();
+            rename2_control.IsEnabled = false;
             rename2_progressbar.Value = 0;
             rename2_progressbar.Visibility = Visibility.Visible;
-            FilesList2.Margin = new Thickness(1500, 1500, 1500, 1500);
-        }
-
-        private void SuggestAndRename_bw_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
-        {
-            SuggestBW_RunWorkerCompleted(null, null);
-            BackgroundWorker renamer2_bw = new BackgroundWorker();
-            renamer2_bw.DoWork += Rename2BW_DoWork;
-            renamer2_bw.ProgressChanged += Rename2BW_ProgressChanged;
-            renamer2_bw.WorkerSupportsCancellation = renamer2_bw.WorkerReportsProgress = true;
-            renamer2_bw.RunWorkerCompleted += Rename2BW_RunWorkerCompleted;
-            renamer2_bw.RunWorkerAsync(remove_extension2.IsChecked);
-            rename2_progressbar.Value = 0;
-            rename2_progressbar.Visibility = Visibility.Visible;
-            FilesList2.Margin = new Thickness(1500, 1500, 1500, 1500);
-        }
-
-        private void Rename2BW_DoWork(object sender, DoWorkEventArgs e)
-        {
-            bool? is_checked = (bool?)e.Argument;
-            //bool show_message_again = true;
-            int process = -1;
-            foreach (var i in list_to_rename2)
-            {
-                process++;
-                if (i.PossibleExt.Count > i.SelectedExt && i.Done == false && i.PossibleExt[i.SelectedExt] != "none")
-                    try
-                    {
-                        if (i.File.Exists && ("." + i.PossibleExt[i.SelectedExt]) != i.File.Extension)
-                        {
-                            string file_path;
-                            if (is_checked == false)
-                                file_path = i.FullPath;
-                            else
-                                file_path = i.FullPath.Substring(0, i.FullPath.Length - i.File.Extension.Length);
-                            if (!File.Exists(file_path + "." + i.PossibleExt[i.SelectedExt]))
-                                i.File.MoveTo(file_path + "." + i.PossibleExt[i.SelectedExt]);
-                            else
-                            {
-                                int k = 1;
-                                while (File.Exists(file_path + " (" + k + ")" + "." + i.PossibleExt[i.SelectedExt])) k++;
-                                //if (!show_message_again || (show_message_again && new My_MessageBox("Rename file", "Do you want to name file '" + file_path + " (" + k + ")" + "." + new_extension + "' instat of '" + file_path + "." + new_extension + "'", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-Warning.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-Warning.wav"), true).ShowThisDialog(out show_message_again) == MyMessageBoxResult.Yes))
-                                i.File.MoveTo(file_path + " (" + k + ")" + "." + i.PossibleExt[i.SelectedExt]);
-                                //else
-                                //    Undone.Add(list_to_rename[i].File);
-                            }
-                            ((BackgroundWorker)sender).ReportProgress(process);
-                        }
-                    }
-                    catch (Exception) { }
-            }
-        }
-
-        private void Rename2BW_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
-        {
-            rename2_progressbar.Value = 1050;
-            rename2_progressbar.Visibility = Visibility.Hidden;
-            FilesList2.Margin = new Thickness(10, 42, 10, 66);
-        }
-
-        private void Rename2BW_ProgressChanged(object sender, ProgressChangedEventArgs e)
-        {
-            rename2_progressbar.Value += 1000 / list_to_rename2.Count;
-            list_to_rename2[e.ProgressPercentage].Done = true;
-        }
-
-        private void SuggestBW_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
-        {
-            foreach (var i in list_to_rename2)
-            {
-                if (i.PossibleExt.Count == 0)
-                    i.PossibleExt.Add("none");
-                if (i.PossibleExt.Count > 0 && i.Done == false)
-                    i.SelectedExt = 0;
-            }
-            rename2_progressbar.Value = 1050;
-            rename2_progressbar.Visibility = Visibility.Hidden;
-            FilesList2.Margin = new Thickness(10, 42, 10, 66);
-        }
-
-        private void SuggestBW_ProgressChanged(object sender, ProgressChangedEventArgs e)
-        {
-            if (e.ProgressPercentage > -1)
-            {
-                list_to_rename2[e.ProgressPercentage].PossibleExt.Add(e.UserState.ToString());
-                list_to_rename2[e.ProgressPercentage].SelectedExt = 0;
-            }
-            else
-                rename2_progressbar.Value += 1000 / list_to_rename2.Count;
         }
 
         private void SuggestBW_DoWork(object sender, DoWorkEventArgs e)
         {
-            List<FileIDInfo> list = (List<FileIDInfo>)e.Argument;
-            Parallel.For(0, list_to_rename2.Count, (i) =>// (int i = 0; i < list_to_rename2.Count; i++)
+            BackgroundWorker this_bw = ((BackgroundWorker)sender);
+            Parallel.For(0, list_to_rename2.Count, (i) =>//for (int i = 0; i < list_to_rename2.Count; i++)
             {
-                BackgroundWorker this_bw = ((BackgroundWorker)sender);
                 if (!list_to_rename2[i].Done && list_to_rename2[i].PossibleExt.Count == 0 && list_to_rename2[i].File.Exists)
                 {
                     try
@@ -472,22 +249,26 @@ namespace File_Manager
                                 this_bw.ReportProgress(i, "xls");
                             else
                             {
-                                foreach (var j in list)
-                                    if (list_to_rename2[i].File.Length >= j.IDs.Count)
-                                    {
-                                        try
+                                foreach (var j in FileInfoCombonents.FilesInformation)
+                                    foreach (var l in j.Value.IDs)
+                                        if (list_to_rename2[i].File.Length >= l.Length + j.Value.Offset)
                                         {
-                                            int k;
-                                            while (j.IDs.Count > file_bytes.Count)
-                                                file_bytes.Add(BR.ReadByte());
-                                            for (k = 0; k < j.IDs.Count; k++)
-                                                if (j.IDs[k] != file_bytes[k])
+                                            try
+                                            {
+                                                int k;
+                                                while (l.Length + j.Value.Offset > file_bytes.Count)
+                                                    file_bytes.Add(BR.ReadByte());
+                                                for (k = j.Value.Offset; k < l.Length; k++)
+                                                    if (l[k] != file_bytes[k])
+                                                        break;
+                                                if (k == l.Length)
+                                                {
+                                                    this_bw.ReportProgress(i, j.Value.Extention);
                                                     break;
-                                            if (k == j.IDs.Count)
-                                                this_bw.ReportProgress(i, j.Extention);
+                                                }
+                                            }
+                                            catch (Exception) { }
                                         }
-                                        catch (Exception) { }
-                                    }
                                 if (!list_to_rename2[i].PossibleExt.Contains("doc"))
                                     if (IsPPT(list_to_rename2[i], this_bw))
                                     {
@@ -503,7 +284,41 @@ namespace File_Manager
             });
         }
 
-        private bool IsXLS(Renamer2ListView i, BackgroundWorker this_bw)
+        private void SuggestBW_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        {
+            if (e.ProgressPercentage > -1)
+                list_to_rename2[e.ProgressPercentage].PossibleExt.Add(e.UserState.ToString());
+            else
+                rename2_progressbar.Value += 1000.0 / list_to_rename2.Count;
+        }
+
+        private void SuggestBW_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            foreach (var i in list_to_rename2)
+            {
+                if (i.PossibleExt.Count == 0)
+                    i.PossibleExt.Add("none");
+                if (i.PossibleExt.Count > 0 && !i.Done && i.SelectedExt < 0)
+                    i.SelectedExt = 0;
+                i.Done = true;
+            }
+            rename2_progressbar.Visibility = Visibility.Hidden;
+            rename2_control.IsEnabled = true;
+            FilesList2.Items.Refresh();
+        }
+
+        private void SuggestAndRename_bw_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            SuggestBW_RunWorkerCompleted(null, null);
+            List<FileOperationItem> to_rename = new List<FileOperationItem>();
+            foreach (var i in list_to_rename2)
+                if (i.PossibleExt.Count > i.SelectedExt && i.Done && i.PossibleExt[i.SelectedExt] != "none" && i.File.Exists && ("." + i.PossibleExt[i.SelectedExt]) != i.File.Extension)
+                    to_rename.Add(new FileOperationItem(i.File, false, (remove_extension2.IsChecked.Value ? i.File.Name.Substring(0, i.File.Name.Length - i.File.Extension.Length) : i.File.Name) + (i.PossibleExt[i.SelectedExt].Length > 0 ? (i.PossibleExt[i.SelectedExt]) : "")));
+            new Operation().CopyDialogShow(to_rename, Op.Rename, "", true);
+            ClearList(list2, list_to_rename2, items_count2.Text);
+        }
+
+        private bool IsXLS(RenamerListView i, BackgroundWorker this_bw)
         {
             if (i.File.Length > 1043)
             {
@@ -515,7 +330,7 @@ namespace File_Manager
             return false;
         }
 
-        private bool IsDOC(Renamer2ListView i, BackgroundWorker this_bw)
+        private bool IsDOC(RenamerListView i, BackgroundWorker this_bw)
         {
             if (i.File.Length > 550)
             {
@@ -527,7 +342,7 @@ namespace File_Manager
             return false;
         }
 
-        private bool IsWebM(Renamer2ListView i, BackgroundWorker this_bw, List<byte> file_bytes)
+        private bool IsWebM(RenamerListView i, BackgroundWorker this_bw, List<byte> file_bytes)
         {
             if (i.File.Length > 35)
                 if (file_bytes[0] == 0x1A && file_bytes[1] == 0x45 && file_bytes[2] == 0xDF && file_bytes[3] == 0xA3)
@@ -540,7 +355,7 @@ namespace File_Manager
             return false;
         }
 
-        private bool IsMP4(Renamer2ListView i, BackgroundWorker this_bw, List<byte> file_bytes)
+        private bool IsMP4(RenamerListView i, BackgroundWorker this_bw, List<byte> file_bytes)
         {
             if (file_bytes[4] == 0x66 && file_bytes[5] == 0x74 && file_bytes[6] == 0x79 && file_bytes[7] == 0x70 && file_bytes[8] == 0x46 && file_bytes[9] == 0x41 && file_bytes[10] == 0x43 && file_bytes[11] == 0x45)
                 return true;
@@ -559,21 +374,21 @@ namespace File_Manager
             return false;
         }
 
-        private bool Is3GP(Renamer2ListView i, BackgroundWorker this_bw, List<byte> file_bytes)
+        private bool Is3GP(RenamerListView i, BackgroundWorker this_bw, List<byte> file_bytes)
         {
             if (file_bytes[4] == 0x66 && file_bytes[5] == 0x74 && file_bytes[6] == 0x79 && file_bytes[7] == 0x70 && file_bytes[8] == 0x33 && file_bytes[9] == 0x67 && file_bytes[10] == 0x70)
                 return true;
             return false;
         }
 
-        private bool IsAVI(Renamer2ListView i, BackgroundWorker this_bw, List<byte> file_bytes)
+        private bool IsAVI(RenamerListView i, BackgroundWorker this_bw, List<byte> file_bytes)
         {
             if (file_bytes[0] == 0x52 && file_bytes[1] == 0x49 && file_bytes[2] == 0x46 && file_bytes[3] == 0x46 && file_bytes[8] == 0x41 && file_bytes[9] == 0x56 && file_bytes[10] == 0x49)
                 return true;
             return false;
         }
 
-        private bool IsPPT(Renamer2ListView i, BackgroundWorker sender)
+        private bool IsPPT(RenamerListView i, BackgroundWorker sender)
         {
             if (i.File.Length > 44)
             {
@@ -584,14 +399,14 @@ namespace File_Manager
             return false;
         }
 
-        private bool IsWave(Renamer2ListView i, BackgroundWorker sender, List<byte> file_bytes)
+        private bool IsWave(RenamerListView i, BackgroundWorker sender, List<byte> file_bytes)
         {
             if (file_bytes[0] == 0x52 && file_bytes[1] == 0x49 && file_bytes[2] == 0x46 && file_bytes[3] == 0x46 && file_bytes[8] == 0x57 && file_bytes[9] == 0x41 && file_bytes[10] == 0x56 && file_bytes[11] == 0x45)
                 return true;
             return false;
         }
 
-        private bool IsISO(Renamer2ListView i, BackgroundWorker sender)
+        private bool IsISO(RenamerListView i, BackgroundWorker sender)
         {
             if (i.File.Length > 32776)
             {
@@ -604,61 +419,134 @@ namespace File_Manager
         }
 
         #endregion
+    }
 
-        private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    class RenamerListView : GeneralPurpose
+    {
+        public RenamerListView(FileInfo file)
         {
-            if (list_of_FilesID == null)
-            {
-                list_of_FilesID = new List<FileIDInfo>();
-                Stream st = null;
-                bool error = false;
-                if (File.Exists("ExtIDs.dat"))
-                    try
-                    {
-                        FileInfo file = new FileInfo("ExtIDs.dat");
-                        if (file.Length < 256)
-                            error = true;
-                        else
-                        {
-                            BinaryReader BR = new BinaryReader(File.OpenRead("ExtIDs.dat"));
-                            int count = BR.ReadInt32();
-                            if (BR.ReadByte() == 68 && BR.ReadByte() == 114 && BR.ReadByte() == 46 && BR.ReadByte() == 77 && BR.ReadByte() == 111 && BR.ReadByte() == 104 && BR.ReadByte() == 97 && BR.ReadByte() == 109 && BR.ReadByte() == 109 && BR.ReadByte() == 97 && BR.ReadByte() == 100)
-                            {
-                                BR.ReadString();
-                                BR.ReadInt32();
-                                BR.ReadString();
-                                BR.BaseStream.Position = 1024;
-                                for (int i = 0; i < count; i++)
-                                {
-                                    string ext = BR.ReadString();
-                                    BR.ReadByte();
-                                    string discription = BR.ReadString();
-                                    int length = BR.ReadInt32();
-                                    List<int> IDs = new List<int>();
-                                    for (int j = 0; j < length; j++)
-                                        IDs.Add(BR.ReadInt32());
-                                    list_of_FilesID.Add(new FileIDInfo(ext, discription, IDs));
-                                }
-                            }
-                            else
-                                error = true;
-                        }
-                    }
-                    catch (Exception) { error = true; }
-                else
-                    error = true;
-                if (error)
-                {
-                    MessageBox.Show("Error while loading file \"ExtIDs.dat\"");
-                    ((TabControl)sender).SelectedIndex = 0;
-                    list_of_FilesID = null;
-                }
-                if (st != null)
-                    st.Close();
-            }
+            FullPath = file.FullName;
+            Image = Functions.GetFileImage24(file.Extension);
+            File = file;
+            possible_ext = new List<string>();
+            SelectedExt = -1;
+            done = false;
+        }
+
+        List<string> possible_ext;
+        public List<string> PossibleExt
+        {
+            get { return possible_ext; }
+            set { possible_ext = value; }
+        }
+
+        int selected_ext;
+        public int SelectedExt
+        {
+            get { return selected_ext; }
+            set { selected_ext = value; }
+        }
+
+        bool done;
+        public Boolean Done
+        {
+            get { return done; }
+            set { done = value; }
         }
     }
 }
+
+
+/*
+        bool done;
+        public Boolean Done
+        {
+            get { return done; }
+            set
+            {
+                if (value)
+                {
+                    status_img = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/tick.png"));
+                    status_txt = "Done";
+                    status_color = Brushes.Green;
+                }
+                else
+                {
+                    status_img = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/error.png"));
+                    status_txt = "Error";
+                    status_color = Brushes.Red;
+                }
+                done = value;
+            }
+        }
+
+        BitmapImage status_img;
+        private BitmapImage StatusImg { get { return status_img; } set { status_img = value; } }
+
+        private string status_txt;
+        public String StatusTxt { get { return status_txt; } set { status_txt = value; } }
+
+        Brush status_color;
+        public Brush StatusColor { get { return status_color; } set { status_color = value; } }
+ * */
+
+
+//private ListViewItem MakeItemFile(FileInfo file)
+//{
+//    int file_index = 0;
+//    file_index = Functions.GetFileIndex(file.Extension);
+
+//    Image image = new Image();
+//    image.HorizontalAlignment = HorizontalAlignment.Left;
+//    image.VerticalAlignment = VerticalAlignment.Top;
+//    image.Width = image.Height = 24;
+//    image.Margin = margins[0];
+//    image.Source = FileInformation.file_bitmap_24[file_index];
+
+//    TextBlock tx1 = new TextBlock();
+//    tx1.VerticalAlignment = VerticalAlignment.Top;
+//    tx1.FontSize = 14;
+//    tx1.Margin = margins[1];
+//    tx1.TextTrimming = TextTrimming.CharacterEllipsis;
+//    tx1.Text = file.FullName;
+
+//    //TextBlock tx2 = new TextBlock();
+//    //tx2.VerticalAlignment = VerticalAlignment.Top;
+//    //tx2.FontSize = 14;
+//    //tx2.Margin = margins[3];
+//    //tx2.TextTrimming = TextTrimming.CharacterEllipsis;
+//    //tx2.Text = "Old Extension: '" + file.Extension.ToUpper() + "'";
+
+//    //TextBlock tx3 = new TextBlock();
+//    //tx3.VerticalAlignment = VerticalAlignment.Top;
+//    //tx3.FontSize = 14;
+//    //tx3.Margin = margins[4];
+//    //tx3.TextTrimming = TextTrimming.CharacterEllipsis;
+//    //tx3.Text = "Type: " + Functions.GetFileType(file_index, file.Extension);
+
+//    //Rectangle separator = new Rectangle();
+//    //separator.Fill = Brushes.Silver;
+//    //separator.Height = 1;
+//    //separator.Margin = margins[5];
+//    //separator.VerticalAlignment = VerticalAlignment.Bottom;
+
+//    Grid container = new Grid();
+//    container.Height = 30;
+//    container.Width = FilesList.ActualWidth - 40;
+//    container.Children.Add(image);
+//    container.Children.Add(tx1);
+//    //container.Children.Add(tx2);
+//    //container.Children.Add(tx3);
+//    //container.Children.Add(separator);
+
+//    ListViewItem LVI = new ListViewItem();
+//    LVI.ToolTip = file.FullName;
+//    LVI.Tag = file;
+//    LVI.ContentStringFormat = file.FullName;
+//    LVI.Content = container;
+
+//    return LVI;
+//}
 
 
 

@@ -12,7 +12,7 @@
                 <RowDefinition/>
             </Grid.RowDefinitions>
             <Grid x:Name="Properties" HorizontalAlignment="Right" Width="220" Visibility="Visible" Grid.RowSpan="1" Background="#FFE7E5E4">
-                <Image x:Name="img" Height="200" Margin="10,20,10,0" VerticalAlignment="Top" Stretch="UniformToFill" Source="Images\Icons\256\computer.png"/>
+                <Image x:Name="img" Height="200" Margin="10,20,10,0" VerticalAlignment="Top" Stretch="UniformToFill"/>
                 <StackPanel Margin="10,240,10,10">
                     <TextBlock Margin="0,0,0,0" TextWrapping="Wrap" VerticalAlignment="Top" FontSize="14">
                         <Run x:Name="name_title" Text="Name: " Foreground="RoyalBlue"/>
@@ -31,17 +31,32 @@
                         <Run x:Name="data_Modified" Text=""/>
                     </TextBlock>
                 </StackPanel>
+                <Grid x:Name="bookmarks" Width="220" Visibility="Hidden">
+                    <ListBox RenderTransformOrigin="0.5,0.5" Margin="0,36,0,43">
+                        <ListBox.Background>
+                            <LinearGradientBrush EndPoint="0.5,1" MappingMode="RelativeToBoundingBox" StartPoint="0.5,0">
+                                <GradientStop Color="#FF57E820" Offset="0"/>
+                                <GradientStop Color="#FF549262" Offset="0.849"/>
+                                <GradientStop Color="#FF64C338" Offset="0.521"/>
+                                <GradientStop Color="#FF55C03D" Offset="0.29"/>
+                            </LinearGradientBrush>
+                        </ListBox.Background>
+                    </ListBox>
+                    <TextBlock TextWrapping="Wrap" Text="BookMarks" VerticalAlignment="Top" FontSize="24" TextAlignment="Center" Height="36" Background="#FFF0F0F0" Foreground="Black" FontFamily="Segoe Script"/>
+                    <Button Content="Delete" Margin="10,0,0,10" Height="28" VerticalAlignment="Bottom" HorizontalAlignment="Left" Width="85" Background="{x:Null}" Foreground="Red" BorderBrush="Red"/>
+                    <Button Content="Clear List" Margin="0,0,10,10" Height="28" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="85" Background="{x:Null}" BorderBrush="#FF003AFF" Foreground="#FF3A00FF"/>
+                </Grid>
             </Grid>
             <ListView x:Name="Explorer" TextBlock.TextAlignment="Right" Margin="0,0,220,19" ItemsSource="{Binding}" PreviewKeyUp="Explorer_PreviewKeyUp" Foreground="#FF41403B" SelectionChanged="Explorer_SelectionChanged" Background="White" ContextMenuOpening="Explorer_ContextMenuOpening">
                 <ListView.ContextMenu>
                     <ContextMenu>
                         <MenuItem Header="Sort by">
-                            <MenuItem Header="Name"/>
-                            <MenuItem Header="Size"/>
-                            <MenuItem Header="Type"/>
-                            <MenuItem Header="Date Modified"/>
+                            <MenuItem Header="Name" Click="SortByName_Click"/>
+                            <MenuItem Header="Size" Click="SortBySize_Click"/>
+                            <MenuItem Header="Type" Click="TypeBySize_Click"/>
+                            <MenuItem Header="Date Modified" Click="DateModifiedBySize_Click"/>
                         </MenuItem>
-                        <MenuItem Header="Refresh" Click="Explorer_KeyUP"/>
+                        <MenuItem Header="Refresh" Click="Refresh"/>
                         <Separator/>
                         <MenuItem x:Name="paste_context_menu" Header="Paste" IsEnabled="False" Click="Paste_Click"/>
                         <MenuItem Header="Past shortcut" IsEnabled="False"/>
@@ -71,7 +86,7 @@
                     </Style>
                 </ListView.Resources>
                 <ListView.View>
-                <GridView>
+                    <GridView>
                         <GridViewColumn Header="Name" Width="250">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
@@ -86,7 +101,7 @@
                         <GridViewColumn Header="Size" Width="90" DisplayMemberBinding="{Binding Path=FileSize}"/>
                         <GridViewColumn Header="Type" Width="85" DisplayMemberBinding="{Binding Path=FileType}"/>
                         <GridViewColumn Header="Data Modified" Width="100" DisplayMemberBinding="{Binding Path=DateModified}"/>
-                </GridView>
+                    </GridView>
                 </ListView.View>
             </ListView>
             <Grid VerticalAlignment="Bottom" Margin="0,0,220,0">
@@ -114,7 +129,7 @@
             </ComboBox>
             <ProgressBar x:Name="progressbar" Height="22" Margin="109,4,234,0" VerticalAlignment="Top" Background="{x:Null}" Opacity="0.75"/>
             <TextBox x:Name="Address" Margin="109,4,234,0" KeyUp="Address_KeyUp" HorizontalAlignment="Stretch" FontSize="13" VerticalAlignment="Top" Height="22" Background="{x:Null}"/>
-            <Button x:Name="View_Refresh" Click="Explorer_KeyUP" Margin="0,3,209,3" VerticalAlignment="Stretch" Background="{x:Null}" HorizontalAlignment="Right" Width="24" BorderBrush="{x:Null}">
+            <Button x:Name="View_Refresh" Click="Refresh" Margin="0,3,209,3" VerticalAlignment="Stretch" Background="{x:Null}" HorizontalAlignment="Right" Width="24" BorderBrush="{x:Null}">
                 <Image Source="Images/Appearance/view-refresh.png"/>
             </Button>
             <TextBox x:Name="Search" Margin="0,4,5,4" Background="{x:Null}" HorizontalAlignment="Right" Width="199" ToolTip="GGGGG" Tag="FFFFFFFFFFF" FontSize="14"/>
@@ -124,7 +139,7 @@
                 <MenuItem Header="New Window" Foreground="#FF41403B" Click="New_Window"/>
                 <MenuItem Header="New Window (Admin Propriety)" Foreground="#FF41403B" Click="NewWindowAdmin_Click"/>
                 <Separator Foreground="#FF41403B"/>
-                <MenuItem Header="BookMarks" Foreground="#FF41403B"/>
+                <MenuItem Header="BookMarks" Foreground="#FF41403B" IsCheckable="True"/>
                 <Separator Foreground="#FF41403B"/>
                 <MenuItem Header="Preferences" Foreground="#FF41403B"/>
                 <MenuItem Header="about File Manager" Foreground="#FF41403B" Click="MenuItem_Click"/>
@@ -138,9 +153,9 @@
                 <MenuItem Header="Zoom Out" Foreground="#FF41403B"/>
                 <MenuItem Header="Normal Size" Foreground="#FF41403B"/>
                 <Separator/>
-                <MenuItem Header="Refresh" Foreground="#FF41403B" Click="Explorer_KeyUP"/>
+                <MenuItem Header="Refresh" Foreground="#FF41403B" Click="Refresh"/>
                 <Separator/>
-                <MenuItem Header="Show Details Pane" Foreground="#FF41403B" IsCheckable="True"/>
+                <MenuItem Header="Show Details Pane" Foreground="#FF41403B" IsCheckable="True" IsChecked="True" Click="ShowDetailsPanal_Click"/>
                 <MenuItem Header="Show Hidden Files" Foreground="#FF41403B" Click="ShowHiddenFiles_Click" IsCheckable="True"/>
             </MenuItem>
             <MenuItem Header="TOOLS" FontSize="14">
@@ -148,10 +163,11 @@
                 <MenuItem Header="System monitor" Foreground="#FF41403B" Click="SystemMonitor_Click"/>
                 <MenuItem Header="Super extension changer" Foreground="#FF41403B" Click="SuperFilesRenamer_Click"/>
                 <MenuItem Header="Dublicate files remover" Foreground="#FF41403B" Click="DublicateFileRemover_Click"/>
-                <MenuItem Header="Disk explorer" Foreground="#FF41403B" Click="BigFileFinder_Click"/>
+                <MenuItem Header="Directory analyzer" Foreground="#FF41403B" Click="BigFileFinder_Click"/>
                 <MenuItem Header="Empty directories remover" Foreground="#FF41403B" Click="EmptyDirectoriesRemover_Click"/>
-                <MenuItem Header="Files destoyer" Foreground="#FF41403B"/>
-                <MenuItem Header="Files encreptor" Foreground="#FF41403B"/>
+                <MenuItem Header="Files destoyer" Foreground="#FF41403B" Click="FilesDestoyer_Click"/>
+                <MenuItem Header="Files encreptor" Foreground="#FF41403B" Click="FilesEncreptor_Click"/>
+                <MenuItem Header="Files organizer (searcher in free edition)" Foreground="#FF41403B"/>
             </MenuItem>
             <MenuItem x:Name="options" Header="OPTIONS" FontSize="14">
                 <MenuItem Header="New Tab" Foreground="#FF41403B"/>

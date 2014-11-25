@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Management;
+using System.Runtime.InteropServices;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Threading;
@@ -16,6 +19,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using System.Windows.Xps.Packaging;
 
 namespace File_Manager
 {
@@ -24,54 +28,100 @@ namespace File_Manager
     /// </summary>
     public partial class Preview : Window
     {
-        //DriveInfo dr;
-        //FileInfo fi;
-        //DirectoryInfo di;
+        bool CancelEveryThinig = false;
+        DriveInfo dri, directory_root;
+        FileInfo fi;
+        DirectoryInfo di;
+        ItemType type;
         int main_menu_item_count = 7;
         List<FileInfo> neighbors;
-        int current_item_in_viewer = 0;
+        int current_item_in_viewer = 0, clusterSize;
+        List<BackgroundWorker> background_workers = new List<BackgroundWorker>();
         public Preview()
         {
-            //delete after testing
-            BinaryFormatter BF = new BinaryFormatter();
-            List<BasicFileInfoCombonents> info = (List<BasicFileInfoCombonents>)BF.Deserialize(File.Open("FileInfo.dat", FileMode.OpenOrCreate));
-            BasicFileInfoCombonents.ConvertToStandard(info);
-            //
             InitializeComponent();
-            ShowDialog(new FileInfo(@"C:\Users\pal\Documents\media-skip-backward.mp3"), ItemType.File);
         }
 
         #region Start Window
+        BackgroundWorker calc_directory_size;
 
         internal void ShowDialog(object Item, ItemType type)
         {
+            this.type = type;
             switch (type)
             {
                 case ItemType.Drive:
-                    Drive((DriveInfo)Item);
+                    dri = (DriveInfo)Item;
+                    InitializeForDrive(dri);
                     ShowDialog();
                     break;
                 case ItemType.Directory:
-                    Directory((DirectoryInfo)Item);
+                    di = (DirectoryInfo)Item;
+                    InitializeForDirectory(di);
                     ShowDialog();
                     break;
                 case ItemType.File:
-                    InitializeForFile((FileInfo)Item);
+                    fi = (FileInfo)Item;
+                    InitializeForFile(fi);
                     controler.DoWork += controler_DoWork;
                     controler.WorkerReportsProgress = true;
                     controler.ProgressChanged += controler_ProgressChanged;
-                    //ShowDialog();
+                    ShowDialog();
                     break;
                 default:
                     break;
             }
         }
 
+        private void PrimeInitialize(FileSystemInfo file)
+        {
+            Title += " '" + file.FullName + "'";
+            item_path.Text = file.FullName;
+            rename_textbox.Text = file.Name;
+            item_name.Text = "Name: " + file.Name;
+            item_type.Text = file.Extension;
+            creation_time.Text = "Creation: " + file.CreationTimeUtc.ToString();
+            modified_time.Text = "Modified: " + file.LastWriteTimeUtc.ToString();
+            last_accessed_time.Text = "Last accessed: " + file.LastAccessTime.ToString();
+            //Create flowshart;
+            GetAttributes(file);
+            reverse.Visibility = Visibility.Collapsed;
+        }
+
+        private void GetAttributes(FileSystemInfo f)
+        {
+            normal.IsChecked = read_only.IsChecked = hidden.IsChecked = archive.IsChecked = compressed.IsChecked = encrypted.IsChecked = system.IsChecked = not_content_indexed.IsChecked = false;
+            if (f.Attributes.HasFlag(FileAttributes.Normal) || (f is DirectoryInfo && ((int)f.Attributes == 8208)))
+                normal.IsChecked = true;
+            else
+            {
+                other.IsChecked = true;
+                if (f.Attributes.HasFlag(FileAttributes.ReadOnly))
+                    read_only.IsChecked = true;
+                if (f.Attributes.HasFlag(FileAttributes.Hidden))
+                    hidden.IsChecked = true;
+                if (f.Attributes.HasFlag(FileAttributes.Archive))
+                    archive.IsChecked = true;
+                if (f.Attributes.HasFlag(FileAttributes.Compressed))
+                    compressed.IsChecked = true;
+                if (f.Attributes.HasFlag(FileAttributes.Encrypted))
+                    encrypted.IsChecked = true;
+                if (encrypted.IsChecked == false && compressed.IsChecked == false)
+                    not_encrypted_compressed.IsChecked = true;
+                if (f.Attributes.HasFlag(FileAttributes.System))
+                    system.IsChecked = true;
+                if (f.Attributes.HasFlag(FileAttributes.NotContentIndexed))
+                    not_content_indexed.IsChecked = true;
+            }
+        }
+
+        #region File Region
+
         private void InitializeForFile(FileInfo file)
         {
             //Information Tab
             PrimeInitialize(file);
-            change_name_expander.IsEnabled = attribute_tab.IsEnabled = security_tab.IsEnabled = !file.IsReadOnly;
+            change_name_expander.IsEnabled = attribute_grid.IsEnabled = security_tab.IsEnabled = !file.IsReadOnly;
             item_location.Text = "Path: " + file.DirectoryName;
             if (FileInfoCombonents.FilesInformation.ContainsKey(file.Extension.ToLower()))
             {
@@ -83,10 +133,10 @@ namespace File_Manager
                 item_type_discriotion.Text = file.Extension.ToUpper() + " File";
                 item_category.Text = "UnKnown";
             }
-            item_size.Text = Functions.FileSize(file.Length);
-            item_ondisk_size.Text = "on disk: " + Functions.FileSize(file.Length);
+            item_size.Text = Functions.FileSize(file.Length, 2);
+            item_ondisk_size.Text = "on disk: " + Functions.FileSize(SizeOnDisk(file), 2);
             directory_content.Text = "This is a file.";
-            item_image.Source = FileInfoCombonents.FilesInformation[file.Extension.ToLower()].Bitmap256;
+            item_image.Source = Functions.GetFileImage256(file.Extension);
 
             //Atribute Tab
             apply_to_all.Visibility = Visibility.Collapsed;
@@ -98,7 +148,7 @@ namespace File_Manager
                 TabItem_MouseLeftButtonUp(information_tab, null);
                 extract_button.Visibility = Visibility.Collapsed;
                 explore_button.Visibility = Visibility.Collapsed;
-                open_button.Margin = new Thickness(0, 99, 0, 0);
+                open_button.Margin = new Thickness(0, 89, 0, 0);
             }
             else if (FileInfoCombonents.FilesInformation[file.Extension.ToLower()].Category == FileCategory.Application)
             {
@@ -109,7 +159,7 @@ namespace File_Manager
                     open_button_image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Menu/install-package.png"));
                     open_button.ToolTip = "Install package";
                     explore_button.Visibility = Visibility.Collapsed;
-                    open_button.Margin = new Thickness(0, 99, 0, 0);
+                    open_button.Margin = new Thickness(0, 89, 0, 0);
                 }
                 else
                 {
@@ -123,7 +173,7 @@ namespace File_Manager
                         open_button_image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Menu/run-application.png"));
                     explore_button.ToolTip = "Run as administrator";
                     explore_button_image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Menu/run-as-adimstrator.png"));
-                    open_button.Margin = new Thickness(0, 67, 0, 0);
+                    open_button.Margin = new Thickness(0, 57, 0, 0);
                     explore_button.Click += RunAsAdministratorButton_Click;
                 }
                 extract_button.Visibility = Visibility.Collapsed;
@@ -144,9 +194,9 @@ namespace File_Manager
             else if (FileInfoCombonents.FilesInformation[file.Extension.ToLower()].Category == FileCategory.Document)
             {
                 if (file.Extension.ToLower() == ".rtf")
-                    MakeRTFViewer();
+                    MakeRTFViewer(file);
                 else if (file.Extension.ToLower() == ".xps" || file.Extension.ToLower() == ".oxps")
-                    MakeXPSViewer();
+                    MakeXPSViewer(file);
                 else
                 {
                     preview_tab.IsEnabled = false;
@@ -154,16 +204,16 @@ namespace File_Manager
                 }
                 extract_button.Visibility = Visibility.Collapsed;
                 explore_button.Visibility = Visibility.Collapsed;
-                open_button.Margin = new Thickness(0, 99, 0, 0);
+                open_button.Margin = new Thickness(0, 89, 0, 0);
             }
             else if (FileInfoCombonents.FilesInformation[file.Extension.ToLower()].Category == FileCategory.Text || FileInfoCombonents.FilesInformation[file.Extension.ToLower()].Category == FileCategory.TextCanRunAsApplication || FileInfoCombonents.FilesInformation[file.Extension.ToLower()].Category == FileCategory.Html)
             {
                 extract_button.Visibility = Visibility.Collapsed;
-                open_button.Margin = new Thickness(0, 67, 0, 0);
+                open_button.Margin = new Thickness(0, 57, 0, 0);
                 if (FileInfoCombonents.FilesInformation[file.Extension.ToLower()].Category == FileCategory.Html)
-                    MakeHtmlViewer();
+                    MakeHtmlViewer(file);
                 else
-                    MakeTextViewer();
+                    MakeTextViewer(file);
                 if (file.Extension.ToLower() == ".mht" || file.Extension.ToLower() == ".mhtml")
                 {
                     explore_button.ToolTip = "Extract files from archive";
@@ -186,14 +236,14 @@ namespace File_Manager
                     extract_button_image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Menu/run-as-adimstrator.png"));
                     extract_button.Click += RunAsAdministratorButton_Click;
                     extract_button.Visibility = Visibility.Visible;
-                    open_button.Margin = new Thickness(0, 15, 0, 0);
+                    open_button.Margin = new Thickness(0, 05, 0, 0);
                 }
             }
             else if (FileInfoCombonents.FilesInformation[file.Extension.ToLower()].Category == FileCategory.Audio || FileInfoCombonents.FilesInformation[file.Extension.ToLower()].Category == FileCategory.Vedio || FileInfoCombonents.FilesInformation[file.Extension.ToLower()].Category == FileCategory.Image)
             {
                 extract_button.Visibility = Visibility.Collapsed;
                 explore_button.Visibility = Visibility.Collapsed;
-                open_button.Margin = new Thickness(0, 99, 0, 0);
+                open_button.Margin = new Thickness(0, 89, 0, 0);
                 if (FileInfoCombonents.FilesInformation[file.Extension.ToLower()].Category == FileCategory.Image)
                     MakeImageViewer(file);
                 else if (FileInfoCombonents.FilesInformation[file.Extension.ToLower()].Category == FileCategory.Vedio)
@@ -203,19 +253,19 @@ namespace File_Manager
             }
             else if (FileInfoCombonents.FilesInformation[file.Extension.ToLower()].Category == FileCategory.Font)
             {
-                MakeFontViewer();
+                MakeFontViewer(file);
                 explore_button.ToolTip = "Install font";
                 explore_button.Click += InstallFontButton_Click;
                 explore_button_image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Menu/font-install.png"));
                 extract_button.Visibility = Visibility.Collapsed;
-                open_button.Margin = new Thickness(0, 67, 0, 0);
+                open_button.Margin = new Thickness(0, 57, 0, 0);
             }
             else if (FileInfoCombonents.FilesInformation[file.Extension.ToLower()].Category == FileCategory.DiskImage)
             {
                 preview_tab.IsEnabled = false;
                 TabItem_MouseLeftButtonUp(information_tab, null);
                 extract_button.Visibility = Visibility.Collapsed;
-                open_button.Margin = new Thickness(0, 67, 0, 0);
+                open_button.Margin = new Thickness(0, 57, 0, 0);
                 if (file.Extension.ToLower() == ".isz")
                 {
                     explore_button.ToolTip = "Convert to ISO";
@@ -231,25 +281,10 @@ namespace File_Manager
                 else
                 {
                     explore_button.Visibility = Visibility.Collapsed;
-                    open_button.Margin = new Thickness(0, 99, 0, 0);
+                    open_button.Margin = new Thickness(0, 89, 0, 0);
                 }
             }
             main_menu_item_count = main_menu_stack.Children.Count;
-        }
-
-        private void ConvertToISOButton_Click(object sender, RoutedEventArgs e)
-        {
-            throw new NotImplementedException();
-        }
-
-        private void InstallFontButton_Click(object sender, RoutedEventArgs e)
-        {
-            throw new NotImplementedException();
-        }
-
-        private void MakeFontViewer()
-        {
-            throw new NotImplementedException();
         }
 
         #region Audio Section
@@ -268,9 +303,10 @@ namespace File_Manager
             audio_player_element.LoadedBehavior = MediaState.Manual;
             audio_player_element.Play();
             BackgroundWorker slider_mover = new BackgroundWorker();
-            slider_mover.WorkerReportsProgress = true;
+            slider_mover.WorkerReportsProgress = slider_mover.WorkerSupportsCancellation = true;
             slider_mover.DoWork += AudioSliderMover_DoWork;
             slider_mover.ProgressChanged += AudioSliderMover_ProgressChanged;
+            background_workers.Add(slider_mover);
             slider_mover.RunWorkerAsync();
         }
 
@@ -305,7 +341,7 @@ namespace File_Manager
             is_play = true;
             audio_play_list.SelectedIndex = current_item_in_viewer;
             audio_current_position_time.Text = "00:00";
-            if (neighbors.Count > current_item_in_viewer)
+            if (neighbors != null && neighbors.Count > current_item_in_viewer)
                 playing_file_name.Text = neighbors[current_item_in_viewer].Name.Remove(neighbors[current_item_in_viewer].Name.Length - neighbors[current_item_in_viewer].Extension.Length);//name of song
             else
                 playing_file_name.Text = audio_file.Name.Remove(audio_file.Name.Length - audio_file.Extension.Length);
@@ -316,14 +352,15 @@ namespace File_Manager
                     audio_total_time.Text = audio_player_element.NaturalDuration.TimeSpan.Hours + ":" + (audio_player_element.NaturalDuration.TimeSpan.Minutes < 10 ? ("0" + audio_player_element.NaturalDuration.TimeSpan.Minutes) : audio_player_element.NaturalDuration.TimeSpan.Minutes.ToString()) + ":" + (audio_player_element.NaturalDuration.TimeSpan.Seconds < 10 ? ("0" + audio_player_element.NaturalDuration.TimeSpan.Seconds) : audio_player_element.NaturalDuration.TimeSpan.Seconds.ToString());
                 else
                     audio_total_time.Text = (audio_player_element.NaturalDuration.TimeSpan.Minutes < 10 ? ("0" + audio_player_element.NaturalDuration.TimeSpan.Minutes) : audio_player_element.NaturalDuration.TimeSpan.Minutes.ToString()) + ":" + (audio_player_element.NaturalDuration.TimeSpan.Seconds < 10 ? ("0" + audio_player_element.NaturalDuration.TimeSpan.Seconds) : audio_player_element.NaturalDuration.TimeSpan.Seconds.ToString());
-            if (neighbors.Count == null)
+            if (neighbors == null)
             {
                 neighbors = new List<FileInfo>();
                 special_function.Visibility = Visibility.Visible;
                 BackgroundWorker get_audio_neighbor = new BackgroundWorker();
                 get_audio_neighbor.DoWork += GetAudioNeighbor_DoWork;
-                get_audio_neighbor.WorkerReportsProgress = true;
+                get_audio_neighbor.WorkerReportsProgress = get_audio_neighbor.WorkerSupportsCancellation = true;
                 get_audio_neighbor.ProgressChanged += GetAudioNeighbor_ProgressChanged;
+                background_workers.Add(get_audio_neighbor);
                 get_audio_neighbor.RunWorkerAsync();
             }
         }
@@ -490,9 +527,10 @@ namespace File_Manager
             video_player_element.LoadedBehavior = MediaState.Manual;
             video_player_element.Play();
             BackgroundWorker slider_mover = new BackgroundWorker();
-            slider_mover.WorkerReportsProgress = true;
+            slider_mover.WorkerReportsProgress = slider_mover.WorkerSupportsCancellation = true;
             slider_mover.DoWork += VideoSliderMover_DoWork;
             slider_mover.ProgressChanged += VideoSliderMover_ProgressChanged;
+            background_workers.Add(slider_mover);
             slider_mover.RunWorkerAsync();
         }
 
@@ -746,68 +784,411 @@ namespace File_Manager
 
         #endregion
 
+        private void MakeHtmlViewer(FileInfo file)
+        {
+            WebBrowser web = new WebBrowser();
+            web.Navigate(new Uri(file.FullName));
+            web.Margin = new Thickness(0, 0, 12, 0);
+            preview_grid.Children.Add(web);
+        }
+
+        private void MakeXPSViewer(FileInfo file)
+        {
+            DocumentViewer doc_viewer = new DocumentViewer();
+            doc_viewer.Margin = new Thickness(0, 0, 12, 0);
+            try
+            {
+                TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.Indeterminate;
+                preview_grid.Children.Add(doc_viewer);
+                XpsDocument XPS = new XpsDocument(file.FullName, FileAccess.Read);
+                doc_viewer.Document = XPS.GetFixedDocumentSequence();
+                TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.None;
+            }
+            catch (Exception ex)
+            { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+        }
+
+        private void MakeRTFViewer(FileInfo file)
+        {
+            RichTextBox rich = new RichTextBox();
+            rich.Margin = new Thickness(0, 0, 12, 0);
+            rich.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
+            preview_grid.Children.Add(rich);
+            rich.IsReadOnly = true;
+            try
+            {
+                TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.Indeterminate;
+                FileStream FS = new FileStream(file.FullName, FileMode.Open, FileAccess.Read);
+                TextRange TR = new TextRange(rich.Document.ContentStart, rich.Document.ContentEnd);
+                TR.Load(FS, DataFormats.Rtf);
+                FS.Close();
+                TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.None;
+            }
+            catch (Exception ex)
+            { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+        }
+
+        private void MakeTextViewer(FileInfo file)
+        {
+            RichTextBox rich = new RichTextBox();
+            rich.Margin = new Thickness(0, 0, 12, 0);
+            rich.IsReadOnly = true;
+            try
+            {
+                StreamReader SR = new StreamReader(file.FullName);
+                rich.Document = new FlowDocument(new Paragraph(new Run(SR.ReadToEnd())));
+                SR.Close();
+            }
+            catch (Exception ex)
+            { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+            rich.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
+            preview_grid.Children.Insert(0, rich);
+        }
+
+        private void MakeFontViewer(FileInfo file)
+        {
+            //font name and version
+            font_viewer.Visibility = Visibility.Visible;
+            ((ListBox)font_viewer.Children[0]).FontFamily = new FontFamily(new Uri(file.FullName), "Name"); //wrong
+        }
+
+        #region Size on disk
+
+        long SizeOnDisk(FileInfo info)
+        {
+            if (clusterSize == 0)
+                GetClusterSize(info.Directory.Root.FullName);
+            uint hosize;
+            uint losize = GetCompressedFileSizeW(info.FullName, out hosize);
+            long size;
+            size = (long)hosize << 32 | losize;
+            return ((size + (clusterSize) - 1) / (clusterSize)) * clusterSize;
+        }
+
+        void GetClusterSize(string drive)
+        {
+            clusterSize = 0;
+            using (var searcher = new ManagementObjectSearcher("select BlockSize,NumberOfBlocks from Win32_Volume WHERE DriveLetter = '" + drive.TrimEnd('\\') + "'"))
+            {
+                foreach (ManagementObject i in searcher.Get())
+                {
+                    string bb = (i["BlockSize"]).ToString();
+                    int.TryParse(bb, out clusterSize);
+                    if (clusterSize == 0)
+                        clusterSize = 4096;
+                    break;
+                }
+            }
+        }
+
+        [DllImport("kernel32.dll")]
+        static extern uint GetCompressedFileSizeW([In, MarshalAs(UnmanagedType.LPWStr)] string lpFileName, [Out, MarshalAs(UnmanagedType.U4)] out uint lpFileSizeHigh);
+
+        #endregion
+
+        #endregion
+
+
+        #region Directory Region
+
+        List<FileOperationItem> files_list;
+        List<FileOperationItem> directory_list;
+        long total_size, total_on_disk_size;
+
+        private void InitializeForDirectory(DirectoryInfo directory)
+        {
+            //Main Menu
+            open_with_button.ToolTip = "Open in new window";
+            open_button_image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Menu/folder.png"));
+            open_with_button_image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Menu/window-new.png"));
+            copy_to_button_image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Menu/folder-copy.png"));
+            move_to_button_image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Menu/folder-move.png"));
+
+            //Information Tab
+            PrimeInitialize(directory);
+            //change_name_expander.IsEnabled = attribute_tab.IsEnabled = security_tab.IsEnabled = !directory.IsReadOnly;
+            item_location.Text = "Path: " + directory.Parent.FullName;
+            item_type_discriotion.Text = "Files Directory";
+            item_category.Text = "Directory";
+            calc_directory_size = new BackgroundWorker();
+            calc_directory_size.WorkerReportsProgress = true;
+            calc_directory_size.WorkerSupportsCancellation = true;
+            calc_directory_size.ProgressChanged += CalcDirectorySize_ProgressChanged;
+            calc_directory_size.DoWork += CalcDirectorySize_DoWork;
+            background_workers.Add(calc_directory_size);
+            calc_directory_size.RunWorkerAsync(di);
+
+            //BackgroundWorker calc_directory_change_value = new BackgroundWorker();
+            //calc_directory_change_value.WorkerReportsProgress = true;
+            //calc_directory_change_value.WorkerSupportsCancellation = true;
+            //calc_directory_change_value.ProgressChanged += CalcDirectorySizeChangeValue_ProgressChanged;
+            //calc_directory_change_value.DoWork += CalcDirectorySizeChangeValue_DoWork;
+            //calc_directory_change_value.RunWorkerAsync(calc_directory_size);
+            
+            app_can_open_this_type.Items.Add("File Manager");
+            app_can_open_this_type.Items.Add("File Explorer");
+            app_can_open_this_type.Items.Add("Windows Explorer");
+
+            item_image.Source = FileInfoCombonents.FilesInformation["directory"].Bitmap256;
+
+            //Atribute Tab
+            directory_attribute.Text = "Directory";
+
+            preview_tab.IsEnabled = false;
+            hash_tab.IsEnabled = false;
+            TabItem_MouseLeftButtonUp(information_tab, null);
+            extract_button.Visibility = Visibility.Collapsed;
+            explore_button.Visibility = Visibility.Collapsed;
+            open_button.Margin = new Thickness(0, 84, 0, 0);
+
+        }
+
+        private void CalcDirectorySize_DoWork(object sender, DoWorkEventArgs e)
+        {
+            files_list = new List<FileOperationItem>();
+            directory_list = new List<FileOperationItem>();
+            BackgroundWorker bw = (BackgroundWorker)sender;
+            Thread m = new Thread(() => 
+            {
+                if (di == null)
+                    directory_root = dri;
+                else
+                    directory_root = new DriveInfo(di.Root.FullName);
+                while (bw.IsBusy)
+                {
+                    try{ bw.ReportProgress(0); }
+                    catch (Exception) { }
+                    Thread.Sleep(250);
+                }
+            });
+            m.Start();
+            //try
+            { GetSubFilesAndDirectories((DirectoryInfo)e.Argument); }
+            //catch (Exception ex) {/* new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();*/ }
+            bw.ReportProgress(0);
+        }
+
+        private void CalcDirectorySize_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        {
+            try
+            {
+                item_size.Text = Functions.FileSize(total_size, 2);
+                item_ondisk_size.Text = "on disk: " + Functions.FileSize(total_on_disk_size, 2) + " " + Math.Round(total_on_disk_size * 100.0 / (directory_root.TotalSize - directory_root.TotalFreeSpace), 3) + " % of used space on disk";
+                directory_content.Text = "Directory contains " + directory_list.Count + (directory_list.Count > 1 ? " Directories" : " Directory") + " & " + files_list.Count + (files_list.Count > 1 ? " Files" : " File");
+            }
+            catch (Exception) { }
+        }
+
+        private void GetSubFilesAndDirectories(DirectoryInfo directory)
+        {
+            if (CancelEveryThinig)
+                return;
+            var d = directory.GetDirectories();
+            foreach (var i in d)
+            {
+                directory_list.Add(new FileOperationItem(i, false, null));
+                try
+                { GetSubFilesAndDirectories(i); }
+                catch (Exception) { }
+            }
+            var f = directory.GetFiles();
+            foreach (var i in f)
+            {
+                files_list.Add(new FileOperationItem(i, false, ""));
+                total_size += i.Length;
+                total_on_disk_size += SizeOnDisk(i);
+            }
+        }
+
+        #endregion
+
+
+        #region Drive
+
+        private void InitializeForDrive(DriveInfo driveInfo)
+        {
+            //Information Tab
+            PrimeInitialize(new DirectoryInfo(driveInfo.Name));
+            Title += " '" + driveInfo.Name + "'";
+            item_path.Text = driveInfo.Name;
+            item_location.Text = "Path: root";
+            change_name_expander.Header = "Change Label: ";
+            item_type.Text = driveInfo.DriveType.ToString();
+            app_can_open_this_type.Items.Add("File Manager");
+            app_can_open_this_type.Items.Add("File Explorer");
+            app_can_open_this_type.Items.Add("Windows Explorer");
+            time_region.Visibility = Visibility.Hidden;
+            item_image.Source = Functions.GetDriveImage(driveInfo.DriveType, driveInfo.Name.ToLower().Equals(Functions.SystemDrive), driveInfo.IsReady, 256);
+            
+            //main menu and tabs
+            move_to_button.Visibility = delete_button.Visibility = Visibility.Collapsed;
+            preview_tab.IsEnabled = false;
+            hash_tab.IsEnabled = false;
+            open_with_button.ToolTip = "Open in new window";
+            open_button_image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Menu/harddisk.png"));
+            open_with_button_image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Menu/window-new.png"));
+            copy_to_button_image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Menu/folder-copy.png"));
+
+
+            if (driveInfo.IsReady)
+            {
+                try
+                {
+                    item_name.Text = "Name: " + driveInfo.VolumeLabel;
+                    rename_textbox.Text = driveInfo.VolumeLabel;
+                    item_type_discriotion.Text = driveInfo.DriveFormat;
+                    item_size.Text = "Drive size: " + Functions.FileSize(driveInfo.TotalSize, 2) + " with " + Functions.FileSize(driveInfo.TotalFreeSpace, 2) + " Free";
+                    item_ondisk_size.Text = "Used space: " + Functions.FileSize(driveInfo.TotalSize - driveInfo.TotalFreeSpace, 2) + " " + Math.Round((driveInfo.TotalSize - driveInfo.TotalFreeSpace) * 100.0 / driveInfo.TotalSize, 3) + " %";
+                }
+                catch (Exception) { }
+                calc_directory_size = new BackgroundWorker();
+                calc_directory_size.WorkerReportsProgress = true;
+                calc_directory_size.WorkerSupportsCancellation = true;
+                calc_directory_size.ProgressChanged += CalcDriveSize_ProgressChanged;
+                calc_directory_size.DoWork += CalcDirectorySize_DoWork;
+                background_workers.Add(calc_directory_size);
+                calc_directory_size.RunWorkerAsync(dri.RootDirectory);
+                //Create flowshart;
+                //change_name_expander.IsEnabled = attribute_tab.IsEnabled = security_tab.IsEnabled = !directory.IsReadOnly;
+
+                //Atribute Tab
+                if (driveInfo.DriveType == DriveType.CDRom)
+                    attribute_grid.IsEnabled = false;
+                normal.IsEnabled = read_only.IsEnabled = hidden.IsEnabled = archive.IsEnabled = encrypted.IsEnabled = system.IsEnabled = false;
+                other.IsChecked = true;
+                directory_content.Text = "Directory";
+                reverse.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                item_name.Text = "Name: " + driveInfo.Name;
+                attribute_grid.IsEnabled = false;
+                security_tab.IsEnabled = false;
+                change_name_expander.IsEnabled = false;
+                item_type_discriotion.Text = "Drive is not ready!";
+                item_size.Text = "0 byte";
+                item_ondisk_size.Text = "0 byte";
+                directory_content.Text = "Drive is not ready!";
+                item_category.Text = "";
+            }
+            TabItem_MouseLeftButtonUp(information_tab, null);
+            extract_button.Visibility = Visibility.Collapsed;
+            explore_button.Visibility = Visibility.Collapsed;
+            open_button.Margin = new Thickness(0, 143, 0, 0);
+        }
+
+        private void CalcDriveSize_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        {
+            directory_content.Text = "Drive contains " + directory_list.Count + (directory_list.Count > 1 ? " Directories" : " Directory") + " & " + files_list.Count + (files_list.Count > 1 ? " Files" : " File") + (" with " + Functions.FileSize(total_size, 2) + " size.");
+        }
+
+        #endregion
+
         private void EditButton_Click(object sender, RoutedEventArgs e)
         {
-            throw new NotImplementedException();
+            try
+            { Process.Start(new ProcessStartInfo("Tools\\notepad++.exe", fi.FullName)); }
+            catch (Exception ex) { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
         }
 
-        private void MakeTextViewer()
+        private void ConvertToISOButton_Click(object sender, RoutedEventArgs e)
         {
-            //throw new NotImplementedException();
+            try
+            {
+                //password and exit code message box (event 'exited')
+                System.Windows.Forms.SaveFileDialog SFD = new System.Windows.Forms.SaveFileDialog();
+                SFD.Filter = "ISO File (*.iso)|*.iso";
+                if (SFD.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                {
+                    Process.Start(new ProcessStartInfo("Tools\\unisz.exe", " \"" + fi.FullName + "\""));
+                    File.Move(fi.FullName.Remove(fi.FullName.Length - 1) + "o", SFD.FileName);
+                }
+            }
+            catch (Exception ex) { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
         }
 
-        private void MakeHtmlViewer()
+        private void InstallFontButton_Click(object sender, RoutedEventArgs e)
         {
-            throw new NotImplementedException();
-        }
-
-        private void MakeXPSViewer()
-        {
-            throw new NotImplementedException();
-        }
-
-        private void MakeRTFViewer()
-        {
-            throw new NotImplementedException();
+            try
+            {
+                ProcessStartInfo PSI = new ProcessStartInfo("Tools\\InstallFonts.exe", "\"" + fi.FullName + "\"");
+                PSI.Verb = "runas";
+                var P = Process.Start(PSI);
+                P.WaitForExit(int.MaxValue);
+                if (P.ExitCode == 1)
+                    new My_MessageBox("Install font", "Font has been installed successfully", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-information.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-information.wav")).ShowDialog();
+                else
+                    new My_MessageBox("Install Fonts", "Something wrong while installing font.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+            }
+            catch (Exception ex) { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
         }
 
         private void ExtractArchiveButton_Click(object sender, RoutedEventArgs e)
         {
-            throw new NotImplementedException();
+            string path = new Folder_Picker().ShowThisDialog();
+            if (path != null)
+            {
+                ProcessStartInfo PSI;
+                Dictionary<int, string> exit_code = new Dictionary<int, string>(6);
+                switch (fi.Extension.ToLower())
+                {
+                    case ".uha":
+                        PSI = new ProcessStartInfo("Tools\\UHARC.exe", " x \"" + path + "\" \"" + path + "\"");
+                        exit_code.Add(0, "Complete"); exit_code.Add(1, "Waring: Something maybe not complete successfuly."); exit_code.Add(2, "Fatal error"); exit_code.Add(7, "Command line error"); exit_code.Add(8, "No enough memory "); exit_code.Add(255, "You stopped the process");
+                        break;
+                    case ".kgb":
+                        PSI = new ProcessStartInfo("Tools\\KGB.exe", " x \"" + path + "\" \"" + path + "\"");
+                        exit_code.Add(0, "Complete"); exit_code.Add(1, "Waring: Something maybe not complete successfuly."); exit_code.Add(2, "Fatal error"); exit_code.Add(7, "Command line error"); exit_code.Add(8, "No enough memory "); exit_code.Add(255, "You stopped the process");
+                        break;
+                    case ".mht":
+                        PSI = new ProcessStartInfo("Tools\\extractMHT.exe", " \"" + path + "\" \"" + path + "\"");
+                        exit_code.Add(0, "Complete"); exit_code.Add(1, "Waring: Something maybe not complete successfuly."); exit_code.Add(2, "Fatal error"); exit_code.Add(7, "Command line error"); exit_code.Add(8, "No enough memory "); exit_code.Add(255, "You stopped the process");
+                        break;
+                    case ".mhtml":
+                        PSI = new ProcessStartInfo("Tools\\extractMHT.exe", " \"" + path + "\" \"" + path + "\"");
+                        exit_code.Add(0, "Complete"); exit_code.Add(1, "Waring: Something maybe not complete successfuly."); exit_code.Add(2, "Fatal error"); exit_code.Add(7, "Command line error"); exit_code.Add(8, "No enough memory "); exit_code.Add(255, "You stopped the process");
+                        break;
+                    case ".mou":
+                        PSI = new ProcessStartInfo("Tools\\WinMount\\winmount", " -e \"" + path + "\" -s:\"" + path + "\"");
+                        exit_code.Add(0, "Complete"); exit_code.Add(1, "Waring: Something maybe not complete successfuly."); exit_code.Add(2, "Fatal error"); exit_code.Add(7, "Command line error"); exit_code.Add(8, "No enough memory "); exit_code.Add(255, "You stopped the process");
+                        break;
+                    default:
+                        PSI = new ProcessStartInfo("Tools\\7z.exe", " x \"" + path + "\" -o\"" + path + "\"");
+                        exit_code.Add(0, "Complete"); exit_code.Add(1, "Waring: Something maybe not complete successfuly."); exit_code.Add(2, "Fatal error"); exit_code.Add(7, "Command line error"); exit_code.Add(8, "No enough memory "); exit_code.Add(255, "You stopped the process");
+                        break;
+                }
+                try
+                {
+                    Process process = System.Diagnostics.Process.Start(PSI);
+                    process.WaitForExit(int.MaxValue);
+                    exit_code = new Dictionary<int, string>(6);
+                    new My_MessageBox("Extract archive", exit_code[process.ExitCode], new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-warning.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-warning.wav")).ShowDialog();
+                }
+                catch (Exception ex)
+                {
+                    new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                    Close();
+                }
+            }
         }
 
         private void ExplorerArchiveButton_Click(object sender, RoutedEventArgs e)
         {
-            throw new NotImplementedException();
+            //catch Error massages
+            try
+            {
+                if (fi.Extension.ToLower() == ".uha")
+                    Process.Start(new ProcessStartInfo("Tools\\WinUha.exe", "\"" + fi.FullName + "\""));
+                else if (fi.Extension.ToLower() == ".kgb")
+                    Process.Start(new ProcessStartInfo("Tools\\KGB.exe", "\"" + fi.FullName + "\""));
+                else
+                    Process.Start(new ProcessStartInfo("Tools\\7zFM.exe", "\"" + fi.FullName + "\""));
+            }
+            catch (Exception ex)
+            { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
         }
 
-        private void RunAsAdministratorButton_Click(object sender, RoutedEventArgs e)
-        {
-            throw new NotImplementedException();
-        }
 
-        private void PrimeInitialize(FileSystemInfo file)
-        {
-            Title += " '" + file.FullName + "'";
-            item_path.Text = file.FullName;
-            rename_textbox.Text = file.Name;
-            item_name.Text = "Name: " + file.Name;
-            item_type.Text = file.Extension;
-            creation_time.Text = "Creation: " + file.CreationTimeUtc.ToString();
-            modified_time.Text = "Modified: " + file.LastWriteTimeUtc.ToString();
-            last_accessed_time.Text = "Last accessed: " + file.LastAccessTime.ToString();
-            //Create flow shart;
-        }
-
-        private void Directory(DirectoryInfo directoryInfo)
-        {
-            throw new NotImplementedException();
-        }
-
-        private void Drive(DriveInfo driveInfo)
-        {
-            throw new NotImplementedException();
-        }
 
         #endregion
 
@@ -973,29 +1354,88 @@ namespace File_Manager
 
         #region Main Menu Command
 
-        private void MainMenu_Open_Click(object sender, RoutedEventArgs e)
+        private void MainMenuOpen_Click(object sender, RoutedEventArgs e)
         {
-
+            Close();
+            if (type == ItemType.Directory || (type == ItemType.Drive && dri.IsReady))
+            {
+                MainWindow.GoToPath = true;
+                MainWindow.to_go_path = dri == null ? di.FullName : dri.Name;
+            }
+            else if (type == ItemType.Drive && !dri.IsReady)
+                new My_MessageBox("File Manager", "Drive is not ready!", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+            else if (type == ItemType.File)
+                try
+                { System.Diagnostics.Process.Start(new ProcessStartInfo(fi.FullName)); }
+                catch (Exception ex)
+                { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
         }
 
-        private void MainMenu_OpenWith_Click(object sender, RoutedEventArgs e)
+        private void MainMenuOpenWith_Click(object sender, RoutedEventArgs e)
         {
-
+            Functions.OpenWith(fi != null ? fi.FullName : dri != null ? dri.Name : di.FullName, type);
         }
 
-        private void MainMenu_MoveTo_Click(object sender, RoutedEventArgs e)
+        private void RunAsAdministratorButton_Click(object sender, RoutedEventArgs e)
         {
-
+            ProcessStartInfo PSI = new ProcessStartInfo(fi.FullName);
+            PSI.Verb = "runas";
+            try
+            { System.Diagnostics.Process.Start(PSI); }
+            catch (Exception ex)
+            { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
         }
 
-        private void MainMenu_CopyTo_Click(object sender, RoutedEventArgs e)
+        private void MainMenuMoveTo_Click(object sender, RoutedEventArgs e)
         {
+            string copy_to = new Folder_Picker("Select directory to move to", true).ShowThisDialog();
+            if (copy_to != null)
 
+                CollectFiles(true, copy_to);
         }
 
-        private void MainMenu_Delete_Click(object sender, RoutedEventArgs e)
+        private void MainMenuCopyTo_Click(object sender, RoutedEventArgs e)
         {
+            string copy_to = new Folder_Picker("Select directory to copy to", true).ShowThisDialog();
+            if (copy_to != null)
+                CollectFiles(false, copy_to);
+        }
 
+        private void CollectFiles(bool remove, string copy_to)
+        {
+            //////////List<FileOperationItem> to_copy = new List<FileOperationItem>();
+            //////////if (type == ItemType.File)
+            //////////    to_copy.Add(new FileOperationItem(fi, remove, false, fi.FullName.Remove(0, fi.DirectoryName.Length - 1)));
+            //////////else if (type == ItemType.Directory)
+            //////////    to_copy.Add(new FileOperationItem(di, ""));
+            //////////else if (type == ItemType.Drive)
+            //////////    to_copy.Add(new FileOperationItem(new DirectoryInfo(dri.Name), ""));
+            //////////File_Operation window = new File_Operation();
+            //////////window.CopyDialogShow(copy_to, to_copy);
+            List<FileOperationItem> list = new List<FileOperationItem>();
+            if (type == ItemType.Directory)
+                list.Add(new FileOperationItem(di, remove, di.Name));
+            else if (type == ItemType.Drive)
+                list.Add(new FileOperationItem(dri.RootDirectory, remove, dri.RootDirectory.Name));
+            else if (type == ItemType.File)
+                list.Add(new FileOperationItem(fi, remove, fi.Name));
+            if (list.Count > 0)
+                new Operation().CopyDialogShow(list, Op.Copy, copy_to, false);
+        }
+
+        private void MainMenuDelete_Click(object sender, RoutedEventArgs e)
+        {
+            if (new My_MessageBox((type == ItemType.Directory) ? (FileSystemInfo)di : (FileSystemInfo)fi).ShowThisDialog() == MyMessageBoxResult.Yes)
+                try
+                {
+                    if (type == ItemType.Directory)
+                        di.Delete(true);
+                    else
+                        if (!fi.IsReadOnly && fi.Exists)
+                            fi.Delete();
+                }
+                catch (Exception ex)
+                { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
         }
 
         #endregion
@@ -1057,11 +1497,30 @@ namespace File_Manager
                         if (rename_textbox.Text.Contains(i))
                         {
                             rename_textbox.Text = rename_textbox.Text.Replace(i, "");
+                            name_error.Text = "File name can't contain any of these characters:\n" + @"'\' , '/' , ':' , '*' , '?' , '\' , '<' , '>' , '|'";
                             name_error.Visibility = Visibility.Visible;
                         }
                 }
                 else
                     rename_button.Visibility = Visibility.Hidden;
+            }
+        }
+
+        private void RenameButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (rename_textbox.Text.Length > 0 && rename_textbox.Text != "." && rename_textbox.Text[rename_textbox.Text.Length - 1] != '.' /*&& !File.Exists(dir.Parent.FullName + "\\" + name.Text) && !Directory.Exists(dir.Parent.FullName + "\\" + name.Text)*/)
+            {
+                if (type == ItemType.Directory)
+                    di.MoveTo(di.Parent.FullName + "\\" + rename_textbox.Text);
+                else if (type == ItemType.File)
+                    fi.MoveTo(fi.Directory.FullName + "\\" + rename_textbox.Text);
+                name_error.Visibility = Visibility.Collapsed;
+                rename_button.Visibility = Visibility.Hidden;
+            }
+            else
+            {
+                name_error.Text = "You can not use this name!";
+                name_error.Visibility = Visibility.Visible;
             }
         }
 
@@ -1075,26 +1534,203 @@ namespace File_Manager
 
         }
 
+        #region Attributes
 
+        private void ReverseAttribute_Click(object sender, RoutedEventArgs e)
+        {
+            if (dri == null)
+                if (fi == null) GetAttributes(di);
+                else GetAttributes(fi);
+            reverse.Visibility = Visibility.Collapsed;
+        }
 
+        private void NormalAttribute_Checked(object sender, RoutedEventArgs e)
+        {
+            reverse.Visibility = Visibility.Visible;
+            read_only.IsChecked = false;
+            hidden.IsChecked = false;
+            archive.IsChecked = false;
+            compressed.IsChecked = false;
+            encrypted.IsChecked = false;
+            system.IsChecked = false;
+        }
 
+        private void OtherAttributes_Checked(object sender, RoutedEventArgs e)
+        {
+            reverse.Visibility = Visibility.Visible;
+            //archive.IsChecked = true;
+        }
 
+        private void AnyAttributes_Checked(object sender, RoutedEventArgs e)
+        {
+            reverse.Visibility = Visibility.Visible;
+            other.IsChecked = true;
+        }
 
+        private void ApplyAttrepute_Click(object sender, RoutedEventArgs e)
+        {
+            bool?[] attributes = { read_only.IsChecked, hidden.IsChecked, system.IsChecked, archive.IsChecked, compressed.IsChecked, encrypted.IsChecked, not_content_indexed.IsChecked, normal.IsChecked };
+            List<FileOperationItem> list = new List<FileOperationItem>();
+            if (fi != null)
+                list.Add(new FileOperationItem(new FileInfo(fi.FullName), false, CalcFileAttributes(FileAttributes.Directory, new FileInfo(fi.FullName).Attributes, attributes)));
+            else
+                list.Add(new FileOperationItem(new DirectoryInfo(di == null ? dri.Name : di.FullName), false, CalcFileAttributes(FileAttributes.Directory, new DirectoryInfo(di == null ? dri.Name : di.FullName).Attributes, attributes)));
+            new Operation().CopyDialogShow(list, Op.Attributes, "", true);
+        }
 
+        private void ApplyAttreputeToAllContent_Click(object sender, RoutedEventArgs e)
+        {
+            if (calc_directory_size != null)
+                if (calc_directory_size.IsBusy)
+                    new My_MessageBox("Apply attributes", "App is busy now please try again later.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                else
+                {
+                    bool?[] attributes = { read_only.IsChecked, hidden.IsChecked, system.IsChecked, archive.IsChecked, compressed.IsChecked, encrypted.IsChecked, not_content_indexed.IsChecked, normal.IsChecked };
+                    List<FileOperationItem> list = new List<FileOperationItem>();
+                    list.Add(new FileOperationItem(new DirectoryInfo(di == null ? dri.Name : di.FullName), false, CalcFileAttributes(0, new DirectoryInfo(di == null ? dri.Name : di.FullName).Attributes, attributes)));
+                    foreach (var i in directory_list)
+                    {
+                        i.short_path = CalcFileAttributes(FileAttributes.Directory, i.Item.Attributes, attributes);
+                        list.Add(i);
+                    }
+                    foreach (var i in files_list)
+                    {
+                        i.short_path = CalcFileAttributes(0, i.Item.Attributes, attributes);
+                        list.Add(i);
+                    }
+                    new Operation().CopyDialogShow(list, Op.Attributes, "", true);
+                }
+        }
 
+        FileAttributes CalcFileAttributes(FileAttributes start, FileAttributes default_attributes, bool?[] selected_attributes)
+        {
+            FileAttributes new_attributes = start;
+            if (selected_attributes[0] == true)
+                new_attributes += 1;
+            if (selected_attributes[1] == true)
+                new_attributes += 2;
+            if (selected_attributes[2] == true)
+                new_attributes += 4;
+            if (selected_attributes[3] == true)
+                new_attributes += 32;
+            if (default_attributes.HasFlag(FileAttributes.Temporary))
+                new_attributes += 256;
+            if (default_attributes.HasFlag(FileAttributes.SparseFile))
+                new_attributes += 512;
+            if (default_attributes.HasFlag(FileAttributes.ReparsePoint))
+                new_attributes += 1024;
+            if (selected_attributes[4] == true)
+                new_attributes += 2048;
+            if (default_attributes.HasFlag(FileAttributes.Offline))
+                new_attributes += 4096;
+            if (selected_attributes[5] == true)
+                new_attributes += 16384;
+            if (selected_attributes[6] == true)
+                new_attributes += 8192;
+            if (selected_attributes[7].Value)
+                new_attributes = FileAttributes.Normal;
+            return new_attributes;
+        }
 
+        #endregion
 
+        private void CreationChange_Click(object sender, RoutedEventArgs e)
+        {
+            if (dri == null)
+                if (fi == null)
+                {
+                    DateTime? date = new ChangeDate().ShowDialog(di.CreationTimeUtc);
+                    if (date.HasValue)
+                        try
+                        {
+                            di.CreationTimeUtc = date.Value;
+                            creation_time.Text = "Creation: " + di.CreationTimeUtc.ToString();
+                        }
+                        catch (Exception ex)
+                        { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                }
+                else
+                {
+                    DateTime? date = new ChangeDate().ShowDialog(fi.CreationTimeUtc);
+                    if (date.HasValue)
+                        try
+                        {
+                            fi.CreationTimeUtc = date.Value;
+                            creation_time.Text = "Creation: " + fi.CreationTimeUtc.ToString();
+                        }
+                        catch (Exception ex)
+                        { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                }
+        }
 
-        
+        private void ModifiedChange_Click(object sender, RoutedEventArgs e)
+        {
+            if (dri == null)
+                if (fi == null)
+                {
+                    DateTime? date = new ChangeDate().ShowDialog(di.LastWriteTimeUtc);
+                    if (date.HasValue)
+                        try
+                        {
+                            di.LastWriteTimeUtc = date.Value;
+                            modified_time.Text = "Modified: " + di.LastWriteTimeUtc.ToString();
+                        }
+                        catch (Exception ex)
+                        { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                }
+                else
+                {
+                    DateTime? date = new ChangeDate().ShowDialog(fi.LastWriteTimeUtc);
+                    if (date.HasValue)
+                        try
+                        {
+                            fi.LastWriteTimeUtc = date.Value;
+                            modified_time.Text = "Modified: " + fi.LastWriteTimeUtc.ToString();
+                        }
+                        catch (Exception ex)
+                        { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                }
+        }
 
+        private void AccessedChange_Click(object sender, RoutedEventArgs e)
+        {
+            if (dri == null)
+                if (fi == null)
+                {
+                    DateTime? date = new ChangeDate().ShowDialog(di.LastAccessTimeUtc);
+                    if (date.HasValue)
+                        try
+                        {
+                            di.LastAccessTimeUtc = date.Value;
+                            last_accessed_time.Text = "Last accessed: " + di.LastAccessTimeUtc.ToString();
+                        }
+                        catch (Exception ex)
+                        { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                }
+                else
+                {
+                    DateTime? date = new ChangeDate().ShowDialog(fi.LastAccessTimeUtc);
+                    if (date.HasValue)
+                        try
+                        {
+                            fi.LastAccessTimeUtc = date.Value;
+                            last_accessed_time.Text = "Last accessed: " + fi.LastAccessTimeUtc.ToString();
+                        }
+                        catch (Exception ex)
+                        { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                }
+        }
 
-
-
-
-
-
+        private void Window_Closing(object sender, CancelEventArgs e)
+        {
+            CancelEveryThinig = true;
+            foreach(BackgroundWorker bw in background_workers)
+            {
+                if (bw.IsBusy)
+                    bw.CancelAsync();
+            }
+        }
 
 
     }
 }
-

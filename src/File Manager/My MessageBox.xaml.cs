@@ -46,16 +46,17 @@ namespace File_Manager
             date.Text = item.LastWriteTime.ToString();
             if (File.Exists(item.FullName))
             {
-                int index = Functions.GetFileIndex(item.Extension);
-                Image.Source = FileInformation.file_bitmap_64[index];
-                type.Text = FileInformation.file_description[index];
-                size.Text = size.Text + Functions.FileSize(((FileInfo)item).Length);
+                Image.Source = Functions.GetFileImage64(item.Extension);
+                type.Text = Functions.GetFileType(item.Extension);
+                size.Text = size.Text + Functions.FileSize(((FileInfo)item).Length, 2);
             }
             else if (Directory.Exists(item.FullName))
             {
                 type.Text = "Directory";
-                Image.Source = FileInformation.file_bitmap_64[FileInformation.file_bitmap_64.Count - 2];
-                size.Text = "Contains: " + ((DirectoryInfo)item).GetDirectories().Length + " Directories & " + ((DirectoryInfo)item).GetFiles().Length + " Files";
+                Image.Source = Functions.GetFileImage64("directory");
+                try
+                { size.Text = "Contains: " + ((DirectoryInfo)item).GetDirectories().Length + " Directories & " + ((DirectoryInfo)item).GetFiles().Length + " Files"; }
+                catch (Exception) { size.Text = "Contains: can't get information."; }
             }
         }
 

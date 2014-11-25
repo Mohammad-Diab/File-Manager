@@ -1,0 +1,65 @@
+
+#  ⁄—› ⁄·Ï «Œ ’«—«  ’Ì€ «·„·›«  
+* AVI = Audio Video Interleave
+ * RTS = Real Time Streaming
+ * SIS = Symbian OS Installer File
+ * AMR = Adaptive Multi-Rate Codec
+ * JAD = Java Application Descriptor
+ * JAR = Java Archive
+ * JAD = Java Application Descriptor
+ * 3GPP = 3rd Generation Partnership Project
+ * 3GP = 3rd Generation Project
+ * MP3 = MPEG player lll
+ * MP4 = MPEG-4 video file
+ * AAC = Advanced Audio Coding
+ * GIF = Graphic Interchangeable Format
+ * JPEG = Joint Photographic Expert Group
+ * BMP = Bitmap
+ * SWF = Shock Wave Flash
+ * WMV = Windows Media Video
+ * WMA = Windows Media Audio
+ * WAV = Waveform Audio
+ * PNG = Portable Network Graphics
+ * DOC = Document (Microsoft Corporation)
+ * PDF = Portable Document Format
+ * M3G = Mobile 3D Graphics
+ * M4A = MPEG-4 Audio File
+ * NTH = Nokia Theme (series 40)
+ * THM = Themes (SonyEricsson)
+ * MMF = Synthetic Music Mobile Application File
+ * NRT = Nokia Ringtone
+ * XMF = Extensible Music File
+ * WBMP = Wireless Bitmap Image
+ * DVX = DivX Video
+ * HTML = Hyper Text Markup Language
+ * WML = Wireless Markup Language *CD - Compact Disk.
+ * DVD - Digital Versatile Disk.
+ * CRT - Cathode Ray Tube.
+ * DAT - Digital Audio Tape.
+ * DOS - Disk Operating System.
+ * GUI - Graphical User Interface.
+ * HTTP - Hyper Text Transfer Protocol.
+ * IP - Internet Protocol.
+ * ISP - Internet Service Provides.
+ * TCP - Transmission Control Protocol.
+ * UPS - Uninterruptible ≠ Power Supply.
+ * URL - Uniform Resource Locator.
+ * USB - Universal Serial Bus.
+ * VIRUS - Vital Information Resource Under Seized.
+ * 3G - 3rd Generation.
+ * GSM - Global System for Mobile Communication.
+ * CDMA - Code Division Multiple Access.
+ * UMTS - Universal Mobile Telecommunication System.
+ * SIM - Subscriber Identity Module.
+ * HSDPA - High Speed Downlink Packet Access.
+ * EDGE - Enhanced Data Rate For GSM [ Global System for Mobile Communication] Evolution.
+ * VHF - Very High Frequency.
+ * UHF - Ultra High Frequency.
+ * GPRS - General Packet Radio Service.
+ * WAP - Wireless Application Protocol.
+ * TCP - Transmission Control Protocol ≠.
+ * ARPANET - Advanced Research Project Agency Network.
+ * IBM - International Business Machine Corporation.
+ * HP - Hewlett Packard.
+ * AM/FM - Amplitude/ ≠Frequency Modulation.
+ * WLAN - Wireless Local Area Network

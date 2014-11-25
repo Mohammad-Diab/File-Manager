@@ -92,8 +92,8 @@ namespace File_Manager
         {
             MakeGridForFileSystem();
             //name.IsEnabled = !file.IsReadOnly;
-            type.Text = Functions.GetFileType(file_index, file.Extension);
-            size.Text = Functions.FileSize(file.Length);
+            type.Text = Functions.GetFileType(file.Extension);
+            size.Text = Functions.FileSize(file.Length, 2);
             ItemImage.Source = item_image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Icons/256/" + FileInformation.file_image[file_index]));
             apply_to_all.Visibility = Visibility.Collapsed;
             if (FileInformation.file_type[file_index] == FileCategory.Unknown || FileInformation.file_type[file_index] == FileCategory.CannotOpen)
@@ -257,7 +257,7 @@ namespace File_Manager
             delete_button.Visibility = Visibility.Collapsed;
             move_to_button.Visibility = Visibility.Collapsed;
             open_button.Margin = new Thickness(0, 143, 0, 0);
-            ItemImage.Source = item_image.Source = new BitmapImage(new Uri(Functions.GetDriveImage(drive.DriveType, Functions.SystemDrive.Equals(drive.Name.ToLower()), drive.IsReady, Functions.StandardImageSource + "256/")));
+            ItemImage.Source = item_image.Source = Functions.GetDriveImage(drive.DriveType, Functions.SystemDrive.Equals(drive.Name.ToLower()), drive.IsReady, 256);
             modified_all.Visibility = Visibility.Collapsed;
             accessed_all.Visibility = Visibility.Collapsed;
             if (drive.IsReady)
@@ -266,9 +266,9 @@ namespace File_Manager
                 type_title.Text = "File System: ";
                 type.Text = drive.DriveFormat;
                 size_title.Text = "Disk Size: ";
-                size.Text = Functions.FileSize(drive.TotalFreeSpace) + " Free of " + Functions.FileSize(drive.TotalSize);
+                size.Text = Functions.FileSize(drive.TotalFreeSpace, 2) + " Free of " + Functions.FileSize(drive.TotalSize, 2);
                 created_title.Text = "Used Space: ";
-                created.Text = Functions.FileSize(drive.TotalSize - drive.TotalFreeSpace);
+                created.Text = Functions.FileSize(drive.TotalSize - drive.TotalFreeSpace, 2);
                 normal.Visibility = Visibility.Collapsed;
                 read_only.Visibility = Visibility.Collapsed;
                 hidden.Visibility = Visibility.Collapsed;
@@ -312,7 +312,7 @@ namespace File_Manager
             open_button.Margin = new Thickness(0, 79, 0, 0);
             type.Text = "Directory";
             //size_title.Text = "Contains: ";
-            size.Text = Functions.FileSize(0) + " in ";
+            size.Text = Functions.FileSize(0, 2) + " in ";
             dirs_count.Text = 0 + " Directories";
             and.Text = " & ";
             files_count.Text = 0 + " Files";
@@ -339,7 +339,7 @@ namespace File_Manager
             file_count = files.Count;
             sub_dir_count = dirs.Count;
             foreach (var i in files)
-                files_size += i.Size;
+                files_size += ((FileInfo)i.Item).Length;
             dirs_size_worker.ReportProgress(0);
         }
 
@@ -347,7 +347,7 @@ namespace File_Manager
         {
             files_count.Text = file_count + " Files";
             dirs_count.Text = sub_dir_count + " Directories";
-            size.Text = Functions.FileSize(files_size) + " in ";
+            size.Text = Functions.FileSize(files_size, 2) + " in ";
         }
 
         private void MakeGridForFileSystem()
@@ -771,14 +771,14 @@ namespace File_Manager
                 //List<string> dirs = new List<string>();
                 //dirs.Add(FileName.Text);
                 List<FileOperationItem> list = new List<FileOperationItem>();
-                list.Add(new FileOperationItem(new DirectoryInfo(FileName.Text), ""));
+                list.Add(new FileOperationItem(new DirectoryInfo(FileName.Text), false, ""));
                 File_Operation window = new File_Operation();
                 window.SetAttributesDialogShow(list, attributes);
             }
             else if (file_type == ItemType.File)
             {
                 List<FileOperationItem> files = new List<FileOperationItem>();
-                files.Add(new FileOperationItem(new FileInfo(FileName.Text), false, false, ""));
+                files.Add(new FileOperationItem(new FileInfo(FileName.Text), false, ""));
                 File_Operation window = new File_Operation();
                 window.SetAttributesDialogShow(files, attributes);
             }
@@ -796,7 +796,7 @@ namespace File_Manager
                     //dirs.Add(FileName.Text);
                     File_Operation window = new File_Operation();
                     List<FileOperationItem> list = new List<FileOperationItem>();
-                    list.Add(new FileOperationItem(new DirectoryInfo(FileName.Text), ""));
+                    list.Add(new FileOperationItem(new DirectoryInfo(FileName.Text), false, ""));
                     window.SetAttributesDialogShow(list, attributes);
                     //new File_Operation(files, dirs, attributes).Show();
                 }
@@ -976,15 +976,15 @@ namespace File_Manager
         {
             List<FileOperationItem> to_copy = new List<FileOperationItem>();
             if (file_type == ItemType.File)
-                to_copy.Add(new FileOperationItem(file, remove, false, file.FullName.Remove(0, file.DirectoryName.Length - 1)));
+                to_copy.Add(new FileOperationItem(file, remove, file.FullName.Remove(0, file.DirectoryName.Length - 1)));
             else if (file_type == ItemType.Directory)
-                to_copy.Add(new FileOperationItem(dir, ""));
+                to_copy.Add(new FileOperationItem(dir, false, ""));
             //Functions.AddAllFiles(dir.FullName, dir.Parent.FullName, remove, to_copy);
             else if (file_type == ItemType.Drive)
-                to_copy.Add(new FileOperationItem(new DirectoryInfo(drive.Name), ""));
+                to_copy.Add(new FileOperationItem(new DirectoryInfo(drive.Name), false, ""));
             //Functions.AddAllFiles(drive.Name, "", remove, to_copy);
             File_Operation window = new File_Operation();
-            window.CopyDialogShow(copy_to, to_copy);
+            //////////////////window.CopyDialogShow(copy_to, to_copy);
             //new File_Operation(to_copy).Show(copy_to);
         }
 

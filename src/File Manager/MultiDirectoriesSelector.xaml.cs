@@ -22,12 +22,12 @@ namespace File_Manager
     /// </summary>
     public partial class MultiDirectoriesSelector : Window
     {
-        ObservableCollection<RenamerListView> list_to_add = new ObservableCollection<RenamerListView>();
+        ObservableCollection<GeneralPurpose> list_to_add = new ObservableCollection<GeneralPurpose>();
         bool accept = false;
-        Thickness[] margins = { new Thickness(5, 3, 0, 0), new Thickness(35, 5, 0, 0) };
         public MultiDirectoriesSelector()
         {
             InitializeComponent();
+            list_of_directories.DataContext = list_to_add;
         }
 
         internal bool ShowDialog(List<string> paths)
@@ -35,7 +35,7 @@ namespace File_Manager
             ShowDialog();
             if (accept)
             {
-                foreach (RenamerListView i in list_of_directories.Items)
+                foreach (var i in list_to_add)
                     paths.Add(i.FullPath);
             }
             return accept;
@@ -53,20 +53,10 @@ namespace File_Manager
                 Functions.ShuckWindow(this, list_of_directories.Items.Count == 0, "List is empty!");
                 Done.IsEnabled = false;
                 BackgroundWorker bw = new BackgroundWorker();
-                bw.DoWork += bw_DoWork;
-                bw.RunWorkerCompleted += bw_RunWorkerCompleted;
+                bw.DoWork += (object dowork_sender, DoWorkEventArgs dowork_e) => { Thread.Sleep(280); };
+                bw.RunWorkerCompleted += (object completed_sender, RunWorkerCompletedEventArgs completed_e) => { Done.IsEnabled = true; };
                 bw.RunWorkerAsync();
             }
-        }
-
-        void bw_DoWork(object sender, DoWorkEventArgs e)
-        {
-            Thread.Sleep(280);
-        }
-
-        void bw_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
-        {
-            Done.IsEnabled = true;
         }
 
         private void AddFolder_Click(object sender, RoutedEventArgs e)
@@ -78,53 +68,32 @@ namespace File_Manager
 
         private void AddDirectoryToList(string path)
         {
-            bool? isExist = false;  //true:Exist  false:notExist  null:is a father of one of directory in the list
-            if (path[path.Length - 1] != '\\') //add slash to end of the path, then we can check if directory is exist or its a child of any existing directory
-                path = path + "\\";
-            foreach (RenamerListView i in list_to_add)
-                if (path.ToLower().Contains(i.FullPath.ToLower()))
-                {
-                    isExist = true;
-                    break;
-                }
-                else if (i.FullPath.ToLower().Contains(path.ToLower()))
-                {
-                    isExist = null;
-                    break;
-                }
-            if (isExist == false)
-                list_to_add.Add(new RenamerListView(path, null, null));
+            if (Directory.Exists(path))
+            {
+                bool? isExist = false;  //true:Exist  false:notExist  null:is a father of one of directory in the list
+                if (path[path.Length - 1] != '\\') //add slash to end of the path, then we can check if directory is exist or its a child of any existing directory
+                    path = path + "\\";
+                foreach (GeneralPurpose i in list_to_add)
+                    if (path.ToLower().Contains(i.FullPath.ToLower()))
+                    {
+                        isExist = true;
+                        break;
+                    }
+                    else if (i.FullPath.ToLower().Contains(path.ToLower()))
+                    {
+                        isExist = null;
+                        break;
+                    }
+                if (isExist == false)
+                    list_to_add.Add(new GeneralPurpose(path, null));
                 //list_to_add.Items.Add(MakeGridForDirectoriesItem(path));
-            else if (isExist == true)
-                MessageBox.Show("Directory is already Exist in list");
+                else if (isExist == true)
+                    new My_MessageBox("FILE MANAGER", "Directory is already Exist in the list or in a directory in the list!", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-warning.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-warning.wav")).ShowDialog();
+                else
+                    new My_MessageBox("FILE MANAGER", "you have first to remove all \"" + path + "\" suns from the list", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-warning.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-warning.wav")).ShowDialog();
+            }
             else
-                MessageBox.Show("you have first to remove all \"" + path + "\" suns from the list");
-        }
-
-        private Grid MakeGridForDirectoriesItem(string path)
-        {
-            Image image = new Image();
-            image.HorizontalAlignment = HorizontalAlignment.Left;
-            image.VerticalAlignment = VerticalAlignment.Top;
-            image.Width = image.Height = 24;
-            image.Margin = margins[0];
-            image.Source = FileInformation.file_bitmap_24[FileInformation.file_bitmap_24.Count - 2];
-
-            TextBlock tx1 = new TextBlock();
-            tx1.VerticalAlignment = VerticalAlignment.Top;
-            tx1.FontSize = 14;
-            tx1.Margin = margins[1];
-            tx1.TextTrimming = TextTrimming.CharacterEllipsis;
-            tx1.Text = path;
-
-            Grid container = new Grid();
-            container.Height = 30;
-            container.Width = list_of_directories.ActualWidth - 45;
-            container.Children.Add(image);
-            container.Children.Add(tx1);
-            container.ToolTip = path;
-
-            return container;
+                new My_MessageBox("FILE MANAGER", "Path '" + path + "' has not been found!", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
         }
 
         private void ClearList_Click(object sender, RoutedEventArgs e)
@@ -135,7 +104,7 @@ namespace File_Manager
         private void RemoveSelected_Click(object sender, RoutedEventArgs e)
         {
             for (int i = list_of_directories.SelectedItems.Count - 1; i > -1; i--)
-                list_to_add.Remove((RenamerListView)list_of_directories.SelectedItems[i]);
+                list_to_add.Remove((GeneralPurpose)list_of_directories.SelectedItems[i]);
         }
 
         private void ListOfDirectories_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -146,21 +115,10 @@ namespace File_Manager
                 remove_selected.IsEnabled = false;
         }
 
-        private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
-        {
-            //foreach (Grid i in list_of_directories.Items)
-            //    i.Width = list_of_directories.ActualWidth - 45;
-        }
-
-        private void search_PreviewKeyDown(object sender, KeyEventArgs e)
+        private void Search_PreviewKeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Enter)
-            {
-                if (Directory.Exists(to_add_path.Text))
-                    AddDirectoryToList(to_add_path.Text);
-                else
-                    MessageBox.Show("path not found");
-            }
+                AddDirectoryToList(to_add_path.Text);
         }
 
         private void to_add_path_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
@@ -176,15 +134,7 @@ namespace File_Manager
 
         private void AddFolderFromPath_Click(object sender, RoutedEventArgs e)
         {
-            if (Directory.Exists(to_add_path.Text))
-                AddDirectoryToList(to_add_path.Text);
-            else
-                MessageBox.Show("path not found");
-        }
-
-        private void Window_Loaded(object sender, RoutedEventArgs e)
-        {
-            list_of_directories.DataContext = list_to_add;
+            AddDirectoryToList(to_add_path.Text);
         }
     }
 }

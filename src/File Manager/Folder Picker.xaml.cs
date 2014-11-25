@@ -47,9 +47,9 @@ namespace File_Manager
             //FolderExplorer.DataContext = list_to_rename;
             foreach (var i in DriveInfo.GetDrives())
                 if (i.IsReady)
-                    FolderExplorer.Items.Add(make_grid(new BitmapImage(new Uri(Functions.GetDriveImage(i.DriveType,false,i.IsReady, "pack://application:,,,/File Manager;component/Images/Icons/16/"))), i.VolumeLabel + " (" + i.Name + ")", new DirectoryInfo(i.Name)));
+                    FolderExplorer.Items.Add(make_grid(Functions.GetDriveImage(i.DriveType,false,i.IsReady, 16), i.VolumeLabel + " (" + i.Name + ")", new DirectoryInfo(i.Name)));
                 else
-                    FolderExplorer.Items.Add(make_grid(new BitmapImage(new Uri(Functions.GetDriveImage(i.DriveType, false, i.IsReady, "pack://application:,,,/File Manager;component/Images/Icons/16/"))), i.Name, new DirectoryInfo(i.Name)));
+                    FolderExplorer.Items.Add(make_grid(Functions.GetDriveImage(i.DriveType, false, i.IsReady, 16), i.Name, new DirectoryInfo(i.Name)));
         }
 
         private TreeViewItem make_grid(BitmapImage icon, string header, DirectoryInfo full_path)

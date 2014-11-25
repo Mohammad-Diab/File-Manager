@@ -4,16 +4,402 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
+using System.Security.Principal;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
+
 namespace File_Manager
 {
+
+    static class Functions
+    {
+        public static string StandardImageSource = "pack://application:,,,/File Manager;component/Images/Icons/", SystemDrive = "c:\\";
+
+        public static int buffer = 16384 /*32768 / 2*/;
+
+        static Window window;
+        static string message;
+        static bool condition;
+        static double left;
+        public static string[] spliter = { "\\" };
+
+        public static void MarkAs(OperationTree root, OperationOption option, bool over_curent_option)
+        {
+            foreach (var i in root.children)
+                if (i.children == null)
+                {
+                    if (i.user_option == OperationOption.NoValue || over_curent_option)
+                        i.user_option = option;
+                }
+                else
+                {
+                    if (i.user_option == OperationOption.NoValue || over_curent_option)
+                        i.user_option = option;
+                    MarkAs(i, option, over_curent_option);
+                }
+        }
+
+        public static void Rename(FileSystemInfo Item, string new_name, List<UnCompleatedRename> un_done)
+        {
+            try
+            {
+                int k = 0;
+                if (Item is FileInfo)
+                {
+                    string extention = Item.Extension;
+                    FileInfo source = (FileInfo)Item;
+                    if (File.Exists(source.DirectoryName + "\\" + new_name + extention))
+                        while (File.Exists(source.DirectoryName + "\\" + new_name + " (" + k + ")" + extention)) k++;
+                    source.MoveTo(source.DirectoryName + "\\" + new_name + " (" + k + ")" + extention);
+                }
+                else
+                {
+                    DirectoryInfo source = (DirectoryInfo)Item;
+                    if (Directory.Exists(source.Parent.FullName + "\\" + new_name))
+                        while (File.Exists(source.Parent.FullName + "\\" + new_name + " (" + k + ")")) k++;
+                    source.MoveTo(source.Parent.FullName + "\\" + new_name + " (" + k + ")");
+                }
+            }
+            catch (Exception ex) { un_done.Add(new UnCompleatedRename(Item, new_name, ex.Message)); }
+        }
+
+        public static BitmapImage GetDriveImage(DriveType type, bool isSystem, bool isReady, int width)
+        {
+            switch (type)
+            {
+                case DriveType.Fixed:
+                    if (isSystem)
+                        return Icons.GetIcons.GetIcon("hard-disk.png", width);
+                    else
+                        return Icons.GetIcons.GetIcon("hard-disk.png", width);
+                case DriveType.CDRom:
+                    if (isReady)
+                        return Icons.GetIcons.GetIcon("CD.png", width);
+                    else
+                        return Icons.GetIcons.GetIcon("optical-drive.png", width);
+                case DriveType.Removable:
+                    if (isReady)
+                        return Icons.GetIcons.GetIcon("removable-usb.png", width);
+                    else
+                        return Icons.GetIcons.GetIcon("removable-media.png", width);
+            }
+            return Icons.GetIcons.GetIcon("hard-disk.png", width);
+        }
+
+        internal static string FileSize(double SizeInByte, int round)
+        {
+            if (SizeInByte < 1)
+                return "0 byte";
+            byte i = 0;
+            while (SizeInByte / 1024 > 1)
+            {
+                SizeInByte = SizeInByte / 1024;
+                i++;
+            }
+            return Math.Round(SizeInByte, round) + " " + FileSizeUnit(i);
+        }
+
+        private static string FileSizeUnit(byte num)
+        {
+            switch (num)
+            {
+                case 0:
+                    return "Byte";
+                case 1:
+                    return "KB";
+                case 2:
+                    return "MB";
+                case 3:
+                    return "GB";
+                case 4:
+                    return "TB";
+                case 5:
+                    return "PB";
+                default:
+                    return "Byte";
+            }
+        }
+
+        internal static string GetDriveDescription(DriveType driveType)
+        {
+            return "";
+        }
+
+        static public bool IsRunningAsAdmin()
+        {
+            WindowsIdentity cur = WindowsIdentity.GetCurrent();
+            foreach (IdentityReference role in cur.Groups)
+            {
+                if (role.IsValidTargetType(typeof(SecurityIdentifier)))
+                {
+                    SecurityIdentifier sid = (SecurityIdentifier)role.Translate(typeof(SecurityIdentifier));
+                    if (sid.IsWellKnown(WellKnownSidType.AccountAdministratorSid) || sid.IsWellKnown(WellKnownSidType.BuiltinAdministratorsSid))
+                        return true;
+                }
+            }
+            return false;
+        }
+
+        public static string GetFileType(string extension)
+        {
+            if (FileInfoCombonents.FilesInformation.ContainsKey(extension.ToLower()))
+                return FileInfoCombonents.FilesInformation[extension.ToLower()].Description;
+            else if (extension.Length > 2)
+                return extension.ToUpper().Remove(0, 1) + " File";
+            else return "File";
+        }
+
+        public static BitmapImage GetFileImage24(string extension)
+        {
+            if (FileInfoCombonents.FilesInformation.ContainsKey(extension.ToLower()))
+                return FileInfoCombonents.FilesInformation[extension.ToLower()].Bitmap24;
+            else
+                return FileInfoCombonents.FilesInformation["."].Bitmap24;
+        }
+
+        public static int GetFileIndex(string extension)
+        {
+            if (extension.Length == 0)
+                return 0;
+            else if (extension[extension.Length - 1] == '_')
+                extension = ".cab";
+            extension = extension.ToLower();
+            int first = 0;
+            int last = FileInformation.file_extentions.Length - 1;
+            int mid = 0;
+            bool found = false;
+            while (first <= last && !found)
+            {
+                mid = (first + last) / 2;
+                if (String.Compare(FileInformation.file_extentions[mid], extension) == 0)
+                    found = true;
+                else
+                    if (String.Compare(FileInformation.file_extentions[mid], extension) > 0)
+                        last = mid - 1;
+                    else
+                        first = mid + 1;
+            }
+            if (found) return mid;
+            else return FileInformation.file_extentions.Length - 1;
+        }
+
+        public static void AddAllFiles(string directory, string parent_path, bool remove, List<FileOperationItem> list)
+        {
+            DirectoryInfo dir = new DirectoryInfo(directory);
+            foreach (var i in dir.GetDirectories())
+                try
+                { AddAllFiles(i.FullName, parent_path, remove, list); }
+                catch (Exception) { }
+            foreach (var i in dir.GetFiles())
+            {
+                string file_short_name = i.FullName.Remove(0, parent_path.Length);
+                if (parent_path == "")
+                { file_short_name = file_short_name.Remove(1, 1); }
+                /*list.Add(new FileOperationItem(i, remove, false));*/
+            }
+        }
+
+        public static void AddAllFiles(string directory, List<string> list)
+        {
+            DirectoryInfo dir = new DirectoryInfo(directory);
+            foreach (var i in dir.GetDirectories())
+                AddAllFiles(i.FullName, list);
+            foreach (var i in dir.GetFiles())
+                list.Add(i.FullName);
+        }
+
+        public static void AddAllDirectories(string directory, List<string> list)
+        {
+            foreach (var i in Directory.GetDirectories(directory))
+            {
+                try
+                {
+                    AddAllDirectories(i, list);
+                    list.Add(i);
+                }
+                catch (Exception) { }
+            }
+        }
+
+        public static string ToString(long num)
+        {
+            if (num < 10)
+                return "0" + num;
+            else
+                return num.ToString();
+        }
+
+        public static void OpenWith(string path, ItemType file_type)
+        {
+            if (file_type == ItemType.Directory || (file_type == ItemType.Drive))
+                new MainWindow(path).Show();
+            else if (file_type == ItemType.File)
+            {
+                var OFD = new System.Windows.Forms.OpenFileDialog();
+                OFD.Filter = "Application (*.exe)|*.exe";
+                if (OFD.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                    System.Diagnostics.Process.Start(new ProcessStartInfo(OFD.FileName, "\"" + path + "\""));
+            }
+        }
+
+        public static ItemType GetItemType(string path)
+        {
+            if (path.Split(spliter, StringSplitOptions.RemoveEmptyEntries).Length == 1)
+                return ItemType.Drive;
+            if (File.Exists(path))
+                return ItemType.File;
+            else if (Directory.Exists(path))
+                return ItemType.Directory;
+            return ItemType.Unknown;
+        }
+
+        public static string[] SplitString(string str)
+        {
+            string[] strs = str.Split(spliter, StringSplitOptions.RemoveEmptyEntries);
+            if (strs.Length > 2)
+                for (int i = 1; i < strs.Length - 1; i++)
+                    strs[i] = strs[i - 1] + "\\" + strs[i];
+            return strs;
+        }
+
+
+        #region Shuck Window Functions
+
+        public static void ShuckWindow(Window win, bool cond, string msg)
+        {
+            window = win;
+            message = msg;
+            condition = cond;
+            left = window.Left;
+            DoubleAnimation animation = new DoubleAnimation(window.Left, window.Left + 10, new Duration(new TimeSpan(0, 0, 0, 0, 20)));
+            window.BeginAnimation(Window.LeftProperty, animation);
+            BackgroundWorker bw = new BackgroundWorker();
+            bw.WorkerReportsProgress = true;
+            bw.DoWork += bw_DoWork;
+            bw.ProgressChanged += bw_ProgressChanged;
+            bw.RunWorkerAsync();
+        }
+
+        static void bw_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        {
+            DoubleAnimation animation = new DoubleAnimation(window.Left, window.Left - 20, new Duration(new TimeSpan(0, 0, 0, 0, 20)));
+            window.BeginAnimation(Window.LeftProperty, animation);
+            BackgroundWorker bw = new BackgroundWorker();
+            bw.WorkerReportsProgress = true;
+            bw.DoWork += bw_DoWork;
+            bw.ProgressChanged += bw_ProgressChanged2;
+            bw.RunWorkerAsync();
+        }
+
+        private static void bw_ProgressChanged2(object sender, ProgressChangedEventArgs e)
+        {
+            DoubleAnimation animation = new DoubleAnimation(window.Left, window.Left + 20, new Duration(new TimeSpan(0, 0, 0, 0, 20)));
+            window.BeginAnimation(Window.LeftProperty, animation);
+            BackgroundWorker bw = new BackgroundWorker();
+            bw.WorkerReportsProgress = true;
+            bw.DoWork += bw_DoWork;
+            bw.ProgressChanged += bw_ProgressChanged3;
+            bw.RunWorkerAsync();
+        }
+
+        private static void bw_ProgressChanged3(object sender, ProgressChangedEventArgs e)
+        {
+            DoubleAnimation animation = new DoubleAnimation(window.Left, window.Left - 20, new Duration(new TimeSpan(0, 0, 0, 0, 20)));
+            window.BeginAnimation(Window.LeftProperty, animation);
+            BackgroundWorker bw = new BackgroundWorker();
+            bw.WorkerReportsProgress = true;
+            bw.DoWork += bw_DoWork;
+            bw.ProgressChanged += bw_ProgressChanged4;
+            bw.RunWorkerAsync();
+        }
+
+        private static void bw_ProgressChanged4(object sender, ProgressChangedEventArgs e)
+        {
+            DoubleAnimation animation = new DoubleAnimation(window.Left, window.Left + 10, new Duration(new TimeSpan(0, 0, 0, 0, 20)));
+            window.BeginAnimation(Window.LeftProperty, animation);
+            BackgroundWorker bw = new BackgroundWorker();
+            bw.WorkerReportsProgress = true;
+            bw.DoWork += bw_DoWork;
+            bw.ProgressChanged += bw_ProgressChanged5;
+            bw.RunWorkerAsync();
+        }
+
+        private static void bw_ProgressChanged5(object sender, ProgressChangedEventArgs e)
+        {
+            if (condition)
+                new My_MessageBox("File Fanager", message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+            window.Left = left;
+            //button.IsEnabled = true;
+        }
+
+        static void bw_DoWork(object sender, DoWorkEventArgs e)
+        {
+            Thread.Sleep(50);
+            ((BackgroundWorker)sender).ReportProgress(0);
+        }
+
+        #endregion
+
+
+        internal static ImageSource GetFileImage256(string extension)
+        {
+            if (FileInfoCombonents.FilesInformation.ContainsKey(extension.ToLower()))
+                return FileInfoCombonents.FilesInformation[extension.ToLower()].Bitmap256;
+            else
+                return FileInfoCombonents.FilesInformation["."].Bitmap256;
+        }
+
+        internal static BitmapImage GetFileImage64(string extension)
+        {
+            if (FileInfoCombonents.FilesInformation.ContainsKey(extension.ToLower()))
+                return FileInfoCombonents.FilesInformation[extension.ToLower()].Bitmap64;
+            else
+                return FileInfoCombonents.FilesInformation["."].Bitmap64;
+        }
+    }
+
+    class GeneralPurpose
+    {
+        internal GeneralPurpose() { }
+
+        //public GeneralPurpose(string file_path,FileInfo file)
+        //{
+        //    FullPath = file_path;//file name or file path;
+        //    Image = Functions.GetFileImage24(file.Extension);
+        //    File = file == null ? new FileInfo(file_path) : file;
+        //}
+
+        public GeneralPurpose(string directory_path, DirectoryInfo directory)
+        {
+            FullPath = directory_path;      //file name or file path;
+            Image = Functions.GetFileImage24("directory");
+            Directory = directory == null ? new DirectoryInfo(directory_path) : directory;
+        }
+
+        private String file_path;
+        public string FullPath
+        {
+            get { return file_path; }
+            set { file_path = value; }
+        }
+
+        private BitmapImage img_source;
+        public BitmapImage Image
+        {
+            get { return img_source; }
+            set { img_source = value; }
+        }
+
+        public FileInfo File { get; set; }
+
+        public DirectoryInfo Directory { get; set; }
+    }
+
+
     public class FileInfoCombonents
     {
         string extention;
@@ -132,7 +518,7 @@ namespace File_Manager
             //if (File.Exists(@"C:\Users\pal\Documents\Images\16\" + image_file))
             //    file_bitmap16 = new BitmapImage(new Uri(@"C:\Users\pal\Documents\Images\16\" + image_file));
             //else
-            file_bitmap16 = Icons.GetIcons.GetIcon(image_file, extention, 16); //BitmapImage(new Uri(@"C:\Users\pal\Documents\Images\16\file.png"));
+            file_bitmap16 = Icons.GetIcons.GetIcon(image_file, 16); //BitmapImage(new Uri(@"C:\Users\pal\Documents\Images\16\file.png"));
             file_bitmap24 = Icons.GetIcons.GetIcon(image_file, 24);//new BitmapImage(new Uri(@"C:\Users\pal\Documents\Images\24\" + image_file));
             file_bitmap64 = Icons.GetIcons.GetIcon(image_file, 64);//new BitmapImage(new Uri(@"C:\Users\pal\Documents\Images\64\" + image_file));
             file_bitmap256 = Icons.GetIcons.GetIcon(image_file, 256); //new BitmapImage(new Uri(@"C:\Users\pal\Documents\Images\256\" + image_file));
@@ -243,44 +629,41 @@ namespace File_Manager
         }
     }
 
-    public class FileOperationItem : IComparable
+    public class FileOperationItem /*: IComparable*/
     {
-        public bool? Over;
+        //public bool? Over;
         public FileSystemInfo Item;
-        public long Size;
+        //public long Size;
         public bool IsCut;
-        public bool Done;
-        public string short_path;
+        //public bool Done;
+        public object short_path;
 
-        public FileOperationItem(FileInfo File, bool IsCut, bool? Over, string short_path)
+        public FileOperationItem(FileInfo File, bool IsCut, object short_path)
         {
             Item = File;
-            Size = ((FileInfo)File).Length;
             this.IsCut = IsCut;
-            Done = false;
             this.short_path = short_path;
-            this.Over = Over;
         }
 
-        public FileOperationItem(DirectoryInfo Directory, long DirectorySize, bool IsCut, bool? Over, string short_path)
+        public FileOperationItem(DirectoryInfo Directory, /*long DirectorySize,*/ bool IsCut/*, bool? Over*/, object short_path)
         {
             Item = Directory;
-            Size = DirectorySize;
+            //Size = DirectorySize;
             this.IsCut = IsCut;
-            Done = false;
+            //Done = false;
             this.short_path = short_path;
-            this.Over = Over;
+            //this.Over = Over;
         }
 
-        public FileOperationItem(DirectoryInfo directoryInfo, string short_path)
-        {
-            Item = directoryInfo;
-            Over = false;
-            Size = -1;
-            IsCut = false;
-            Done = false;
-            this.short_path = short_path;
-        }
+        //public FileOperationItem(DirectoryInfo directoryInfo, string short_path)
+        //{
+        //    Item = directoryInfo;
+        //    //Over = false;
+        //    //Size = -1;
+        //    IsCut = false;
+        //    //Done = false;
+        //    this.short_path = short_path;
+        //}
 
         //public FileElement(string file_path, long file_Size, string extension, string short_name, bool remove, bool? over)
         //{
@@ -293,17 +676,12 @@ namespace File_Manager
         //    this.over = over;
         //}
 
-        public int CompareTo(object obj)
-        {
-            if (obj == null)
-                return 0;
-            if (((FileOperationItem)obj).Size == this.Size)
-                return 0;
-            else if (((FileOperationItem)obj).Size > this.Size)
-                return -1;
-            else
-                return 1;
-        }
+        //public int CompareTo(object obj)
+        //{
+        //    if (obj == null)
+        //        return 1;
+        //    return ((FileOperationItem)obj).Size.CompareTo(this.Size);
+        //}
     }
 
     public class UnCompleatedOperation : IComparable
@@ -364,6 +742,8 @@ namespace File_Manager
         }
     }
 
+    
+
     #region All ListView Data Context Classes
 
     public class MainListView
@@ -391,7 +771,7 @@ namespace File_Manager
                 else
                     FileExt = "";
             }
-            FileSize = Functions.FileSize(file.Length);
+            FileSize = Functions.FileSize(file.Length, 2);
             DateModified = file.LastWriteTime.ToString();          
         }
 
@@ -404,7 +784,7 @@ namespace File_Manager
             FileType = "Directory";
             FileSize = "";
             FileExt = "";
-            DateModified = directory.LastWriteTimeUtc.ToString("dd\\mm\\yyyy hh:mm");
+            DateModified = directory.LastWriteTimeUtc.ToString();
         }
 
         public MainListView(DriveInfo drive)
@@ -415,8 +795,8 @@ namespace File_Manager
             if (drive.IsReady)
             {
                 FileName = drive.VolumeLabel + " (" + drive.Name + ")";
-                FileSize = Functions.FileSize(drive.AvailableFreeSpace);
-                DateModified = Functions.FileSize(drive.TotalSize);
+                FileSize = Functions.FileSize(drive.AvailableFreeSpace, 2);
+                DateModified = Functions.FileSize(drive.TotalSize, 2);
             }
             else
             {
@@ -424,7 +804,7 @@ namespace File_Manager
                 FileSize = "Drive is not ready!";
                 DateModified = "";
             }
-            Icon = new BitmapImage(new Uri(Functions.GetDriveImage(drive.DriveType, drive.Name.ToLower().Equals(Functions.SystemDrive), drive.IsReady, Functions.StandardImageSource + "24\\")));
+            Icon = Functions.GetDriveImage(drive.DriveType, drive.Name.ToLower().Equals(Functions.SystemDrive), drive.IsReady, 24);
             FileType = Functions.GetDriveDescription(drive.DriveType);
             FileExt = "";
         }
@@ -495,227 +875,77 @@ namespace File_Manager
         }
     }
 
-    public class ExistsItemsListView
+    
+
+
+    public class SystemMonitorListView
     {
-        public ExistsItemsListView(FileInfo source_file, FileInfo target_file)
+        public SystemMonitorListView(Process p)
         {
-            FileName = source_file.Name;
-            SourceFile = source_file;
-            SourceSize = Functions.FileSize(source_file.Length);
-            SourceDate = source_file.LastWriteTimeUtc.ToString();
-            SourceTooltip = source_file.DirectoryName;
-            TargetFile = target_file;
-            TargetSize = Functions.FileSize(target_file.Length);
-            TargetDate = target_file.LastWriteTimeUtc.ToString();
-            TargetTooltip = target_file.DirectoryName;
-            if (FileInfoCombonents.FilesInformation.ContainsKey(source_file.Extension.ToLower()))
-            {
-                TargetIcon = SourceIcon = FileInfoCombonents.FilesInformation[source_file.Extension.ToLower()].Bitmap64;
-                SourceType = TargetType = FileInfoCombonents.FilesInformation[source_file.Extension.ToLower()].Description;
-            }
+            P = p;
+            PID = p.Id.ToString();
+            ProcessName = (p.MainWindowTitle.Equals("") ? (p.ProcessName) : (p.ProcessName + " (" + p.MainWindowTitle + ")"));
+            Memory = Functions.FileSize(p.PagedMemorySize64, 2);
+            try
+            { cpu_d = p.TotalProcessorTime.TotalMilliseconds; }
+            catch (Exception) { cpu_d = 0; }
+            if (!p.MainWindowTitle.Equals(""))
+                Icon = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/window.png"));
             else
-            {
-                TargetIcon = SourceIcon = FileInfoCombonents.FilesInformation["."].Bitmap64;
-                SourceType = TargetType = source_file.Extension.ToLower().Substring(1).ToUpper() + " File";
-            }
-            target_ischecked = source_ischecked = false;
+                Icon = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/service.png"));
         }
 
-        private String file_name;
-        public string FileName
+        public void SetCPU(double total_milisecond)
         {
-            get { return file_name; }
-            set { file_name = value; }
+            cpu = Math.Round(cpu_d * 100 / total_milisecond) + " %";
         }
 
-        FileInfo source_file;
-        public FileInfo SourceFile
+        public Process P;
+
+        private String process_id;
+        public string PID
         {
-            get { return source_file; }
-            set { source_file = value; }
+            get { return process_id; }
+            set { process_id = value; }
         }
 
-        private BitmapImage source_icon;
-        public BitmapImage SourceIcon
+        private String process_name;
+        public string ProcessName
         {
-            get { return source_icon; }
-            set { source_icon = value; }
+            get { return process_name; }
+            set { process_name = value; }
         }
 
-        private String source_type;
-        public string SourceType
-        {
-            get { return source_type; }
-            set { source_type = value; }
-        }
-
-        private String source_size;
-        public string SourceSize
-        {
-            get { return source_size; }
-            set { source_size = value; }
-        }
-
-        private String source_date;
-        public string SourceDate
-        {
-            get { return source_date; }
-            set { source_date = value; }
-        }
-
-        private String source_tooltip;
-        public string SourceTooltip
-        {
-            get { return source_tooltip; }
-            set { source_tooltip = value; }
-        }
-
-        private bool? source_ischecked;
-        public Boolean? SourceIsChecked
-        {
-            get { return source_ischecked; }
-            set { source_ischecked = value; }
-        }
-
-        FileInfo target_file;
-        public FileInfo TargetFile
-        {
-            get { return target_file; }
-            set { target_file = value; }
-        }
-
-        private BitmapImage target_icon;
-        public BitmapImage TargetIcon
-        {
-            get { return target_icon; }
-            set { target_icon = value; }
-        }
-
-        private String target_type;
-        public string TargetType
-        {
-            get { return target_type; }
-            set { target_type = value; }
-        }
-
-        private String target_size;
-        public string TargetSize
-        {
-            get { return target_size; }
-            set { target_size = value; }
-        }
-
-        private String target_date;
-        public string TargetDate
-        {
-            get { return target_date; }
-            set { target_date = value; }
-        }
-
-        private String target_tooltip;
-        public string TargetTooltip
-        {
-            get { return target_tooltip; }
-            set { target_tooltip = value; }
-        }
-
-        private bool? target_ischecked;
-        public Boolean? TargetIsChecked
-        {
-            get { return target_ischecked; }
-            set { target_ischecked = value; }
-        }
-    }
-
-    public class OperationErrorListView
-    {
-        public OperationErrorListView(FileSystemInfo item, string Error)
-        {
-            FileName = item.Name;
-            Item = item;
-            ErrorMsg = "Error: " + Error;
-            if (item is DirectoryInfo)
-            {
-                Icon = FileInfoCombonents.FilesInformation["directory"].Bitmap64;
-                FileType = "Directory";
-            }
-            else if (FileInfoCombonents.FilesInformation.ContainsKey(item.Extension.ToLower()))
-            {
-                Icon = FileInfoCombonents.FilesInformation[item.Extension.ToLower()].Bitmap64;
-                FileType = FileInfoCombonents.FilesInformation[item.Extension.ToLower()].Description;
-            }
-            else
-            {
-                Icon = FileInfoCombonents.FilesInformation["."].Bitmap64;
-                FileType = item.Extension.Length > 0 ? item.Extension.ToLower().Substring(1).ToUpper() + " File" : "File";
-            }
-            skip_ischecked = retry_ischecked = false;
-        }
-
-        private String file_name;
-        public string FileName
-        {
-            get { return file_name; }
-            set { file_name = value; }
-        }
-
-        FileSystemInfo item;
-        public FileSystemInfo Item
-        {
-            get { return item; }
-            set { item = value; }
-        }
-
-        private BitmapImage item_icon;
+        private BitmapImage img_source;
         public BitmapImage Icon
         {
-            get { return item_icon; }
-            set { item_icon = value; }
+            get { return img_source; }
+            set { img_source = value; }
         }
 
-        private String item_type;
-        public string FileType
+        string memory;
+        public String Memory
         {
-            get { return item_type; }
-            set { item_type = value; }
+            get { return memory; }
+            set { memory = value; }
         }
 
-        private String error_msg;
-        public string ErrorMsg
+        double cpu_d;
+
+        string cpu;
+        public String CPU
         {
-            get { return error_msg; }
-            set { error_msg = value; }
+            get { return cpu; }
+            set { cpu = value; }
         }
 
-        private bool? retry_ischecked;
-        public Boolean? RetryIsChecked
+        ContextMenu menu;
+        public ContextMenu Menu
         {
-            get { return retry_ischecked; }
-            set
-            { 
-                retry_ischecked = value;
-                if (value == true)
-                    skip_ischecked = false;
-                else if (value == false)
-                    skip_ischecked = true;
-            }
-        }
-
-        private bool? skip_ischecked;
-        public Boolean? SkipIsChecked
-        {
-            get { return skip_ischecked; }
-            set 
-            { 
-                skip_ischecked = value;
-                if (value == true)
-                    retry_ischecked = false;
-                else if (value == false)
-                    retry_ischecked = true;
-            }
+            get { return menu; }
+            set { menu = value; }
         }
     }
-
 
     #endregion
 
@@ -762,7 +992,7 @@ namespace File_Manager
         Abort = 7
     }
 
-    public enum Operation
+    public enum Op
     {
         Copy = 0,
         Attributes = 1,
@@ -819,275 +1049,7 @@ namespace File_Manager
         }
     }
 
-    static class Functions
-    {
-        public static string StandardImageSource = "pack://application:,,,/File Manager;component/Images/Icons/", SystemDrive = "c:\\";
 
-        public static string GetDriveImage(DriveType type, bool isSystem, bool isReady, string StandardImageSource)
-        {
-            switch (type)
-            {
-                case DriveType.Fixed:
-                    if (isSystem)
-                        return StandardImageSource + "system-hard-disk.png";
-                    else
-                        return StandardImageSource + "hard-disk.png";
-                case DriveType.CDRom:
-                    if (isReady)
-                        return StandardImageSource + "dvd-media.png";
-                    else
-                        return StandardImageSource + "optical-drive.png";
-                case DriveType.Removable:
-                    if (isReady)
-                        return StandardImageSource + "removable-usb.png";
-                    else
-                        return StandardImageSource + "removable-media.png";
-            }
-            return StandardImageSource + "hard-disk.png";
-        }
-
-        internal static string FileSize(double SizeInByte)
-        {
-            byte i = 0;
-            while (SizeInByte / 1024 > 1)
-            {
-                SizeInByte = SizeInByte / 1024;
-                i++;
-            }
-            return Math.Round(SizeInByte, 2) + " " + FileSizeUnit(i);
-        }
-
-        private static string FileSizeUnit(byte num)
-        {
-            switch (num)
-            {
-                case 0:
-                    return "Byte";
-                case 1:
-                    return "KB";
-                case 2:
-                    return "MB";
-                case 3:
-                    return "GB";
-                case 4:
-                    return "TB";
-                case 5:
-                    return "PB";
-                default:
-                    return "Byte";
-            }
-        }
-
-        internal static string GetDriveDescription(DriveType driveType)
-        {
-            return "";
-        }
-
-
-
-
-        static Window window;
-        static string message;
-        static bool condition;
-        static double left;
-        public static string[] spliter = { "\\" };
-
-
-        
-
-        public static string GetFileType(int file_index, string extension)
-        {
-            if (file_index != (FileInformation.file_extentions.Length - 1))
-                return FileInformation.file_description[file_index];
-            else
-                if (extension.Length > 2)
-                    return extension.ToUpper().Remove(0, 1) + " File";
-                else return "File";
-        }
-
-        public static int GetFileIndex(string extension)
-        {
-            if (extension.Length == 0)
-                return 0;
-            else if (extension[extension.Length - 1] == '_')
-                extension = ".cab";
-            extension = extension.ToLower();
-            int first = 0;
-            int last = FileInformation.file_extentions.Length - 1;
-            int mid = 0;
-            bool found = false;
-            while (first <= last && !found)
-            {
-                mid = (first + last) / 2;
-                if (String.Compare(FileInformation.file_extentions[mid], extension) == 0)
-                    found = true;
-                else
-                    if (String.Compare(FileInformation.file_extentions[mid], extension) > 0)
-                        last = mid - 1;
-                    else
-                        first = mid + 1;
-            }
-            if (found) return mid;
-            else return FileInformation.file_extentions.Length - 1;
-        }
-
-        public static void AddAllFiles(string directory, string parent_path, bool remove, List<FileOperationItem> list)
-        {
-            DirectoryInfo dir = new DirectoryInfo(directory);
-            foreach (var i in dir.GetDirectories())
-                try
-                { AddAllFiles(i.FullName, parent_path, remove, list); }
-                catch (Exception) { }
-            foreach (var i in dir.GetFiles())
-            {
-                string file_short_name = i.FullName.Remove(0, parent_path.Length);
-                if (parent_path == "")
-                { file_short_name = file_short_name.Remove(1, 1); }
-                /*list.Add(new FileOperationItem(i, remove, false));*/
-            }
-        }
-
-        public static void AddAllFiles(string directory, List<string> list)
-        {
-            DirectoryInfo dir = new DirectoryInfo(directory);
-            foreach (var i in dir.GetDirectories())
-                AddAllFiles(i.FullName, list);
-            foreach (var i in dir.GetFiles())
-                list.Add(i.FullName);
-        }
-
-        public static void AddAllDirectories(string directory, List<string> list)
-        {
-            foreach (var i in Directory.GetDirectories(directory))
-            {
-                try
-                {
-                    AddAllDirectories(i, list);
-                    list.Add(i);
-                }
-                catch (Exception) { }
-            }
-        }
-
-        public static string ToString(long num)
-        {
-            if (num < 10)
-                return "0" + num;
-            else
-                return num.ToString();
-        }
-
-        public static void OpenWith(string path, ItemType file_type)
-        {
-            if (file_type == ItemType.Directory || (file_type == ItemType.Drive))
-                new MainWindow(path).Show();
-            else if (file_type == ItemType.File)
-            {
-                var OFD = new System.Windows.Forms.OpenFileDialog();
-                OFD.Filter = "Application (*.exe)|*.exe";
-                if (OFD.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                    System.Diagnostics.Process.Start(new ProcessStartInfo(OFD.FileName, "\"" + path + "\""));
-            }
-        }
-
-        public static ItemType GetItemType(string path)
-        {
-            if (path.Split(spliter, StringSplitOptions.RemoveEmptyEntries).Length == 1)
-                return ItemType.Drive;
-            if (File.Exists(path))
-                return ItemType.File;
-            else if (Directory.Exists(path))
-                return ItemType.Directory;
-            return ItemType.Unknown;
-        }
-
-        public static string[] SplitString(string str)
-        {
-            string[] strs = str.Split(spliter, StringSplitOptions.RemoveEmptyEntries);
-            if (strs.Length > 2)
-                for (int i = 1; i < strs.Length - 1; i++)
-                    strs[i] = strs[i - 1] + "\\" + strs[i];
-            return strs;
-        }
-
-        // Shuck Window Functions
-        public static void ShuckWindow(Window win, bool cond, string msg)
-        {
-            window = win;
-            message = msg;
-            condition = cond;
-            left = window.Left;
-            DoubleAnimation animation = new DoubleAnimation(window.Left, window.Left + 10, new Duration(new TimeSpan(0, 0, 0, 0, 20)));
-            window.BeginAnimation(Window.LeftProperty, animation);
-            BackgroundWorker bw = new BackgroundWorker();
-            bw.WorkerReportsProgress = true;
-            bw.DoWork += bw_DoWork;
-            bw.ProgressChanged += bw_ProgressChanged;
-            bw.RunWorkerAsync();
-        }
-
-        static void bw_ProgressChanged(object sender, ProgressChangedEventArgs e)
-        {
-            DoubleAnimation animation = new DoubleAnimation(window.Left, window.Left - 20, new Duration(new TimeSpan(0, 0, 0, 0, 20)));
-            window.BeginAnimation(Window.LeftProperty, animation);
-            BackgroundWorker bw = new BackgroundWorker();
-            bw.WorkerReportsProgress = true;
-            bw.DoWork += bw_DoWork;
-            bw.ProgressChanged += bw_ProgressChanged2;
-            bw.RunWorkerAsync();
-        }
-
-        private static void bw_ProgressChanged2(object sender, ProgressChangedEventArgs e)
-        {
-            DoubleAnimation animation = new DoubleAnimation(window.Left, window.Left + 20, new Duration(new TimeSpan(0, 0, 0, 0, 20)));
-            window.BeginAnimation(Window.LeftProperty, animation);
-            BackgroundWorker bw = new BackgroundWorker();
-            bw.WorkerReportsProgress = true;
-            bw.DoWork += bw_DoWork;
-            bw.ProgressChanged += bw_ProgressChanged3;
-            bw.RunWorkerAsync();
-        }
-
-        private static void bw_ProgressChanged3(object sender, ProgressChangedEventArgs e)
-        {
-            DoubleAnimation animation = new DoubleAnimation(window.Left, window.Left - 20, new Duration(new TimeSpan(0, 0, 0, 0, 20)));
-            window.BeginAnimation(Window.LeftProperty, animation);
-            BackgroundWorker bw = new BackgroundWorker();
-            bw.WorkerReportsProgress = true;
-            bw.DoWork += bw_DoWork;
-            bw.ProgressChanged += bw_ProgressChanged4;
-            bw.RunWorkerAsync();
-        }
-
-        private static void bw_ProgressChanged4(object sender, ProgressChangedEventArgs e)
-        {
-            DoubleAnimation animation = new DoubleAnimation(window.Left, window.Left + 10, new Duration(new TimeSpan(0, 0, 0, 0, 20)));
-            window.BeginAnimation(Window.LeftProperty, animation);
-            BackgroundWorker bw = new BackgroundWorker();
-            bw.WorkerReportsProgress = true;
-            bw.DoWork += bw_DoWork;
-            bw.ProgressChanged += bw_ProgressChanged5;
-            bw.RunWorkerAsync();
-        }
-
-        private static void bw_ProgressChanged5(object sender, ProgressChangedEventArgs e)
-        {
-            if (condition)
-                MessageBox.Show(message);
-            window.Left = left;
-            //button.IsEnabled = true;
-        }
-
-        static void bw_DoWork(object sender, DoWorkEventArgs e)
-        {
-            Thread.Sleep(50);
-            ((BackgroundWorker)sender).ReportProgress(0);
-        }
-
-        //end of Shuck Window Functions
-
-
-    }
 
     public class BigItemElement : IComparable
     {
@@ -1157,322 +1119,6 @@ namespace File_Manager
         }
     }
 
-    public class BigFileListView
-    {
-        public BigFileListView(string file_path, string file_name, BitmapImage img_source, string file_type, string file_size, string percent, string size_from_all, Brush background, bool is_directory)
-        {
-            FullPath = file_path;
-            FileName = file_name;
-            Image = img_source;
-            FileType = file_type;
-            FileSize = file_size;
-            Percent = percent;
-            SizeFromAll = size_from_all;
-            Background = background;
-            isDirectory = is_directory;
-        }
-
-        private String file_path;
-        public string FullPath
-        {
-            get { return file_path; }
-            set { file_path = value; }
-        }
-
-        private String file_name;
-        public string FileName
-        {
-            get { return file_name; }
-            set { file_name = value; }
-        }
-
-        private BitmapImage img_source;
-        public BitmapImage Image
-        {
-            get { return img_source; }
-            set { img_source = value; }
-        }
-
-        private String file_type;
-        public string FileType
-        {
-            get { return file_type; }
-            set { file_type = value; }
-        }
-
-        private String file_size;
-        public string FileSize
-        {
-            get { return file_size; }
-            set { file_size = value; }
-        }
-
-        private String percent;
-        public string Percent
-        {
-            get { return percent; }
-            set { percent = value; }
-        }
-
-        private String size_from_all;
-        public string SizeFromAll
-        {
-            get { return size_from_all; }
-            set { size_from_all = value; }
-        }
-
-        private Brush background;
-        public Brush Background
-        {
-            get { return background; }
-            set { background = value; }
-        }
-
-        public bool isDirectory;
-
-        //public static readonly RoutedEvent MouseDoubleClick = EventManager.RegisterRoutedEvent("MouseDoubleClick", RoutingStrategy.Bubble, typeof(MouseButtonEventHandler), typeof(BigFileListView));
-
-
-        //public event MouseButtonEventHandler Tap
-        //{
-        //    add { System.Windows.AddHandler(MouseDoubleClick, value); }
-        //    remove { System.Windows.RemoveHandler(MouseDoubleClick, value); }
-        //}
-
-        //void RaiseTapEvent()
-        //{
-        //    RoutedEventArgs newEventArgs = new RoutedEventArgs(BigFileListView.MouseDoubleClick);
-        //    RaiseEvent(newEventArgs);
-        //}
-
-        //protected void OnDoubleClick()
-        //{
-        //    RaiseTapEvent();
-        //}
-    }
-
-    public class DublicateFiles_ListView
-    {
-        public DublicateFiles_ListView() { Dublicats = new List<string>(); }
-        public DublicateFiles_ListView(string file_path, BitmapImage img_source, string file_type, string file_size, List<string>/*ItemCollection*/ dublicats, bool? is_checked, Point Tag)
-        {
-            FullPath = file_path;
-            Image = img_source;
-            FileType = file_type;
-            FileSize = file_size;
-            Dublicats = dublicats;
-            Point = Tag;
-        }
-
-        private bool? is_cheched;
-        public Boolean? IsChecked
-        {
-            get { return is_cheched; }
-            set { is_cheched = value; }
-        }
-
-        private List<string> dublicats;
-        public List<string> Dublicats
-        {
-            get { return dublicats; }
-            set { dublicats = value; }
-        }
-
-        private String file_path;
-        public string FullPath
-        {
-            get { return file_path; }
-            set { file_path = value; }
-        }
-
-        private BitmapImage img_source;
-        public BitmapImage Image
-        {
-            get { return img_source; }
-            set { img_source = value; }
-        }
-
-        private String file_type;
-        public string FileType
-        {
-            get { return file_type; }
-            set { file_type = value; }
-        }
-
-        private String file_size;
-        public string FileSize
-        {
-            get { return file_size; }
-            set { file_size = value; }
-        }
-
-        Point point;
-        public Point Point
-        {
-            get { return point; }
-            set { point = value; }
-        }
-    }
-
-    public class RenamerListView
-    {
-        public RenamerListView(string file_path, BitmapImage img_source, FileInfo file)
-        {
-            FullPath = file_path;
-            Image = img_source;
-            File = file;
-        }
-
-        private String file_path;
-        public string FullPath
-        {
-            get { return file_path; }
-            set { file_path = value; }
-        }
-
-        private BitmapImage img_source;
-        public BitmapImage Image
-        {
-            get { return img_source; }
-            set { img_source = value; }
-        }
-
-        public FileInfo File { get; set; }
-    }
-
-    public class Renamer2ListView
-    {
-        public Renamer2ListView(string file_path, BitmapImage img_source, FileInfo file, List<string> possible_ext)
-        {
-            FullPath = file_path;
-            Image = img_source;
-            File = file;
-            PossibleExt = possible_ext;
-            SelectedExt = -1;
-        }
-
-        public Renamer2ListView(string file_path, BitmapImage img_source, FileInfo file)
-        {
-            FullPath = file_path;
-            Image = img_source;
-            File = file;
-            possible_ext = new List<string>();
-            SelectedExt = -1;
-        }
-
-        List<string> possible_ext;
-        public List<string> PossibleExt
-        {
-            get { return possible_ext; }
-            set { possible_ext = value; }
-        }
-
-        int selected_ext;
-        public int SelectedExt
-        {
-            get { return selected_ext; }
-            set { selected_ext = value; }
-        }
-
-        private String file_path;
-        public string FullPath
-        {
-            get { return file_path; }
-            set { file_path = value; }
-        }
-
-        private BitmapImage img_source;
-        public BitmapImage Image
-        {
-            get { return img_source; }
-            set { img_source = value; }
-        }
-
-        bool done;
-        public Boolean Done
-        {
-            get { return done; }
-            set
-            {
-                if (value)
-                {
-                    status_img = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/tick.png"));
-                    status_txt = "Done";
-                    status_color = Brushes.Green;
-                }
-                else
-                {
-                    status_img = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/error.png"));
-                    status_txt = "Error";
-                    status_color = Brushes.Red;
-                }
-                done = value;
-            }
-        }
-
-        BitmapImage status_img;
-        private BitmapImage StatusImg { get { return status_img; } set { status_img = value; } }
-
-        private string status_txt;
-        public String StatusTxt { get { return status_txt; } set { status_txt = value; } }
-
-        Brush status_color;
-        public Brush StatusColor { get { return status_color; } set { status_color = value; } }
-
-        public FileInfo File { get; set; }
-    }
-
-    public class CompresserListView
-    {
-        public CompresserListView(FileSystemInfo file_system, long file_size)
-        {
-            int index = Functions.GetFileIndex(file_system.Extension);
-            file = file_system;
-            FileName = file_system.Name;
-            Image = FileInformation.file_bitmap_24[index];
-            FileType = file_system is FileInfo ? Functions.GetFileType(index, file_system.Extension) : "Directory";
-            file_size1 = file_size;
-            FileSize = Functions.FileSize(file_size);
-        }
-
-        long file_size1;
-
-        FileSystemInfo file;
-        public FileSystemInfo File
-        {
-            get { return file; }
-            set { file = value; }
-        }
-
-        private String file_name;
-        public string FileName
-        {
-            get { return file_name; }
-            set { file_name = value; }
-        }
-
-        private BitmapImage img_source;
-        public BitmapImage Image
-        {
-            get { return img_source; }
-            set { img_source = value; }
-        }
-
-        private String file_type;
-        public string FileType
-        {
-            get { return file_type; }
-            set { file_type = value; }
-        }
-
-        private String file_size;
-        public string FileSize
-        {
-            get { return file_size; }
-            set { file_size = value; }
-        }
-    }
-
     public class DirectoryTreeItem
     {
         public DirectoryTreeItem(FileSystemInfo Item, long Size, string Type, DirectoryTreeItem Parent, List<DirectoryTreeItem> SubItems)
@@ -1488,7 +1134,7 @@ namespace File_Manager
         {
             item = Item;
             size = ((FileInfo)Item).Length;
-            type = Functions.GetFileType(Functions.GetFileIndex(item.Extension), item.Extension);
+            type = Functions.GetFileType(item.Extension);
             parent = Parent;
             sub_items = null;
         }
@@ -1522,6 +1168,70 @@ namespace File_Manager
         public List<Int32> IDs
         {
             get { return bytes; }
+        }
+    }
+
+    [Serializable]
+    public class BasicCompresserListView
+    {
+        public BasicCompresserListView Parent;
+        public List<BasicCompresserListView> Children;
+        public long FileSize = 0;
+        public string FileFullName;
+        public bool IsDirectory;
+        public string FileType;
+
+        public BasicCompresserListView(CompresserListView file_system, BasicCompresserListView parent)
+        {
+            IsDirectory = file_system.IsDirectory;
+            Parent = parent;
+            FileFullName = file_system.FileFullName;
+            FileType = file_system.FileType;
+            FileSize = file_system.FileSizeLong;
+
+            if (file_system.IsDirectory)
+            {
+                Children = new List<BasicCompresserListView>();
+                foreach (var i in file_system.Children)
+                    Children.Add(new BasicCompresserListView(i, this));
+            }
+        }
+
+        internal CompresserListView ConvertToSatndart(CompresserListView parent)
+        {
+            CompresserListView tmp = new CompresserListView();
+            tmp.FileSizeLong = this.FileSize;
+            tmp.IsDirectory = this.IsDirectory;
+            tmp.FileFullName = this.FileFullName;
+            tmp.Parent = parent;
+            FileSystemInfo file_system;
+            if (!this.IsDirectory)
+            {
+                file_system = new FileInfo(tmp.FileFullName);
+                tmp.FileName = file_system.Name;
+                if (FileInfoCombonents.FilesInformation.ContainsKey(file_system.Extension.ToLower()))
+                    tmp.Image = FileInfoCombonents.FilesInformation[file_system.Extension.ToLower()].Bitmap24;
+                else
+                    tmp.Image = FileInfoCombonents.FilesInformation["."].Bitmap24;
+                tmp.FileType = Functions.GetFileType(file_system.Extension);
+            }
+            else
+            {
+                file_system = new DirectoryInfo(tmp.FileFullName);
+                tmp.Children = new List<CompresserListView>();
+                if (file_system.Name.Contains(':'))
+                {
+                    string label = new DriveInfo(file_system.Name).VolumeLabel;
+                    tmp.FileName = (label == "" ? "DiskDrive" : label) + " (" + file_system.Name[0] + ")";
+                }
+                else
+                    tmp.FileName = file_system.Name;
+                tmp.Image = FileInfoCombonents.FilesInformation["directory"].Bitmap24;
+                tmp.FileType = "Directory";
+                foreach (var i in Children)
+                    tmp.Children.Add(i.ConvertToSatndart(tmp));
+            }
+            return tmp;
         }
     }
 }

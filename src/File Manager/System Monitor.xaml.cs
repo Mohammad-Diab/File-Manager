@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
@@ -22,16 +23,19 @@ namespace File_Manager
     /// </summary>
     public partial class System_Monitor : Window
     {
+        ObservableCollection<SystemMonitorListView> process_list = new ObservableCollection<SystemMonitorListView>();
+
         int selected_id = 0;
         BackgroundWorker worker;
-        Point point = new Point(0.5, 0.5);
-        RotateTransform angel = new RotateTransform(45);
-        BitmapImage process = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/service.png"));
-        BitmapImage app = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/window.png"));
-        Thickness[] margins = { new Thickness(10, 10, 0, 0), new Thickness(105, 10, 30, 0), new Thickness(105, 34, 30, 0), new Thickness(105, 58, 30, 0), new Thickness(105, 82, 30, 0), new Thickness(0, 43, 10, 0), new Thickness(10, 0, 10, 3) };
+        //Point point = new Point(0.5, 0.5);
+        //RotateTransform angel = new RotateTransform(45);
+        //BitmapImage process = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/service.png"));
+        //BitmapImage app = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/window.png"));
+        //Thickness[] margins = { new Thickness(10, 10, 0, 0), new Thickness(105, 10, 30, 0), new Thickness(105, 34, 30, 0), new Thickness(105, 58, 30, 0), new Thickness(105, 82, 30, 0), new Thickness(0, 43, 10, 0), new Thickness(10, 0, 10, 3) };
         public System_Monitor()
         {
             InitializeComponent();
+            ProcessList.DataContext = process_list;
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -40,130 +44,151 @@ namespace File_Manager
             worker.WorkerReportsProgress = true;
             worker.DoWork += worker_DoWork;
             worker.ProgressChanged += worker_ProgressChanged;
+            worker.RunWorkerCompleted += worker_RunWorkerCompleted;
+            worker.RunWorkerAsync();
+        }
+
+        void worker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            process_list.Clear();
+            worker = new BackgroundWorker();
+            worker.WorkerReportsProgress = true;
+            worker.DoWork += worker_DoWork;
+            worker.ProgressChanged += worker_ProgressChanged;
+            worker.RunWorkerCompleted += worker_RunWorkerCompleted;
             worker.RunWorkerAsync();
         }
 
         private void worker_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
-            bool change_selected_item = ProcessList.SelectedItem != null;
-            int selected_id = 0;
-            if (change_selected_item)
-                selected_id = Convert.ToInt32(((ListViewItem)ProcessList.SelectedItem).ContentStringFormat);
-            ProcessList.Items.Clear();
-            foreach (var i in Process.GetProcesses())
-                ProcessList.Items.Add(MakeProcessItem(i));
-            if (change_selected_item)
-                foreach (ListViewItem i in ProcessList.Items)
-                    if (i.ContentStringFormat.Equals(selected_id.ToString()))
-                    {
-                        ProcessList.SelectedItem = i;
-                        break;
-                    }
+            //bool change_selected_item = ProcessList.SelectedItem != null;
+            //int selected_id = 0;
+            //if (change_selected_item)
+            //    selected_id = Convert.ToInt32(((ListViewItem)ProcessList.SelectedItem).ContentStringFormat);
+            //ProcessList.Items.Clear();
+            //foreach (var i in Process.GetProcesses())
+            //{
+            process_list.Add(new SystemMonitorListView((Process)e.UserState));
+                //ProcessList.Items.Add(MakeProcessItem(i));
+            //}
+            //if (change_selected_item)
+            //    foreach (ListViewItem i in ProcessList.Items)
+            //        if (i.ContentStringFormat.Equals(selected_id.ToString()))
+            //        {
+            //            ProcessList.SelectedItem = i;
+            //            break;
+            //        }
         }
 
-        private ListViewItem MakeProcessItem(Process item)
-        {
-            Grid container = new Grid();
-            Image image = new Image();
-            image.HorizontalAlignment = HorizontalAlignment.Left;
-            image.VerticalAlignment = VerticalAlignment.Top;
-            image.Width = image.Height = 90;
-            image.Margin = margins[0];
-            if (!item.MainWindowTitle.Equals(""))
-                image.Source = app;
-            else
-                image.Source = process;
+        //private ListViewItem MakeProcessItem(Process item)
+        //{
+        //    Grid container = new Grid();
+        //    Image image = new Image();
+        //    image.HorizontalAlignment = HorizontalAlignment.Left;
+        //    image.VerticalAlignment = VerticalAlignment.Top;
+        //    image.Width = image.Height = 90;
+        //    image.Margin = margins[0];
+        //    if (!item.MainWindowTitle.Equals(""))
+        //        image.Source = app;
+        //    else
+        //        image.Source = process;
 
-            TextBlock tx1 = new TextBlock();
-            tx1.VerticalAlignment = VerticalAlignment.Top;
-            tx1.FontSize = 14;
-            tx1.Margin = margins[1];
-            tx1.TextTrimming = TextTrimming.CharacterEllipsis;
-            tx1.Text = "Process ID: " + item.Id;
+        //    TextBlock tx1 = new TextBlock();
+        //    tx1.VerticalAlignment = VerticalAlignment.Top;
+        //    tx1.FontSize = 14;
+        //    tx1.Margin = margins[1];
+        //    tx1.TextTrimming = TextTrimming.CharacterEllipsis;
+        //    tx1.Text = "Process ID: " + item.Id;
 
-            TextBlock tx2 = new TextBlock();
-            tx2.VerticalAlignment = VerticalAlignment.Top;
-            tx2.FontSize = 14;
-            tx2.Margin = margins[2];
-            tx2.TextTrimming = TextTrimming.CharacterEllipsis;
-            tx2.Text = "Process Name: " + (item.MainWindowTitle.Equals("") ? (item.ProcessName) : (item.ProcessName + " (" + item.MainWindowTitle + ")"));
+        //    TextBlock tx2 = new TextBlock();
+        //    tx2.VerticalAlignment = VerticalAlignment.Top;
+        //    tx2.FontSize = 14;
+        //    tx2.Margin = margins[2];
+        //    tx2.TextTrimming = TextTrimming.CharacterEllipsis;
+        //    tx2.Text = "Process Name: " + (item.MainWindowTitle.Equals("") ? (item.ProcessName) : (item.ProcessName + " (" + item.MainWindowTitle + ")"));
 
-            TextBlock tx3 = new TextBlock();
-            tx3.VerticalAlignment = VerticalAlignment.Top;
-            tx3.FontSize = 14;
-            tx3.Margin = margins[3];
-            tx3.TextTrimming = TextTrimming.CharacterEllipsis;
-            tx3.Text = "CPU: ";
-            //try
-            ////{ tx3.Text = "CPU: " + item.TotalProcessorTime.TotalSeconds; }
-            //catch (Exception) { }
+        //    TextBlock tx3 = new TextBlock();
+        //    tx3.VerticalAlignment = VerticalAlignment.Top;
+        //    tx3.FontSize = 14;
+        //    tx3.Margin = margins[3];
+        //    tx3.TextTrimming = TextTrimming.CharacterEllipsis;
+        //    tx3.Text = "CPU: ";
+        //    //try
+        //    ////{ tx3.Text = "CPU: " + item.TotalProcessorTime.TotalSeconds; }
+        //    //catch (Exception) { }
 
-            TextBlock tx4 = new TextBlock();
-            tx4.VerticalAlignment = VerticalAlignment.Top;
-            tx4.FontSize = 14;
-            tx4.Margin = margins[4];
-            tx4.TextTrimming = TextTrimming.CharacterEllipsis;
-            tx4.Text = "Memory usage: " + (item.PagedSystemMemorySize64 + item.PagedMemorySize64 + item.NonpagedSystemMemorySize64);
-            if (!item.Responding)
-            {
-                TextBlock unrespond = new TextBlock();
-                unrespond.Text = "Unresponding";
-                unrespond.HorizontalAlignment = HorizontalAlignment.Right;
-                unrespond.Margin = margins[5];
-                unrespond.FontSize = 18;
-                unrespond.RenderTransformOrigin = point;
-                unrespond.FontWeight = FontWeights.Bold;
-                unrespond.Foreground = Brushes.Red;
-                unrespond.VerticalAlignment = VerticalAlignment.Top;
-                unrespond.RenderTransform = angel;
-                container.Children.Add(unrespond);
-            }
+        //    TextBlock tx4 = new TextBlock();
+        //    tx4.VerticalAlignment = VerticalAlignment.Top;
+        //    tx4.FontSize = 14;
+        //    tx4.Margin = margins[4];
+        //    tx4.TextTrimming = TextTrimming.CharacterEllipsis;
+        //    tx4.Text = "Memory usage: " + (item.PagedSystemMemorySize64 + item.PagedMemorySize64 + item.NonpagedSystemMemorySize64);
+        //    if (!item.Responding)
+        //    {
+        //        TextBlock unrespond = new TextBlock();
+        //        unrespond.Text = "Unresponding";
+        //        unrespond.HorizontalAlignment = HorizontalAlignment.Right;
+        //        unrespond.Margin = margins[5];
+        //        unrespond.FontSize = 18;
+        //        unrespond.RenderTransformOrigin = point;
+        //        unrespond.FontWeight = FontWeights.Bold;
+        //        unrespond.Foreground = Brushes.Red;
+        //        unrespond.VerticalAlignment = VerticalAlignment.Top;
+        //        unrespond.RenderTransform = angel;
+        //        container.Children.Add(unrespond);
+        //    }
 
 
-            Rectangle separator = new Rectangle();
-            separator.Fill = Brushes.Silver;
-            separator.Height = 1;
-            separator.Margin = margins[6];
-            separator.VerticalAlignment = VerticalAlignment.Bottom;
+        //    Rectangle separator = new Rectangle();
+        //    separator.Fill = Brushes.Silver;
+        //    separator.Height = 1;
+        //    separator.Margin = margins[6];
+        //    separator.VerticalAlignment = VerticalAlignment.Bottom;
 
-            container.Height = 111;
-            container.Width = ProcessList.ActualWidth - 40;
-            container.Children.Add(image);
-            container.Children.Add(tx1);
-            container.Children.Add(tx2);
-            container.Children.Add(tx3);
-            container.Children.Add(tx4);
-            container.Children.Add(separator);
+        //    container.Height = 111;
+        //    container.Width = ProcessList.ActualWidth - 40;
+        //    container.Children.Add(image);
+        //    container.Children.Add(tx1);
+        //    container.Children.Add(tx2);
+        //    container.Children.Add(tx3);
+        //    container.Children.Add(tx4);
+        //    container.Children.Add(separator);
 
-            ListViewItem LVI = new ListViewItem();
-            LVI.ToolTip = item.ProcessName;
-            LVI.Tag = item;
-            LVI.ContentStringFormat = item.Id.ToString();
-            LVI.Content = container;
+        //    ListViewItem LVI = new ListViewItem();
+        //    LVI.ToolTip = item.ProcessName;
+        //    LVI.Tag = item;
+        //    LVI.ContentStringFormat = item.Id.ToString();
+        //    LVI.Content = container;
 
-            return LVI;
-        }
+        //    return LVI;
+        //}
 
         private void worker_DoWork(object sender, DoWorkEventArgs e)
         {
-            worker.ReportProgress(0);
-            while (true)
+            var list = Process.GetProcesses();
+            double total_cpu = 0;
+            foreach (var i in list)
             {
-                Thread.Sleep(1000);
-                worker.ReportProgress(2);
+                worker.ReportProgress(0, i);
+                try
+                { total_cpu += i.TotalProcessorTime.TotalMilliseconds; }
+                catch (Exception) { }
             }
+            foreach (var i in process_list)
+                i.SetCPU(total_cpu);
+            Thread.Sleep(10000);
         }
 
         private void Refresh_Click(object sender, RoutedEventArgs e)
         {
-            worker.ReportProgress(0);
+            //worker.ReportProgress(0);
         }
 
-        private void Window_SizeChanged_1(object sender, SizeChangedEventArgs e)
-        {
-            foreach (ListViewItem i in ProcessList.Items)
-                ((Grid)i.Content).Width = ProcessList.ActualWidth - 40;
-        }
+        //private void Window_SizeChanged_1(object sender, SizeChangedEventArgs e)
+        //{
+        //    foreach (ListViewItem i in ProcessList.Items)
+        //        ((Grid)i.Content).Width = ProcessList.ActualWidth - 40;
+        //}
 
 
         //private void ListProcess_SelectionChanged(object sender, SelectionChangedEventArgs e)

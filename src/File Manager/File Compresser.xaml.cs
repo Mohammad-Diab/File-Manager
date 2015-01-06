@@ -5,18 +5,13 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.Serialization.Formatters.Binary;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Forms;
 using System.Windows.Input;
-using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
+using SevenZip;
 
 namespace File_Manager
 {
@@ -26,7 +21,31 @@ namespace File_Manager
     public partial class File_Compresser : Window
     {
         CompresserListView current_parents, root;
-        bool project_saved = false;
+        SevenZipExtractor sze;
+        bool project_saved = true, compress_archive_mode = true;
+        bool CompressArchiveMode
+        {
+            get { return compress_archive_mode; }
+            set
+            {
+                if (value)
+                {
+                    compress.ToolTip = "Compress";
+                    extract_all.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    compress.ToolTip = "Extract";
+                    extract_all.Visibility = Visibility.Visible;
+                    DoubleAnimation da = new DoubleAnimation(24, new Duration(new TimeSpan(1000000)));
+                    extract_all.BeginAnimation(System.Windows.Controls.Button.WidthProperty, da);
+                }
+                //compress.IsEnabled = p;
+                compress_archive_mode = save_menu.IsEnabled = save_project.IsEnabled = compress_menu.IsEnabled = files_menu.IsEnabled = add_files.IsEnabled = add_directory.IsEnabled = remove_selected.IsEnabled = clear_list.IsEnabled = value;
+                close_archive.IsEnabled = !value;
+            }
+        }
+
         string archive_path;
         ObservableCollection<CompresserListView> list_items;
         public File_Compresser()
@@ -78,7 +97,7 @@ namespace File_Manager
                     foreach (string i in ofd.FileNames)
                     {
                         FileInfo file = new FileInfo(i);
-                        CompresserListView x = new CompresserListView(file, file.Length, null);
+                        CompresserListView x = new CompresserListView(file, (ulong)file.Length, null);
                         list_items.Add(x);
                         root.Children.Add(x);
                     }
@@ -147,7 +166,7 @@ namespace File_Manager
                 list_items.Clear();
                 foreach (var i in x.Children)
                     list_items.Add(i);
-                current_path.Text += ("\\" + x.FileName);
+                current_path.Text += ("\\" + x.FullPath);
                 if (list.Items.Count > 0)
                     list.ScrollIntoView(list.Items[0]);
             }
@@ -184,7 +203,14 @@ namespace File_Manager
 
         private void Compress_Click(object sender, RoutedEventArgs e)
         {
-            new Compress_Files().ShowDialog(root);
+            if (CompressArchiveMode)
+                new Compress_Files().ShowDialog(root);
+            else
+            {
+                string extract_to = new Folder_Picker().ShowThisDialog();
+                if (extract_to != null)
+                    new Operation().ExtractDialogShow(sze, extract_to, list.SelectedItems, Op.Extract, "", false);
+            }
         }
 
         private void NewArchive_Click(object sender, RoutedEventArgs e)
@@ -298,87 +324,80 @@ namespace File_Manager
 
         private void OpenArchive_Click(object sender, RoutedEventArgs e)
         {
-            OpenFileDialog ofd = new OpenFileDialog();
-            ofd.Filter = "Archives File Format|*.7z;*.zip;*.rar;*.001;*.gz;*.tar;*.cab;*.iso;*.xz;*.txz;*.lzma;*.cpio;*.bz2;*.bzip;*.bzip2;*.tbz2;*.tbz;*.gzip;*.tgz;*.tpz;*.z;*.taz;*.lzh;*.rpm;*.deb;*.jar;*.arj;*.vhd;*.wim;*swm;*fat;*ntfs;*dmg;*hfs;*xar;*squashfs|All Files|*.*";
-            if (ofd.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            bool start_openning = false;
+            if (CompressArchiveMode && !project_saved && list.Items.Count > 0)
             {
-                archive_path = ofd.FileName;
-                Process process = new Process();
-                ProcessStartInfo psi = new ProcessStartInfo("Tools\\compress\\7z\\7z.exe", " l \"" + ofd.FileName + "\"");
-                psi.RedirectStandardOutput = true;
-                psi.RedirectStandardInput = true;
-                psi.UseShellExecute = false;
-                psi.CreateNoWindow = true;
-                process.StartInfo = psi;
-                process.Start();
-                List<string> out_list = new List<string>();
-                int[] stage = new int[3];
-                int tmp_num = 0, k = 0;
-                while (!process.StandardOutput.EndOfStream)
+                MyMessageBoxResult result = new My_MessageBox("Compressed File Manager", "Do you want to save your project?", "", ""/*To cancel just close this window.*/, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/save-48.png")), null, null).ShowThisDialog();
+                if (result == MyMessageBoxResult.Yes)
                 {
-                    string x = process.StandardOutput.ReadLine();
-                    if (tmp_num < 3 && x.StartsWith("------------------- ----- ------------ ------------  ------------------------"))
-                    {
-                        stage[tmp_num] = k;
-                        tmp_num++;
-                    }
-                    out_list.Add(x);
-                    k++;
+                    if (SaveProject())
+                        start_openning = true;
                 }
-                if (process.ExitCode == 0)
+                else if (result == MyMessageBoxResult.No)
+                    start_openning = true;
+            }
+            else
+                start_openning = true;
+            if (start_openning)
+            {
+                //PasswordProtected files;
+                OpenFileDialog ofd = new OpenFileDialog();
+                ofd.Filter = "Archives File Format|*.7z;*.zip;*.rar;*.001;*.gz;*.tar;*.cab;*.iso;*.xz;*.txz;*.lzma;*.cpio;*.bz2;*.bzip;*.bzip2;*.tbz2;*.tbz;*.gzip;*.tgz;*.tpz;*.z;*.taz;*.lzh;*.rpm;*.deb;*.jar;*.arj;*.vhd;*.wim;*swm;*fat;*ntfs;*dmg;*hfs;*xar;*squashfs|All Files|*.*";
+                if (ofd.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                 {
-                    project_saved = true;
-                    SetValue(false);
-                    //string type = out_list[stage[0] + 2];
-                    for (int i = stage[0] + 1; i < out_list.Count && i < stage[1]; i++)
+                    archive_path = ofd.FileName;
+                    SevenZipExtractor.SetLibraryPath(@"C:\Program Files\7-Zip\7z.dll");
+                    try
                     {
-                        string date = out_list[i].Substring(0, 19);
-                        string atripute = out_list[i].Substring(20, 5);
-                        long size, c_size;
-                        long.TryParse(out_list[i].Substring(26, 12).Replace(" ", ""), out size);
-                        long.TryParse(out_list[i].Substring(39, 12).Replace(" ", ""), out c_size);
-                        string name = out_list[i].Substring(53);
-                        CompresserListView tmp = new CompresserListView(name, size, c_size, date, atripute, root, root, true);
+                        sze = new SevenZipExtractor(archive_path);
+                        ReadOnlyCollection<ArchiveFileInfo> collection = sze.ArchiveFileData;
+                        if (collection != null)
+                            foreach (var i in collection)
+                                new CompresserListView(i.FileName, i.Size, 0, i.LastWriteTime.ToString(), i.IsDirectory, root, root, true);
+                        SortList(root, out root.file_size_long, out root.compressed_size);
+                        foreach (var i in root.Children)
+                            list_items.Add(i);
+                        CompressArchiveMode = false;
                     }
-                    process.StandardOutput.Close();
-                    root.FileSizeLong = SortList(root);
-                    list_items.Clear();
-                    foreach (var i in root.Children)
-                        list_items.Add(i);
+                    catch (Exception)
+                    { new My_MessageBox("File Manager", "Invalid file or wronge password.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")); }
                 }
-                else if (process.ExitCode == 2 || process.ExitCode == 8 || process.ExitCode == 255)
-                    new My_MessageBox("File Manager", out_list[3], new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
             }
         }
 
-        private long SortList(CompresserListView item)
+        private void SortList(CompresserListView item, out ulong size, out ulong compressed_size)
         {
             List<CompresserListView> dirs = new List<CompresserListView>();
             List<CompresserListView> files = new List<CompresserListView>();
-            long size = 0;
+            compressed_size = size = 0;
             foreach (var i in item.Children)
             {
                 if (i.IsDirectory)
                 {
                     dirs.Add(i);
-                    long sun_size = SortList(i);
+                    ulong sun_size, sun_comoressed_size;
+                    SortList(i, out sun_size, out sun_comoressed_size);
                     size += sun_size;
-                    i.FileSizeLong = sun_size;
+                    compressed_size += sun_comoressed_size;
+                    i.file_size_long = sun_size;
+                    i.FileSize = Functions.FileSize(sun_size, 2);
+                    i.compressed_size = sun_comoressed_size;
+                    i.CompressedFileSize = Functions.FileSize(sun_comoressed_size, 2);
                 }
                 else
                 {
                     files.Add(i);
-                    size += i.FileSizeLong;
+                    size += i.file_size_long;
+                    compressed_size += i.compressed_size;
                 }
                 if (item == root)
                     i.Parent = null;
             }
-            dirs.Sort((CompresserListView x, CompresserListView y) => { return x.FileName.CompareTo(y.FileName); });
-            files.Sort((CompresserListView x, CompresserListView y) => { return x.FileName.CompareTo(y.FileName); });
+            dirs.Sort((CompresserListView x, CompresserListView y) => { return x.FullPath.CompareTo(y.FullPath); });
+            files.Sort((CompresserListView x, CompresserListView y) => { return x.FullPath.CompareTo(y.FullPath); });
             item.Children.Clear();
             foreach (var i in dirs) item.Children.Add(i);
             foreach (var i in files) item.Children.Add(i);
-            return size;
         }
 
         private void CloseArchive_Click(object sender, RoutedEventArgs e)
@@ -386,21 +405,14 @@ namespace File_Manager
             GoHome_Click(null, null);
             root.Children.Clear();
             list_items.Clear();
-            SetValue(true);
+            CompressArchiveMode = true;
         }
 
-        void SetValue(bool p)
+        private void ExtractAll_Click(object sender, RoutedEventArgs e)
         {
-            save_menu.IsEnabled = p;
-            save_project.IsEnabled = p;
-            compress_menu.IsEnabled = p;
-            compress.IsEnabled = p;
-            files_menu.IsEnabled = p;
-            add_files.IsEnabled = p;
-            add_directory.IsEnabled = p;
-            remove_selected.IsEnabled = p;
-            clear_list.IsEnabled = p;
-            close_archive.IsEnabled = !p;
+            string extract_to = new Folder_Picker().ShowThisDialog();
+            if (extract_to != null)
+                new Operation().ExtractDialogShow(sze, extract_to, null, Op.Extract, "", false);
         }
 
         private void Close_Click(object sender, RoutedEventArgs e)
@@ -409,22 +421,22 @@ namespace File_Manager
         }
     }
 
-    public class CompresserListView
+    class CompresserListView : GeneralPurpose
     {
         public CompresserListView Parent;
         string extension;
-        long compressed_size;
+        internal ulong compressed_size;
         public List<CompresserListView> Children;
 
         public CompresserListView() { file_full_name = ""; }
 
-        public CompresserListView(FileSystemInfo file_system, long file_size, CompresserListView parent)
+        public CompresserListView(FileSystemInfo file_system, ulong file_size, CompresserListView parent)
         {
             IsDirectory = file_system is DirectoryInfo;
             Parent = parent;
             if (file_system is FileInfo)
             {
-                FileName = file_system.Name;
+                FullPath = file_system.Name;
                 FileFullName = file_system.FullName;
                 if (FileInfoCombonents.FilesInformation.ContainsKey(file_system.Extension.ToLower()))
                     Image = FileInfoCombonents.FilesInformation[file_system.Extension.ToLower()].Bitmap24;
@@ -438,10 +450,10 @@ namespace File_Manager
                 if (file_system.Name.Contains(':'))
                 {
                     string label = new DriveInfo(file_system.Name).VolumeLabel;
-                    FileName = (label == "" ? "DiskDrive" : label) + " (" + file_system.Name[0] + ")";
+                    FullPath = (label == "" ? "DiskDrive" : label) + " (" + file_system.Name[0] + ")";
                 }
                 else
-                    FileName = file_system.Name;
+                    FullPath = file_system.Name;
                 FileFullName = file_system.FullName;
                 Image = FileInfoCombonents.FilesInformation["directory"].Bitmap24;
                 FileType = "Directory";
@@ -459,27 +471,58 @@ namespace File_Manager
             FileSize = Functions.FileSize(file_size_long, 2);
         }
 
-        public CompresserListView(string full_name, long size, long c_size, string date, string att, CompresserListView parent, CompresserListView root,bool add_parents)
+        public CompresserListView(string full_name, ulong size, ulong c_size, string date, string att, CompresserListView parent, CompresserListView root, bool add_parents)
         {
             IsDirectory = att[0].Equals('D');
             Parent = parent;
-            FileName = full_name.Substring(full_name.LastIndexOf('\\') > 0 ? full_name.LastIndexOf('\\') + 1 : 0);
+            FullPath = full_name.Substring(full_name.LastIndexOf('\\') > 0 ? full_name.LastIndexOf('\\') + 1 : 0);
             FileFullName = full_name;
             file_size_long = size;
-            int x = FileName.LastIndexOf('.');
-            extension = x > 1 && x < FileName.Length ? FileName.Substring(x) : ".";
+            compressed_size = c_size;
+            int x = FullPath.LastIndexOf('.');
+            extension = x > 1 && x < FullPath.Length ? FullPath.Substring(x) : ".";
             if (IsDirectory)
             {
                 extension = "directory";
                 Children = new List<CompresserListView>();
             }
             else
+            {
                 FileSize = Functions.FileSize(file_size_long, 2);
+                CompressedFileSize = Functions.FileSize(compressed_size, 2);
+            }
             Image = Functions.GetFileImage24(extension);
             FileType = Functions.GetFileType(extension);
             if (add_parents)
                 AddSun(this, root);
         }
+
+        public CompresserListView(string full_name, ulong size, ulong c_size, string date, bool is_directory, CompresserListView parent, CompresserListView root, bool add_parents)
+        {
+            IsDirectory = is_directory;
+            Parent = parent;
+            FullPath = full_name.Substring(full_name.LastIndexOf('\\') > 0 ? full_name.LastIndexOf('\\') + 1 : 0);
+            FileFullName = full_name;
+            file_size_long = size;
+            compressed_size = c_size;
+            int x = FullPath.LastIndexOf('.');
+            extension = x > 1 && x < FullPath.Length ? FullPath.Substring(x) : ".";
+            if (IsDirectory)
+            {
+                extension = "directory";
+                Children = new List<CompresserListView>();
+            }
+            else
+            {
+                FileSize = Functions.FileSize(file_size_long, 2);
+                CompressedFileSize = Functions.FileSize(compressed_size, 2);
+            }
+            Image = Functions.GetFileImage24(extension);
+            FileType = Functions.GetFileType(extension);
+            if (add_parents)
+                AddSun(this, root);
+        }
+
 
         void AddSun(CompresserListView item, CompresserListView root)
         {
@@ -509,8 +552,8 @@ namespace File_Manager
         {
             int i;
             if (Children != null)
-                for (i = 0; i < Children.Count;i++ )
-                    if (Children[i].file_name.Equals(item))
+                for (i = 0; i < Children.Count; i++)
+                    if (Children[i].FullPath.Equals(item))
                     {
                         index = i;
                         return true;
@@ -519,9 +562,9 @@ namespace File_Manager
             return false;
         }
 
-        long GetChildren(DirectoryInfo di, CompresserListView parent)
+        ulong GetChildren(DirectoryInfo di, CompresserListView parent)
         {
-            long size = 0;
+            ulong size = 0;
             try
             {
                 var dirs = di.GetDirectories();
@@ -539,22 +582,17 @@ namespace File_Manager
                 var files = di.GetFiles();
                 foreach (var i in files)
                     try
-                    { parent.Children.Add(new CompresserListView(i, i.Length, parent)); size += i.Length; }
+                    { parent.Children.Add(new CompresserListView(i, (ulong)i.Length, parent)); size += (ulong)i.Length; }
                     catch (Exception) { }
             }
             catch (Exception) { }
             return size;
         }
 
-        long file_size_long = 0;
-        public long FileSizeLong 
-        {
-            get { return file_size_long; }
-            set { FileSize = Functions.FileSize(value, 2); file_size_long = value; }
-        }
+        internal ulong file_size_long = 0;
 
         string file_full_name;
-        public String FileFullName
+        public string FileFullName
         {
             get { return file_full_name; }
             set { file_full_name = value; }
@@ -567,32 +605,89 @@ namespace File_Manager
             set { is_directory = value; }
         }
 
-        String file_name;
-        public string FileName
-        {
-            get { return file_name; }
-            set { file_name = value; }
-        }
-
-        BitmapImage img_source;
-        public BitmapImage Image
-        {
-            get { return img_source; }
-            set { img_source = value; }
-        }
-
-        String file_type;
+        string file_type;
         public string FileType
         {
             get { return file_type; }
             set { file_type = value; }
         }
 
-        String file_size;
+        string file_size;
         public string FileSize
         {
             get { return file_size; }
             set { file_size = value; }
+        }
+
+        string compressed_file_size;
+        public string CompressedFileSize
+        {
+            get { return compressed_file_size; }
+            set { compressed_file_size = value; }
+        }
+    }
+
+    [Serializable]
+    class BasicCompresserListView
+    {
+        public BasicCompresserListView Parent;
+        public List<BasicCompresserListView> Children;
+        public ulong FileSize = 0;
+        public string FileFullName;
+        public bool IsDirectory;
+        public string FileType;
+
+        public BasicCompresserListView(CompresserListView file_system, BasicCompresserListView parent)
+        {
+            IsDirectory = file_system.IsDirectory;
+            Parent = parent;
+            FileFullName = file_system.FileFullName;
+            FileType = file_system.FileType;
+            FileSize = file_system.file_size_long;
+
+            if (file_system.IsDirectory)
+            {
+                Children = new List<BasicCompresserListView>();
+                foreach (var i in file_system.Children)
+                    Children.Add(new BasicCompresserListView(i, this));
+            }
+        }
+
+        internal CompresserListView ConvertToSatndart(CompresserListView parent)
+        {
+            CompresserListView tmp = new CompresserListView();
+            tmp.file_size_long = this.FileSize;
+            tmp.IsDirectory = this.IsDirectory;
+            tmp.FileFullName = this.FileFullName;
+            tmp.Parent = parent;
+            FileSystemInfo file_system;
+            if (!this.IsDirectory)
+            {
+                file_system = new FileInfo(tmp.FileFullName);
+                tmp.FullPath = file_system.Name;
+                if (FileInfoCombonents.FilesInformation.ContainsKey(file_system.Extension.ToLower()))
+                    tmp.Image = FileInfoCombonents.FilesInformation[file_system.Extension.ToLower()].Bitmap24;
+                else
+                    tmp.Image = FileInfoCombonents.FilesInformation["."].Bitmap24;
+                tmp.FileType = Functions.GetFileType(file_system.Extension);
+            }
+            else
+            {
+                file_system = new DirectoryInfo(tmp.FileFullName);
+                tmp.Children = new List<CompresserListView>();
+                if (file_system.Name.Contains(':'))
+                {
+                    string label = new DriveInfo(file_system.Name).VolumeLabel;
+                    tmp.FullPath = (label == "" ? "DiskDrive" : label) + " (" + file_system.Name[0] + ")";
+                }
+                else
+                    tmp.FullPath = file_system.Name;
+                tmp.Image = FileInfoCombonents.FilesInformation["directory"].Bitmap24;
+                tmp.FileType = "Directory";
+                foreach (var i in Children)
+                    tmp.Children.Add(i.ConvertToSatndart(tmp));
+            }
+            return tmp;
         }
     }
 }
@@ -635,3 +730,80 @@ namespace File_Manager
 //        foreach (var i in OFD.FileNames)
 //            list_items.Add(new ListItem(i/*, ItemType.File*/));
 //}
+
+
+//void SetValue(bool p)
+//{
+//    save_menu.IsEnabled = p;
+//    save_project.IsEnabled = p;
+//    compress_menu.IsEnabled = p;
+//    if (p)
+//    {
+//        compress.ToolTip = "Compress";
+//        extract_all.Visibility = Visibility.Collapsed;
+//    }
+//    else
+//    {
+//        compress.ToolTip = "Extract";
+//        extract_all.Visibility = Visibility.Visible;
+//        DoubleAnimation da = new DoubleAnimation(24, new Duration(new TimeSpan(1000000)));
+//        extract_all.BeginAnimation(System.Windows.Controls.Button.WidthProperty, da);
+//    }
+//    //compress.IsEnabled = p;
+//    files_menu.IsEnabled = p;
+//    add_files.IsEnabled = p;
+//    add_directory.IsEnabled = p;
+//    remove_selected.IsEnabled = p;
+//    clear_list.IsEnabled = p;
+//    close_archive.IsEnabled = !p;
+//}
+
+
+
+
+//old compressing
+//Process process = new Process();
+//ProcessStartInfo psi = new ProcessStartInfo("Tools\\compress\\7z\\7z.exe", " l \"" + ofd.FileName + "\"");
+//psi.RedirectStandardOutput = true;
+//psi.RedirectStandardInput = true;
+//psi.UseShellExecute = false;
+//psi.CreateNoWindow = true;
+//process.StartInfo = psi;
+//process.Start();
+//List<string> out_list = new List<string>();
+//int[] stage = new int[3];
+//int tmp_num = 0, k = 0;
+//while (!process.StandardOutput.EndOfStream)
+//{
+//    string x = process.StandardOutput.ReadLine();
+//    if (tmp_num < 3 && x.StartsWith("------------------- ----- ------------ ------------  ------------------------"))
+//    {
+//        stage[tmp_num] = k;
+//        tmp_num++;
+//    }
+//    out_list.Add(x);
+//    k++;
+//}
+//if (process.ExitCode == 0)
+//{
+//    project_saved = true;
+//    CompressArchiveMode = true;
+//    //string type = out_list[stage[0] + 2];
+//    for (int i = stage[0] + 1; i < out_list.Count && i < stage[1]; i++)
+//    {
+//        string date = out_list[i].Substring(0, 19);
+//        string atripute = out_list[i].Substring(20, 5);
+//        ulong size, c_size;
+//        ulong.TryParse(out_list[i].Substring(26, 12).Replace(" ", ""), out size);
+//        ulong.TryParse(out_list[i].Substring(39, 12).Replace(" ", ""), out c_size);
+//        string name = out_list[i].Substring(53);
+//        CompresserListView tmp = new CompresserListView(name, size, c_size, date, atripute, root, root, true);
+//    }
+//    process.StandardOutput.Close();
+//    SortList(root, out root.file_size_long, out root.compressed_size);
+//    list_items.Clear();
+//    foreach (var i in root.Children)
+//        list_items.Add(i);
+//} 
+//else if (process.ExitCode == 2 || process.ExitCode == 8 || process.ExitCode == 255)
+//        new My_MessageBox("File Manager", out_list[3], new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();

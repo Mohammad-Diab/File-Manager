@@ -47,19 +47,18 @@ namespace File_Manager
             {
                 ClearList_Click(clear_list, null);
                 progressbar.Visibility = Visibility.Visible;
-                BackgroundWorker bw = new BackgroundWorker();
-                bw.WorkerSupportsCancellation = true;
-                bw.WorkerReportsProgress = true;
-                bw.DoWork += FindEmptey_DoWork;
-                bw.ProgressChanged += FindEmptey_ProgressChanged;
-                bw.RunWorkerCompleted += FindEmptey_RunWorkerCompleted;
-                bw.RunWorkerAsync(path);
+                find_emptey_BackgroundWorker = new BackgroundWorker();
+                find_emptey_BackgroundWorker.WorkerSupportsCancellation = true;
+                find_emptey_BackgroundWorker.WorkerReportsProgress = true;
+                find_emptey_BackgroundWorker.DoWork += FindEmptey_DoWork;
+                find_emptey_BackgroundWorker.ProgressChanged += FindEmptey_ProgressChanged;
+                find_emptey_BackgroundWorker.RunWorkerCompleted += FindEmptey_RunWorkerCompleted;
+                find_emptey_BackgroundWorker.RunWorkerAsync(path);
             }
         }
 
         void FindEmptey_DoWork(object sender, DoWorkEventArgs e)
         {
-            find_emptey_BackgroundWorker = new BackgroundWorker();
             Thread progress_thread = new Thread(() =>
             {
                 for (int i = 1; i < 5000 && process_value < 5100; i++)
@@ -113,6 +112,7 @@ namespace File_Manager
                 progressbar.Visibility = Visibility.Hidden;
             }
         }
+
         private void DeleteItems_Click(object sender, RoutedEventArgs e)
         {
             List<FileOperationItem> files = new List<FileOperationItem>();

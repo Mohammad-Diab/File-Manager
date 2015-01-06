@@ -360,6 +360,31 @@ namespace File_Manager
             else
                 return FileInfoCombonents.FilesInformation["."].Bitmap64;
         }
+
+        internal static void GetAllFiles(DirectoryInfo root,BackgroundWorker adder,ref bool cancel_operation)
+        {
+            try
+            {
+                var sub_dirs = root.GetDirectories();
+                foreach (var i in sub_dirs)
+                {
+                    if (cancel_operation) return;
+                    try { GetAllFiles(i, adder, ref cancel_operation); } catch (Exception) { }
+                }
+            }
+            catch (Exception) { }
+            FileInfo[] files = null;
+            try
+            {
+                files = root.GetFiles();
+                foreach (var i in files)
+                {
+                    if (cancel_operation) return;
+                    try { adder.ReportProgress(0, i); } catch (Exception) { }
+                }
+            }
+            catch (Exception) { }
+        }
     }
 
     class GeneralPurpose
@@ -997,7 +1022,11 @@ namespace File_Manager
         Copy = 0,
         Attributes = 1,
         Delete = 2,
-        Rename = 3
+        Rename = 3,
+        Destroy = 4,
+        Encrypt = 5,
+        Compress = 6,
+        Extract = 7
     }
 
     #endregion
@@ -1171,67 +1200,4 @@ namespace File_Manager
         }
     }
 
-    [Serializable]
-    public class BasicCompresserListView
-    {
-        public BasicCompresserListView Parent;
-        public List<BasicCompresserListView> Children;
-        public long FileSize = 0;
-        public string FileFullName;
-        public bool IsDirectory;
-        public string FileType;
-
-        public BasicCompresserListView(CompresserListView file_system, BasicCompresserListView parent)
-        {
-            IsDirectory = file_system.IsDirectory;
-            Parent = parent;
-            FileFullName = file_system.FileFullName;
-            FileType = file_system.FileType;
-            FileSize = file_system.FileSizeLong;
-
-            if (file_system.IsDirectory)
-            {
-                Children = new List<BasicCompresserListView>();
-                foreach (var i in file_system.Children)
-                    Children.Add(new BasicCompresserListView(i, this));
-            }
-        }
-
-        internal CompresserListView ConvertToSatndart(CompresserListView parent)
-        {
-            CompresserListView tmp = new CompresserListView();
-            tmp.FileSizeLong = this.FileSize;
-            tmp.IsDirectory = this.IsDirectory;
-            tmp.FileFullName = this.FileFullName;
-            tmp.Parent = parent;
-            FileSystemInfo file_system;
-            if (!this.IsDirectory)
-            {
-                file_system = new FileInfo(tmp.FileFullName);
-                tmp.FileName = file_system.Name;
-                if (FileInfoCombonents.FilesInformation.ContainsKey(file_system.Extension.ToLower()))
-                    tmp.Image = FileInfoCombonents.FilesInformation[file_system.Extension.ToLower()].Bitmap24;
-                else
-                    tmp.Image = FileInfoCombonents.FilesInformation["."].Bitmap24;
-                tmp.FileType = Functions.GetFileType(file_system.Extension);
-            }
-            else
-            {
-                file_system = new DirectoryInfo(tmp.FileFullName);
-                tmp.Children = new List<CompresserListView>();
-                if (file_system.Name.Contains(':'))
-                {
-                    string label = new DriveInfo(file_system.Name).VolumeLabel;
-                    tmp.FileName = (label == "" ? "DiskDrive" : label) + " (" + file_system.Name[0] + ")";
-                }
-                else
-                    tmp.FileName = file_system.Name;
-                tmp.Image = FileInfoCombonents.FilesInformation["directory"].Bitmap24;
-                tmp.FileType = "Directory";
-                foreach (var i in Children)
-                    tmp.Children.Add(i.ConvertToSatndart(tmp));
-            }
-            return tmp;
-        }
-    }
 }

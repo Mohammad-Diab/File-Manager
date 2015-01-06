@@ -118,7 +118,7 @@
                     <ComboBoxItem Content="Secure destroy"/>
                 </ComboBox>
                 <TextBlock HorizontalAlignment="Left" Margin="125,136,0,0" TextWrapping="Wrap" Text="Method" VerticalAlignment="Top" FontSize="16"/>
-                <Button HorizontalAlignment="Right" Margin="0,0,9,16" VerticalAlignment="Bottom" Background="{x:Null}" Click="PlayPause_Click">
+                <Button x:Name="play_pause" HorizontalAlignment="Right" Margin="0,0,9,16" VerticalAlignment="Bottom" Visibility="Hidden" Background="{x:Null}" Click="PlayPause_Click">
                     <Image x:Name="play_pause_img" Source="Images/Menu/copy-pause.png" Width="32" Height="32"/>
                 </Button>
             </Grid>

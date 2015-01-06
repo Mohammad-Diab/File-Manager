@@ -862,7 +862,10 @@ namespace File_Manager
             uint losize = GetCompressedFileSizeW(info.FullName, out hosize);
             long size;
             size = (long)hosize << 32 | losize;
-            return ((size + (clusterSize) - 1) / (clusterSize)) * clusterSize;
+            if (clusterSize > 0)
+                return ((size + (clusterSize) - 1) / (clusterSize)) * clusterSize;
+            else
+                return info.Length;
         }
 
         void GetClusterSize(string drive)

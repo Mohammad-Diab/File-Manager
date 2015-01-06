@@ -47,7 +47,7 @@
                     <Button Content="Clear List" Margin="0,0,10,10" Height="28" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="85" Background="{x:Null}" BorderBrush="#FF003AFF" Foreground="#FF3A00FF"/>
                 </Grid>
             </Grid>
-            <ListView x:Name="Explorer" TextBlock.TextAlignment="Right" Margin="0,0,220,19" ItemsSource="{Binding}" PreviewKeyUp="Explorer_PreviewKeyUp" Foreground="#FF41403B" SelectionChanged="Explorer_SelectionChanged" Background="White" ContextMenuOpening="Explorer_ContextMenuOpening">
+            <ListView x:Name="Explorer" TextBlock.TextAlignment="Right" Margin="0,0,220,19" ItemsSource="{Binding}" PreviewKeyUp="Explorer_PreviewKeyUp" Foreground="#FF41403B" SelectionChanged="Explorer_SelectionChanged" Background="White" ContextMenuOpening="Explorer_ContextMenuOpening" ScrollViewer.HorizontalScrollBarVisibility="Auto">
                 <ListView.ContextMenu>
                     <ContextMenu>
                         <MenuItem Header="Sort by">
@@ -167,7 +167,8 @@
                 <MenuItem Header="Empty directories remover" Foreground="#FF41403B" Click="EmptyDirectoriesRemover_Click"/>
                 <MenuItem Header="Files destoyer" Foreground="#FF41403B" Click="FilesDestoyer_Click"/>
                 <MenuItem Header="Files encreptor" Foreground="#FF41403B" Click="FilesEncreptor_Click"/>
-                <MenuItem Header="Files organizer (searcher in free edition)" Foreground="#FF41403B"/>
+                <MenuItem Header="new tools coming soon..." Foreground="#FF41403B"/>
+                <!--Files organizer (searcher in free edition)-->
             </MenuItem>
             <MenuItem x:Name="options" Header="OPTIONS" FontSize="14">
                 <MenuItem Header="New Tab" Foreground="#FF41403B"/>

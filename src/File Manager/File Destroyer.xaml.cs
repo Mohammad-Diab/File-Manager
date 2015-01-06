@@ -3,18 +3,12 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Forms;
-using System.Windows.Input;
-using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 
 namespace File_Manager
 {
@@ -26,7 +20,7 @@ namespace File_Manager
         bool CloseWindow = false;
 
         char[] Chars = { '$', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '&', '#', '%', '^', '(', ')', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0' };
-        int buf_size = Environment.Is64BitOperatingSystem ? 65535 : 32766;
+        int buf_size = 32766 / 2;
 
         public File_Destroyer()
         {
@@ -114,8 +108,8 @@ namespace File_Manager
             }
             return buffer;
         }
-
-        byte WriteFile(DestroyListView item, byte[] buffer, long size, bool never_pause)
+        //اضافة البروغريس كريفرنس واضافة عامل القسمة للتقسيم على 35
+        byte WriteFile(DestroyListView item, byte[] buffer, long size, bool never_pause, ref double progress, byte division_factor)
         {
             try
             {
@@ -124,21 +118,21 @@ namespace File_Manager
                 for (k = buffer.Length; k <= size; k += buffer.Length)
                 {
                     while (pause && !never_pause)
+                    {
                         Thread.Sleep(200);
+                        if (CloseWindow) return 0;
+                    }
+                    if (CloseWindow) return 0;
                     BW.Write(buffer);
-                    if (never_pause)
-                        item.CurrentProgress += buffer.Length;
-                    else
-                        completed_progress_d += buffer.Length;
+                    progress += buffer.Length / division_factor;
                 }
                 long remain = (size - (k - buffer.Length));
                 for (int i = 0; i < remain; i++)
+                {
+                    if (CloseWindow) return 0;
                     BW.Write(buffer[i]);
-                if (never_pause)
-                    item.CurrentProgress += remain;
-                else
-                    completed_progress_d += remain;
-
+                }
+                progress += buffer.Length / division_factor;
                 BW.Close();
                 return 1;
             }
@@ -264,6 +258,7 @@ namespace File_Manager
             process_thread.Start();
             for (int index = 0; index < list_to_destroy.Count; index++)
             {
+                if (CloseWindow) return;
                 list_to_destroy[index].CurrentProgress = 0;
                 try
                 {
@@ -278,7 +273,7 @@ namespace File_Manager
                 {
                     list_to_destroy[index].MaximumValue = list_to_destroy[index].File.Length * repete;
                     for (int i = 0; i < repete; i++)
-                        WriteFile(list_to_destroy[index], GetBuffer(method, 0), list_to_destroy[index].File.Length, true);
+                        WriteFile(list_to_destroy[index], GetBuffer(method, 0), list_to_destroy[index].File.Length, true, ref list_to_destroy[index].current_progress, 1);
                     dones = 35;
                 }
                 else
@@ -286,7 +281,7 @@ namespace File_Manager
                     list_to_destroy[index].MaximumValue = list_to_destroy[index].File.Length * repete * 35;
                     for (int i = 0; i < repete; i++)
                         for (int j = 0; j < 35; j++)
-                            dones += WriteFile(list_to_destroy[index], GetBuffer(method, j), list_to_destroy[index].File.Length, true);
+                            dones += WriteFile(list_to_destroy[index], GetBuffer(method, j), list_to_destroy[index].File.Length, true, ref list_to_destroy[index].current_progress, 1);
                 }
                 list_to_destroy[index].CurrentProgress = list_to_destroy[index].MaximumValue;
                 try
@@ -307,6 +302,12 @@ namespace File_Manager
 
         private void DestroyBW_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
+            for (int i = list_to_destroy.Count - 1; i >= 0; i--)
+            {
+                if (list_to_destroy[i].MaximumValue == list_to_destroy[i].CurrentProgress)
+                    list_to_destroy.RemoveAt(i);
+                if (CloseWindow) return;
+            }
             destroy_control.IsEnabled = true;
             total_progress.Visibility = Visibility.Hidden;
             files_list.Items.Refresh();
@@ -333,10 +334,11 @@ namespace File_Manager
 
         #region Destroy Disk
 
-        bool method2, pause = false;
+        bool method2, pause;
         DriveInfo drive;
-        long completed_progress_d = 0;
-        byte file_creating_error = 0;
+        double completed_progress_d;
+        byte file_creating_error;
+        BackgroundWorker destroy_disk_BackgroundWorker;
 
         private void Refresh_Click(object sender, RoutedEventArgs e)
         {
@@ -372,19 +374,22 @@ namespace File_Manager
             {
                 if (new My_MessageBox("Confirmation", "Are you sure you want to destroy all deleted files in '" + drive.Name + "'?", "Caution: these files will permanently lose!", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-Warning.png")), null, null).ShowThisDialog() == MyMessageBoxResult.Yes)
                 {
+                    pause = false;
+                    completed_progress_d = 0;
+                    play_pause.Visibility = Visibility.Visible;
                     DisableEnableControls(false);
                     file_creating_error = 0;
                     Undone = new List<FileInfo>();
-                    BackgroundWorker bw = new BackgroundWorker();
-                    bw.WorkerSupportsCancellation = true;
-                    bw.WorkerReportsProgress = true;
-                    bw.DoWork += DestroyDiskBW_DoWork;
-                    bw.ProgressChanged += DestroyDiskBW_ProgressChanged;
-                    bw.RunWorkerCompleted += DestroyDiskBW_RunWorkerCompleted;
+                    destroy_disk_BackgroundWorker = new BackgroundWorker();
+                    destroy_disk_BackgroundWorker.WorkerSupportsCancellation = true;
+                    destroy_disk_BackgroundWorker.WorkerReportsProgress = true;
+                    destroy_disk_BackgroundWorker.DoWork += DestroyDiskBW_DoWork;
+                    destroy_disk_BackgroundWorker.ProgressChanged += DestroyDiskBW_ProgressChanged;
+                    destroy_disk_BackgroundWorker.RunWorkerCompleted += DestroyDiskBW_RunWorkerCompleted;
                     method2 = method_cb2.SelectedIndex == 0 ? true : false;
                     total_MB.Text = Functions.FileSize(drive.TotalFreeSpace, 2);
                     total_progress_disk.Maximum = drive.TotalFreeSpace - 1024.0;
-                    bw.RunWorkerAsync();
+                    destroy_disk_BackgroundWorker.RunWorkerAsync();
                 }
             }
             else
@@ -398,27 +403,32 @@ namespace File_Manager
 
         private void DestroyDiskBW_DoWork(object sender, DoWorkEventArgs e)
         {
-            BackgroundWorker bw = (BackgroundWorker)sender;
             Thread process_thread = new Thread(() =>
             {
-                while (bw.IsBusy)
+                while (destroy_disk_BackgroundWorker.IsBusy)
                 {
-                    bw.ReportProgress(0);
+                    destroy_disk_BackgroundWorker.ReportProgress(0);
                     Thread.Sleep(200);
                 }
             });
             process_thread.Start();
             List<string> files_name = new List<string>();
             while (drive.IsReady && drive.TotalFreeSpace > 1073742848 && file_creating_error < 3)
-                PrepareAndWriteFile(files_name, bw, 1073741824);
+            {
+                if (CloseWindow) return;
+                PrepareAndWriteFile(files_name, 1073741824);
+            }
             while (drive.IsReady && drive.TotalFreeSpace > 0 && drive.AvailableFreeSpace > 1025 && file_creating_error < 3)
-                PrepareAndWriteFile(files_name, bw, drive.AvailableFreeSpace - 1024);
+            {
+                if (CloseWindow) return;
+                PrepareAndWriteFile(files_name, drive.AvailableFreeSpace - 1024);
+            }
             if (file_creating_error > 2)
-                bw.ReportProgress(-100, "Can not destrory deleted files on this drive, try to cleaning up...");
+                destroy_disk_BackgroundWorker.ReportProgress(-100, "Can not destrory deleted files on this drive, try to cleaning up...");
             int errors = 0;
             StringBuilder message = new StringBuilder();
             message.AppendLine("Some files have not deleted successfull you can delete them manually:");
-            for (int i = files_name.Count - 1; i <= 0; i--)
+            for (int i = files_name.Count - 1; i >= 0; i--)
                 try
                 {
                     File.Delete(files_name[i]);
@@ -426,26 +436,26 @@ namespace File_Manager
                 }
                 catch (Exception) { errors++; message.AppendLine(files_name[i]); }
             if (errors > 0)
-                bw.ReportProgress(-100, message);
+                destroy_disk_BackgroundWorker.ReportProgress(-100, message);
         }
 
-        private void PrepareAndWriteFile(List<string> files_name, BackgroundWorker bw, long size)
+        private void PrepareAndWriteFile(List<string> files_name, long size)
         {
             FileInfo fi = new FileInfo(GetFileName(drive.Name));
-            if (!method2)
-                if (WriteFile(new DestroyListView("", Functions.GetFileImage24(fi.Extension), fi), GetBuffer(method2, 0), size, false) == 1)
+            if (method2)
+                if (WriteFile(new DestroyListView("", Functions.GetFileImage24(fi.Extension), fi), GetBuffer(method2, 0), size, false, ref completed_progress_d, 1) == 1)
                     files_name.Add(fi.FullName);
                 else
-                { bw.ReportProgress(-100, "Something wronge while creating file \"" + fi.FullName + "\""); file_creating_error++; }
+                { destroy_disk_BackgroundWorker.ReportProgress(-100, "Something wronge while creating file \"" + fi.FullName + "\""); file_creating_error++; }
             else
             {
                 int count = 0;
                 for (int k = 0; k < 35; k++)
-                    count += WriteFile(new DestroyListView("", Functions.GetFileImage24(fi.Extension), fi), GetBuffer(method2, k), size, false);
+                    count += WriteFile(new DestroyListView("", Functions.GetFileImage24(fi.Extension), fi), GetBuffer(method2, k), size, false, ref completed_progress_d, 35);
                 if (count > 25)
                     files_name.Add(fi.FullName);
                 else
-                { bw.ReportProgress(-100, "Something wronge while creating file \"" + fi.FullName + "\""); file_creating_error++; }
+                { destroy_disk_BackgroundWorker.ReportProgress(-100, "Something wronge while creating file \"" + fi.FullName + "\""); file_creating_error++; }
             }
         }
 
@@ -483,6 +493,7 @@ namespace File_Manager
             total_progress_disk.Value = total_progress_disk.Maximum;
             completed_MB.Text = total_MB.Text;
             DisableEnableControls(true);
+            play_pause.Visibility = Visibility.Hidden;
             new My_MessageBox("FILE MANAGER", "Operation done.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-information.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-information.wav")).ShowDialog();
         }
 
@@ -535,7 +546,7 @@ namespace File_Manager
 
         private BitmapImage img_source;
 
-        private double current_progress;
+        internal double current_progress;
         public double CurrentProgress
         {
             get { return current_progress; }

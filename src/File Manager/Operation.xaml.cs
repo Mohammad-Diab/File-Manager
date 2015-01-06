@@ -1,20 +1,16 @@
-﻿using System;
+﻿using SevenZip;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Management;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 
 namespace File_Manager
 {
@@ -23,7 +19,7 @@ namespace File_Manager
     /// </summary>
     public partial class Operation : Window
     {
-        string paste_in,current_file_name;
+        string paste_in, current_file_name;
         Op operation_type;
         OperationTree root, already_exist, unsucsess;
         long progress_value, completed_count, old_progress_value;
@@ -43,10 +39,9 @@ namespace File_Manager
             this.operation_type = operation_type;
             root = new OperationTree(null, false, "", operation_type, null, false, "");
             paste_in = path_to_paste;
-            operation.Text = Title = operation_type == Op.Copy ? "Copying" : operation_type == Op.Delete ? "Deleting" : operation_type == Op.Rename ? "Renaming" : "Applaying Attributes";
+            operation.Text = Title = operation_type == Op.Copy ? "Copying" : operation_type == Op.Delete ? "Deleting" : operation_type == Op.Rename ? "Renaming" : operation_type == Op.Attributes ? "Applaying Attributes" : operation_type == Op.Extract ? "Extracting Files" : "";
             BackgroundWorker CollectFiles = new BackgroundWorker();
             CollectFiles.DoWork += CollectFiles_DoWork;
-            CollectFiles.WorkerSupportsCancellation = true;
             if (operation_type == Op.Copy)
                 CollectFiles.RunWorkerCompleted += CollectFiles_RunWorkerCompleted;
             else if (operation_type == Op.Delete)
@@ -55,6 +50,8 @@ namespace File_Manager
                 CollectFiles.RunWorkerCompleted += CollectFilesToRename_RunWorkerCompleted;
             else if (operation_type == Op.Attributes)
                 CollectFiles.RunWorkerCompleted += CollectFilesToAttribute_RunWorkerCompleted;
+            //else if (operation_type == Op.Extract)
+            //    CollectFiles.RunWorkerCompleted += CollectFilesToExtract_RunWorkerCompleted;
             CollectFiles.RunWorkerAsync(ToCopyList);
             if (show_dialog)
                 ShowDialog();
@@ -77,10 +74,10 @@ namespace File_Manager
             progress_bar.Foreground = Brushes.RoyalBlue;
             progress_bar.Value = 0;
             progress_bar.Maximum = maximum_progress_bar_value;
-            ChangeRemain(maximum_progress_bar_value, !(operation_type == Op.Copy));
+            ChangeRemain(maximum_progress_bar_value, !(operation_type == Op.Copy || operation_type == Op.Encrypt));
             Title = Title + " (" + title + ")";
             OpBW = new BackgroundWorker();
-            OpBW.WorkerReportsProgress = OpBW.WorkerSupportsCancellation = true;
+            OpBW.WorkerReportsProgress = true;
             if (operation_type == Op.Copy)
                 OpBW.DoWork += Copying_DoWork;
             else if (operation_type == Op.Delete)
@@ -89,6 +86,8 @@ namespace File_Manager
                 OpBW.DoWork += Renaming_DoWork;
             else if (operation_type == Op.Attributes)
                 OpBW.DoWork += ApplyingAttribute_DoWork;
+            //else if (operation_type == Op.Extract)
+            //    OpBW.DoWork += ExtractingFiles_DoWork;
             OpBW.RunWorkerCompleted += Operation_RunWorkerCompleted;
             OpBW.ProgressChanged += Operation_ProgressChanged;
             OpBW.RunWorkerAsync(root);
@@ -112,20 +111,25 @@ namespace File_Manager
             {
                 progress_bar.Value = progress_value;
                 double val = 0;
-                if (operation_type == Op.Copy)
+                switch (operation_type)
                 {
-                    val = progress_bar.Value * 100 / (root.size + 0.000000001);
-                    ChangeRemain(root.size - progress_value, false);
-                }
-                else if (operation_type == Op.Delete || operation_type == Op.Attributes)
-                {
-                    val = progress_bar.Value * 100.0 / (root.files_count + root.directory_count + 0.000000001);
-                    ChangeRemain(root.files_count + root.directory_count - progress_value, true);
-                }
-                else if (operation_type == Op.Rename)
-                {
-                    val = progress_bar.Value * 100.0 / (root.children.Count + 0.000000001);
-                    ChangeRemain(root.children.Count - progress_value, true);
+                    case Op.Copy:
+                        val = progress_bar.Value * 100 / (root.size + 0.000000001);
+                        ChangeRemain(root.size - progress_value, false);
+                        break;
+                    case Op.Delete:
+                    case Op.Attributes:
+                        val = progress_bar.Value * 100.0 / (root.files_count + root.directory_count + 0.000000001);
+                        ChangeRemain(root.files_count + root.directory_count - progress_value, true);
+                        break;
+                    case Op.Rename:
+                        val = progress_bar.Value * 100.0 / (root.children.Count + 0.000000001);
+                        ChangeRemain(root.children.Count - progress_value, true);
+                        break;
+                    case Op.Extract:
+                        val = progress_value;
+                        ChangeRemain((root.size * (100 - progress_value)) / 100, false);
+                        break;
                 }
                 percent.Text = Math.Round(val, 0) + "%";
                 TaskbarItemInfo.ProgressValue = val / 100;
@@ -140,17 +144,20 @@ namespace File_Manager
                         double x = Math.Round(progress_value - old_progress_value / 2.0, 1);
                         speed.Text = (x > 2 ? x : 60 * x) + " item" + (x > 2 ? "s" : x * 60 > 2 ? "s" : "") + " per " + (x > 2 ? "second" : "minute");
                     }
+                    else if (operation_type == Op.Extract)
+                        speed.Text = Functions.FileSize((progress_value - old_progress_value) * root.size / 100.0, 1) + " per second";
                     old_progress_value = progress_value;
                 }
                 else
                     progress_rount++;
+
                 item_name.ToolTip = item_name.Text = current_file_name;
             }
         }
 
         private void Operation_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
-            if(operation_type==Op.Copy)
+            if (operation_type == Op.Copy)
                 MainWindow.IsPaste = true;
             Close();
         }
@@ -208,6 +215,7 @@ namespace File_Manager
                 }
             }
         }
+
 
         #region Copy and Move Region
 
@@ -895,6 +903,282 @@ namespace File_Manager
             //catch (Exception ex)
             //{ System.Diagnostics.Trace.WriteLine("Cannot enable compression for folder '" + dir.FullName + "': " + ex.Message, "WMI"); }
             return 0;
+        }
+
+        #endregion
+
+        //#region Extract
+        //Process P;
+        //private void CollectFilesToExtract_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        //{
+        //    root.size = 0;
+        //    CompleteCollectFiles(root.size, Functions.FileSize(root.size, 0));
+        //}
+
+        //private void ExtractingFiles_DoWork(object sender, DoWorkEventArgs e)
+        //{
+        //    int done = -1;
+        //    string error_message = "";
+        //    Thread tt = new Thread(() =>
+        //    {
+        //        try
+        //        {
+        //            string path = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + @"\Temp\archive.tmp";
+        //            StreamWriter st = new StreamWriter(File.Open(path, FileMode.OpenOrCreate));
+        //            StringBuilder files_paths = new StringBuilder();
+        //            foreach (var i in root.Children)
+        //                st.WriteLine(i.FileFullName);
+        //            st.Close();
+        //            string compress_method = " -p\"";
+        //            if (encrypt)
+        //                compress_method = " -hp\"";
+        //            foreach (var i in root.Children)
+        //                files_paths.Append("\"" + i.FileFullName + "\" ");
+        //            switch (compress_tool)
+        //            {
+        //                case @"Tools\compress\7z\7z.exe":
+        //                    Compress(" a \"" + file_path + "\" @\"" + path + "\" " + (type_extention == "" ? "" : ("-t" + type_extention)) + (sfx_value ? " -sfx7z.sfx" : "") + (password_st == string.Empty ? "" : (" -p\"" + password_st + "\"")) + (encrypt_headers ? " -mhe" : String.Empty) + (type_extention != "wim" && type_extention != "tar" ? " -mx=" + compress_level[level_value] : "") + (format_value == 0 ? " -ms=" + sold_block_size[solid] : ""));
+        //                    break;
+        //                case @"Tools\compress\rar\rar.exe":
+        //                    Compress("a -m" + (level_value > 1 ? level_value + 1 : level_value) + (solid > 0 ? " -s" : "") + (" -ma" + (format_value - 6)) + (sfx_value ? " -sfx" : "") + (password_st == string.Empty ? "" : (compress_method + password_st + "\"")) + " \"" + file_path + "\" " + files_paths + "");
+        //                    break;
+        //                case @"Tools\compress\arc\arc.exe":
+        //                    Compress("a -m" + compress_level[level_value] + (" -s" + sold_block_size[solid]) + (sfx_value ? " -sfx" : "") + (password_st == String.Empty ? "" : (" -p\"" + password_st + "\"")) + " \"" + file_path + "\" @\"" + path + "\" ");
+        //                    break;
+        //                case @"Tools\compress\kgb\kgb2_console.exe":
+        //                    foreach (var i in root.Children)
+        //                        files_paths.Append("\"" + i.FileFullName + "\" ");
+        //                    Compress("-a7 -m" + compress_level[level_value] /*+ (sfx.IsChecked.Value ? " -sfx" : "")*/ + (password_st == String.Empty ? "" : (" -p\"" + password_st + "\"")) + " \"" + file_path + "\" " + files_paths.ToString());
+        //                    break;
+        //                case @"Tools\compress\uha\uha.exe":
+        //                    Compress("a -r+ -ed- -pr m" + (level_value < 4 ? level_value : 3) + (level_value == 4 ? " -md32768" : "") + " -mm+ -md+ -b32768" + (password_st == String.Empty ? "" : (" -pw\"" + password_st + "\"")) + (encrypt_headers ? " -ph" : String.Empty) + " \"" + file_path + "\" " + files_paths);
+        //                    break;
+        //            }
+        //            File.Delete(path);
+        //            done = 0;
+        //            if (root.Children.Count == 1 && root.Children[0].IsDirectory || root.Children.Count > 1)
+        //                try
+        //                {
+        //                    switch (format_value)
+        //                    {
+        //                        case 4:
+        //                            MultiStageCompress("bzip2");
+        //                            break;
+        //                        case 6:
+        //                            MultiStageCompress("gzip");
+        //                            break;
+        //                        case 17:
+        //                            MultiStageCompress("xz");
+        //                            break;
+        //                    }
+        //                }
+        //                catch (Exception ex) { done = 1; error_message = ex.Message; }
+        //        }
+        //        catch (Exception ex) { done = 1; error_message = ex.Message; }
+        //    });
+        //    tt.Start();
+        //}
+
+        //void bw_DoWork(object sender, DoWorkEventArgs e)
+        //{
+        //    while (done < 0)
+        //        Thread.Sleep(100);
+        //    exit_code = P.ExitCode;
+        //}
+
+        //void Compress(string arguments)
+        //{
+        //    ProcessStartInfo psi = new ProcessStartInfo(compress_tool, arguments);
+        //    P = new Process();
+        //    P.StartInfo = psi;
+        //    P.Start();
+        //    P.WaitForExit();
+        //}
+
+        //void MultiStageCompress(string format)
+        //{
+        //    FileInfo n = new FileInfo(file_name.Text);
+        //    n.MoveTo(n.FullName.Remove(n.FullName.Length - n.Extension.Length) + ".tar");
+        //    Compress(" a \"" + file_name.Text + "\" \"" + n.FullName + "\" -t" + format + " -mx=" + compress_level[level.SelectedIndex]);
+        //    n.Delete();
+        //}
+
+        //#endregion
+
+        #region Extract
+        internal void ExtractDialogShow(object archive, string extract_in, object files_names/*null to extract all*/, Op operation_type, string parameter1, bool parameter2)
+        {
+            this.operation_type = operation_type;
+            if (operation_type == Op.Extract)
+            {
+                paste_in = extract_in;
+                pause_button.IsEnabled = false;
+                root = new OperationTree(null, false, "", operation_type, null, false, "");
+                List<string> names = new List<string>();
+                OpBW = new BackgroundWorker();
+                ulong total_size = 0;
+                foreach (CompresserListView i in (System.Collections.IList)files_names)
+                    if (i.IsDirectory)
+                        GetAllContaint(i, names, ref total_size);
+                    else
+                    { names.Add(i.FileFullName); total_size += i.file_size_long; }
+
+                root.short_path = names.ToArray();
+                if (files_names == null)
+                    root.size = ((SevenZipExtractor)archive).PackedSize;
+                else
+                    root.size = (long)total_size;
+                progress_bar.IsIndeterminate = false;
+                progress_bar.Foreground = Brushes.RoyalBlue;
+                progress_bar.Value = 0;
+                progress_bar.Maximum = 100;
+                ChangeRemain(((SevenZipExtractor)archive).FilesCount, true);
+                Title = Title + " (Extracting...)";
+                OpBW = new BackgroundWorker();
+                OpBW.WorkerReportsProgress = true;
+                OpBW.DoWork += Extracting_DoWork;
+                OpBW.RunWorkerCompleted += Operation_RunWorkerCompleted;
+                OpBW.ProgressChanged += Operation_ProgressChanged;
+                OpBW.RunWorkerAsync(archive);
+                ShowDialog();
+            }
+            else if (operation_type == Op.Compress)
+            {
+                Title = Title + " (Comprissing...)";
+                paste_in = extract_in;
+                List<string> list = new List<string>();
+                foreach (CompresserListView i in (List<CompresserListView>)files_names)
+                    if (i.IsDirectory)
+                    {
+                        //AddAllSuns(i.FileFullName, list);
+                        list.Add(i.FileFullName);
+                    }
+                    else list.Add(i.FileFullName);
+                root = new OperationTree(null, false, list.ToArray(), operation_type, null, false, "");
+                OpBW = new BackgroundWorker();
+                OpBW.WorkerReportsProgress = true;
+                OpBW.DoWork += (object k, DoWorkEventArgs e) =>
+                {
+                    Thread progress_thread = new Thread(() =>
+                    {
+                        while (true)
+                        {
+                            if (!OpBW.IsBusy)
+                                break;
+                            OpBW.ReportProgress(0);
+                            Thread.Sleep(200);
+                        }
+                    });
+                    progress_thread.Start();
+                    try
+                    {
+                        bool done = false;
+                        SevenZipCompressor szc = (SevenZipCompressor)archive;
+                        szc.Compressing += (object sender, SevenZip.ProgressEventArgs ex) => { progress_value = ex.PercentDone; };
+                        szc.FileCompressionStarted += (object sender, FileNameEventArgs ex) => { current_file_name = ex.FileName; completed_count++; };
+                        szc.CompressionFinished += (object sender, EventArgs ex) => { done = true; };
+                        szc.FilesFound += (object sender, IntEventArgs ex) => { };
+                        //if (root.short_path == null)
+                        if (parameter2)
+                        {
+                            File.Copy(@"tools\compress\7z\sfx.sfx", extract_in);
+                            szc.BeginCompressFiles(File.Open(extract_in, FileMode.OpenOrCreate), (string[])root.short_path);
+                        }
+                        else
+                            szc.BeginCompressFiles(paste_in.ToString(), (string[])root.short_path);
+                        //else
+                        //    sze.BeginExtractFiles(paste_in, (string[])root.short_path);
+                        while (!done) { Thread.Sleep(50); }
+                    }
+                    catch (Exception ex) { string x = ex.Message; }
+                };
+                OpBW.RunWorkerCompleted += Operation_RunWorkerCompleted;
+                OpBW.ProgressChanged += Operation_ProgressChanged;
+                OpBW.RunWorkerAsync();
+                ShowDialog();
+            }
+            //    new My_MessageBox("File Manager", "Invalid archive or wrong passwod.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+        }
+
+        private void AddAllSuns(string directory, List<string> list)
+        {
+            foreach (var i in Directory.GetDirectories(directory))
+            {
+                //list.Add(i);
+                AddAllSuns(i, list);
+            }
+            foreach (var i in Directory.GetFiles(directory))
+                list.Add(i);
+        }
+
+        //private void Compressing_DoWork(object compresser, DoWorkEventArgs e)
+        //{
+        //    Thread progress_thread = new Thread(() =>
+        //    {
+        //        while (true)
+        //        {
+        //            if (!OpBW.IsBusy)
+        //                break;
+        //            OpBW.ReportProgress(0);
+        //            Thread.Sleep(200);
+        //        }
+        //    });
+        //    progress_thread.Start();
+        //    try
+        //    {
+        //        bool done = false;
+        //        SevenZipCompressor szc = (SevenZipCompressor)e.Argument;
+        //        szc.Compressing += (object sender, SevenZip.ProgressEventArgs ex) => { progress_value = ex.PercentDone; };
+        //        szc.FileCompressionStarted += (object sender, FileNameEventArgs ex) => { current_file_name = ex.FileName; completed_count++; };
+        //        szc.CompressionFinished += (object sender, EventArgs ex) => { done = true; };
+        //        szc.FilesFound += (object sender, IntEventArgs ex) => { };
+        //        //if (root.short_path == null)
+        //        szc.BeginCompressFiles(paste_in.ToString(), (string[])root.short_path);
+        //        //else
+        //        //    sze.BeginExtractFiles(paste_in, (string[])root.short_path);
+        //        while (!done) { Thread.Sleep(50); }
+        //    }
+        //    catch (Exception ex) { string x = ex.Message; }
+        //}
+        
+
+        void GetAllContaint(CompresserListView i, List<string> names, ref ulong size)
+        {
+            foreach (CompresserListView j in i.Children)
+                if (j.IsDirectory)
+                    GetAllContaint(j, names, ref size);
+                else
+                { names.Add(j.FileFullName); size += i.file_size_long; }
+        }
+
+        void Extracting_DoWork(object archive, DoWorkEventArgs e)// sze.Check();
+        {
+            Thread progress_thread = new Thread(() =>
+            {
+                while (true)
+                {
+                    if (!OpBW.IsBusy)
+                        break;
+                    OpBW.ReportProgress(0);
+                    Thread.Sleep(200);
+                }
+            });
+            progress_thread.Start();
+            try
+            {
+                bool done = false;
+                SevenZipExtractor sze = (SevenZipExtractor)e.Argument;
+                sze.Extracting += (object sender, SevenZip.ProgressEventArgs ex) => { progress_value = ex.PercentDone; };
+                sze.FileExtractionStarted += (object sender, FileInfoEventArgs ex) => { current_file_name = ex.FileInfo.FileName; completed_count++; };
+                sze.ExtractionFinished += (object sender, EventArgs ex) => { done = true; };
+                sze.FileExists += (object sender, FileOverwriteEventArgs ex) => { };
+                if (root.short_path == null)
+                    sze.BeginExtractArchive(paste_in);
+                else
+                    sze.BeginExtractFiles(paste_in, (string[])root.short_path);
+                while (!done) { Thread.Sleep(50); }
+            }
+            catch (Exception ex) { string x = ex.Message; }
         }
 
         #endregion

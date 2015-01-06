@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SevenZip;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -27,6 +28,7 @@ namespace File_Manager
         CompresserListView root;
         Process P;
         string compress_tool = "", type_extention = "";
+        OutArchiveFormat extention_item = OutArchiveFormat.SevenZip;
         List<byte> compress_level = new List<byte>();
         string[] sold_block_size = { "off", "1m", "2m", "4m", "8m", "16m", "32m", "64m", "128m", "256m", "512m", "1g", "2g", "4g", "8g", "16g", "32g", "64g", "on" };
         bool go_again;
@@ -139,6 +141,7 @@ namespace File_Manager
                         level.Items.Insert(0, "Just store");
                     }
                     type_extention = "7z";
+                    extention_item = OutArchiveFormat.SevenZip;
                     password.IsEnabled = password_retry.IsEnabled = show_password.IsEnabled = encrypt_file_name.IsEnabled = password_textbox.IsEnabled = true;
                     sfx.IsEnabled = true;
                     solid_block.IsEnabled = true;
@@ -166,9 +169,9 @@ namespace File_Manager
                         level.Items.RemoveAt(0);
                     }
                     if (root.Children.Count == 1 && !root.Children[0].IsDirectory)
-                        type_extention = "bzip2";
+                    { type_extention = "bzip2"; extention_item = OutArchiveFormat.BZip2; }
                     else
-                        type_extention = "tar";
+                    { type_extention = "tar"; extention_item = OutArchiveFormat.Tar; }
                     password.IsEnabled = password_retry.IsEnabled = show_password.IsEnabled = encrypt_file_name.IsEnabled = password_textbox.IsEnabled = false;
                     solid_block.IsEnabled = false;
                     solid_block.SelectedIndex = solid_block.Items.Count - 1;
@@ -187,9 +190,9 @@ namespace File_Manager
                         level.Items.RemoveAt(0);
                     }
                     if (root.Children.Count == 1 && !root.Children[0].IsDirectory)
-                        type_extention = "gzip";
+                    { type_extention = "gzip"; extention_item = OutArchiveFormat.GZip; }
                     else
-                        type_extention = "tar";
+                    { type_extention = "tar"; extention_item = OutArchiveFormat.Tar; }
                     password.IsEnabled = password_retry.IsEnabled = show_password.IsEnabled = encrypt_file_name.IsEnabled = password_textbox.IsEnabled = false;
                     solid_block.IsEnabled = false;
                     solid_block.SelectedIndex = solid_block.Items.Count - 1;
@@ -246,6 +249,7 @@ namespace File_Manager
                         level.Items.Insert(0, "Just store");
                     }
                     type_extention = "tar";
+                    extention_item = OutArchiveFormat.Tar;
                     password.IsEnabled = password_retry.IsEnabled = show_password.IsEnabled = encrypt_file_name.IsEnabled = password_textbox.IsEnabled = false;
                     sfx.IsChecked = sfx.IsEnabled = false;
                     solid_block.IsEnabled = false;
@@ -282,9 +286,9 @@ namespace File_Manager
                         level.Items.RemoveAt(0);
                     }
                     if (root.Children.Count == 1 && !root.Children[0].IsDirectory)
-                        type_extention = "xz";
+                    { type_extention = "xz"; extention_item = OutArchiveFormat.XZ; }
                     else
-                        type_extention = "tar";
+                    { type_extention = "tar"; extention_item = OutArchiveFormat.Tar; }
                     password.IsEnabled = password_retry.IsEnabled = show_password.IsEnabled = encrypt_file_name.IsEnabled = password_textbox.IsEnabled = false;
                     solid_block.IsEnabled = false;
                     solid_block.SelectedIndex = solid_block.Items.Count - 1;
@@ -300,6 +304,7 @@ namespace File_Manager
                         level.Items.RemoveAt(0);
                     }
                     type_extention = "zip";
+                    extention_item = OutArchiveFormat.Zip;
                     solid_block.IsEnabled = false;
                     encrypt_file_name.IsChecked = encrypt_file_name.IsEnabled = false;
                     solid_block.SelectedIndex = solid_block.Items.Count - 1;
@@ -315,6 +320,7 @@ namespace File_Manager
                         level.Items.RemoveAt(0);
                     }
                     type_extention = "zip";
+                    extention_item = OutArchiveFormat.Zip;
                     solid_block.IsEnabled = false;
                     encrypt_file_name.IsChecked = encrypt_file_name.IsEnabled = false;
                     solid_block.SelectedIndex = solid_block.Items.Count - 1;
@@ -329,19 +335,19 @@ namespace File_Manager
         private void Copress_Click(object sender, RoutedEventArgs e)
         {
             if (File.Exists(file_name.Text))
-                if (new My_MessageBox("Compressed File Manager", "File already exist, Overwrite?", "", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog_warning.png")), null, null).ShowThisDialog() == MyMessageBoxResult.Yes)
+                if (new My_MessageBox("FILE MANAGER", "File already exist, Overwrite?", "", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-warning.png")), null, null).ShowThisDialog() == MyMessageBoxResult.Yes)
                     try { File.Delete(file_name.Text); }
                     catch (Exception) { return; }
                 else
                     return;
             main.IsEnabled = false;
             if (!show_password.IsChecked.Value && password.Password != password_retry.Password)
-                new My_MessageBox("File Manager", "Password doesn't! match.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                new My_MessageBox("FILE MANAGER", "Password doesn't match!", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
             else if (file_name.Text == String.Empty)
-                new My_MessageBox("File Manager", "Please select file to save", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                new My_MessageBox("FILE MANAGER", "Please select output file.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
             else
             {
-                bool encrypt = encrypt_file_name.IsChecked.Value, sfx_value = sfx.IsChecked.Value, encrypt_headers = encrypt_file_name.IsChecked.Value;
+                bool sfx_value = sfx.IsChecked.Value, encrypt_headers = encrypt_file_name.IsChecked.Value;
                 string password_st = show_password.IsChecked.Value ? password_textbox.Text : password.Password, file_path = file_name.Text;
                 int solid = solid_block.SelectedIndex, level_value = level.SelectedIndex, format_value = format.SelectedIndex;
                 ThicknessAnimation animator = new ThicknessAnimation(new Thickness(-500, 0, 0, 0), new Duration(new TimeSpan(2000000)));
@@ -354,6 +360,18 @@ namespace File_Manager
                 done = -1;
                 error_message = "";
                 bw.RunWorkerAsync();
+                if (compress_tool.Equals(@"Tools\compress\7z\7z.exe"))
+                {
+                    SevenZipCompressor szc = new SevenZipCompressor();
+                    szc.ArchiveFormat = extention_item;
+                    szc.CompressionLevel = (CompressionLevel)level.SelectedIndex + 1;
+                    szc.CompressionMode = CompressionMode.Create;
+                    szc.EncryptHeaders = encrypt_headers;
+                    //szc.VolumeSize = (int)(1048576 * Math.Pow(2, solid_block.SelectedIndex));
+                    SevenZipCompressor.SetLibraryPath(@"C:\Program Files\7-Zip\7z.dll");
+                    new Operation().ExtractDialogShow(szc, file_path, root.Children, Op.Compress, password_st, sfx_value);
+                    return;
+                }
                 Thread tt = new Thread(() =>
                 {
                     try
@@ -365,7 +383,7 @@ namespace File_Manager
                             st.WriteLine(i.FileFullName);
                         st.Close();
                         string compress_method = " -p\"";
-                        if (encrypt)
+                        if (encrypt_headers)
                             compress_method = " -hp\"";
                         foreach (var i in root.Children)
                             files_paths.Append("\"" + i.FileFullName + "\" ");

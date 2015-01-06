@@ -23,7 +23,7 @@
                 <Image Source="Images/Menu/copy-stop.png" Width="32" Height="32"/>
             </Button.Content>
         </Button>
-        <Button HorizontalAlignment="Right" Margin="0,10,51,0" VerticalAlignment="Top" Background="{x:Null}" Click="PlayPause_Click">
+        <Button HorizontalAlignment="Right" Margin="0,10,51,0" VerticalAlignment="Top" Background="{x:Null}" x:Name="pause_button" Click="PlayPause_Click">
             <Button.Content>
                 <Image x:Name="play_pause_img" Source="Images/Menu/copy-pause.png" Width="32" Height="32"/>
             </Button.Content>

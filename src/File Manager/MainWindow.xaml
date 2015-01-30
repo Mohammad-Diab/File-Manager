@@ -167,7 +167,7 @@
                 <MenuItem Header="Empty directories remover" Foreground="#FF41403B" Click="EmptyDirectoriesRemover_Click"/>
                 <MenuItem Header="Files destoyer" Foreground="#FF41403B" Click="FilesDestoyer_Click"/>
                 <MenuItem Header="Files encreptor" Foreground="#FF41403B" Click="FilesEncreptor_Click"/>
-                <MenuItem Header="new tools coming soon..." Foreground="#FF41403B"/>
+                <MenuItem Header="new tools coming soon..." Foreground="#FF41403B" Click="HHHHHHHHHHHHHHHH"/>
                 <!--Files organizer (searcher in free edition)-->
             </MenuItem>
             <MenuItem x:Name="options" Header="OPTIONS" FontSize="14">

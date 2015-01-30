@@ -131,9 +131,12 @@ namespace File_Manager
                 if (messagebox.ShowThisDialog() == MyMessageBoxResult.Yes)
                 {
                     new Operation().CopyDialogShow(files, Op.Delete, "", true);
-                    foreach (EmptyDirectoriesFilesListView i in items_list.SelectedItems)
-                        if ((!i.isDirectory && !File.Exists(i.FullPath)) || (i.isDirectory && !Directory.Exists(i.FullPath)))
-                            list_to_view.Remove(i);
+                    for (int i = items_list.SelectedItems.Count - 1; i > 0; i--)
+                    {
+                        EmptyDirectoriesFilesListView current_item = items_list.SelectedItems[i] as EmptyDirectoriesFilesListView;
+                        if ((!current_item.isDirectory && !File.Exists(current_item.FullPath)) || (current_item.isDirectory && !Directory.Exists(current_item.FullPath)))
+                            list_to_view.Remove(current_item);
+                    }
                     new My_MessageBox("File Manager", "Files deleted done.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-information.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-information.wav")).ShowDialog();
                 }
             }

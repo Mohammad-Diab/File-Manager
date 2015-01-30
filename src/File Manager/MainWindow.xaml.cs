@@ -398,7 +398,7 @@ namespace File_Manager
 
         private void MenuItem_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("File Manager v0.6.4-alpha.1\nby: mohammad.diab93@outlook.com", "FILE MANAGER", MessageBoxButton.OK, MessageBoxImage.Information, MessageBoxResult.OK);
+            MessageBox.Show("File Manager v0.6.4-alpha.2\nby: mohammad.diab93@outlook.com", "FILE MANAGER", MessageBoxButton.OK, MessageBoxImage.Information, MessageBoxResult.OK);
         }
 
         void SelectItem(string to_select_item)
@@ -1287,9 +1287,10 @@ namespace File_Manager
             }
         }
 
-
-
-
+        private void HHHHHHHHHHHHHHHH(object sender, RoutedEventArgs e)
+        {
+            new Virtual_Machine().Show();
+        }
 
         private void InverseSelection_Click(object sender, RoutedEventArgs e)
         {

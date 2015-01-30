@@ -16,7 +16,7 @@
         <TextBlock x:Name="remain_unit" HorizontalAlignment="Left" Margin="41,47,0,0" Text="Items" VerticalAlignment="Top" FontSize="14"/>
         <TextBlock x:Name="remain_title" HorizontalAlignment="Left" Margin="10,10,0,0" Text="Remaining" VerticalAlignment="Top" Width="65" TextAlignment="Center"/>
         <ProgressBar x:Name="progress_bar" Height="10" Margin="10,92,125,0" VerticalAlignment="Top" Foreground="DodgerBlue" IsIndeterminate="True"/>
-        <TextBlock Margin="10,71,10,0" VerticalAlignment="Top" TextTrimming="CharacterEllipsis"><Run Text="Name: "/><Run Text=" "/><Run x:Name="item_name"/></TextBlock>
+        <TextBlock Margin="10,71,34,0" VerticalAlignment="Top" TextTrimming="CharacterEllipsis"><Run Text="Name: "/><Run Text=" "/><Run x:Name="item_name"/></TextBlock>
         <TextBlock Margin="10,107,10,0" VerticalAlignment="Top" FontSize="14" TextTrimming="CharacterEllipsis"><Run x:Name="operation" Text="Collecting Files"/><Run Text=": "/><Run x:Name="completed" Foreground="Green" FontSize="16"/><Run Text=" item"/><Run x:Name="more_than_one" Text="s"/><Run Text=" completed"/><Run x:Name="to"/><Run Text=" @ "/><Run x:Name="speed" Foreground="Green" FontSize="16"/></TextBlock>
         <Button HorizontalAlignment="Right" Margin="0,10,10,0" VerticalAlignment="Top" Background="{x:Null}" Click="Stop_Click">
             <Button.Content>
@@ -29,5 +29,6 @@
             </Button.Content>
         </Button>
         <TextBlock x:Name="percent" HorizontalAlignment="Right" Margin="0,87,53,0" TextWrapping="Wrap" FontSize="15" Text="0%" VerticalAlignment="Top"/>
+        <Image x:Name="cut_sign_image" HorizontalAlignment="Right" Height="24" Margin="0,67,10,0" VerticalAlignment="Top" ToolTip="This file is being moved." Width="24" Source="Images/Appearance/operation-cut-sign.png" Visibility="Collapsed"/>
     </Grid>
 </Window>

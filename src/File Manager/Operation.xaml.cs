@@ -26,7 +26,7 @@ namespace File_Manager
         int progress_rount = 1;
         BinaryReader BR;
         BinaryWriter BW;
-        bool sleep_thread = false, pause_copy = false;
+        bool sleep_thread = false, pause_copy = false, file_is_moved = false;
         BackgroundWorker OpBW;
 
         public Operation()
@@ -43,7 +43,10 @@ namespace File_Manager
             BackgroundWorker CollectFiles = new BackgroundWorker();
             CollectFiles.DoWork += CollectFiles_DoWork;
             if (operation_type == Op.Copy)
+            {
+                MainWindow.IsPaste = true;
                 CollectFiles.RunWorkerCompleted += CollectFiles_RunWorkerCompleted;
+            }
             else if (operation_type == Op.Delete)
                 CollectFiles.RunWorkerCompleted += CollectFilesToDelete_RunWorkerCompleted;
             else if (operation_type == Op.Rename)
@@ -115,6 +118,7 @@ namespace File_Manager
                 {
                     case Op.Copy:
                         val = progress_bar.Value * 100 / (root.size + 0.000000001);
+                        cut_sign_image.Visibility = file_is_moved ? Visibility.Visible : Visibility.Collapsed;
                         ChangeRemain(root.size - progress_value, false);
                         break;
                     case Op.Delete:
@@ -157,8 +161,6 @@ namespace File_Manager
 
         private void Operation_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
-            if (operation_type == Op.Copy)
-                MainWindow.IsPaste = true;
             Close();
         }
 
@@ -238,8 +240,8 @@ namespace File_Manager
                     while (sleep_thread)
                         Thread.Sleep(100);
                     while (pause_copy)
-                        System.Threading.Thread.Sleep(100);
-                    System.Threading.Thread.Sleep(200);
+                        Thread.Sleep(100);
+                    Thread.Sleep(200);
                 }
             });
             progress_thread.Start();
@@ -304,6 +306,7 @@ namespace File_Manager
                 if (i.children == null)
                 {
                     current_file_name = i.item.FullName;
+                    file_is_moved = i.is_cut;
                     if (i.user_option == OperationOption.Skip)
                     {
                         i.Done = true;
@@ -1028,7 +1031,6 @@ namespace File_Manager
                     root.size = ((SevenZipExtractor)archive).PackedSize;
                 else
                     root.size = (long)total_size;
-                progress_bar.IsIndeterminate = false;
                 progress_bar.Foreground = Brushes.RoyalBlue;
                 progress_bar.Value = 0;
                 progress_bar.Maximum = 100;
@@ -1040,6 +1042,7 @@ namespace File_Manager
                 OpBW.RunWorkerCompleted += Operation_RunWorkerCompleted;
                 OpBW.ProgressChanged += Operation_ProgressChanged;
                 OpBW.RunWorkerAsync(archive);
+                progress_bar.IsIndeterminate = false;
                 ShowDialog();
             }
             else if (operation_type == Op.Compress)
@@ -1050,8 +1053,8 @@ namespace File_Manager
                 foreach (CompresserListView i in (List<CompresserListView>)files_names)
                     if (i.IsDirectory)
                     {
-                        //AddAllSuns(i.FileFullName, list);
-                        list.Add(i.FileFullName);
+                        AddAllSuns(i.FileFullName, list);
+                        //list.Add(i.FileFullName);
                     }
                     else list.Add(i.FileFullName);
                 root = new OperationTree(null, false, list.ToArray(), operation_type, null, false, "");
@@ -1074,10 +1077,12 @@ namespace File_Manager
                     {
                         bool done = false;
                         SevenZipCompressor szc = (SevenZipCompressor)archive;
-                        szc.Compressing += (object sender, SevenZip.ProgressEventArgs ex) => { progress_value = ex.PercentDone; };
-                        szc.FileCompressionStarted += (object sender, FileNameEventArgs ex) => { current_file_name = ex.FileName; completed_count++; };
+                        szc.Compressing += (object sender, SevenZip.ProgressEventArgs ex) => { progress_value += ex.PercentDelta; };
+                        szc.FileCompressionStarted += (object sender, FileNameEventArgs ex) => { current_file_name = ex.FileName; };
+                        szc.FileCompressionFinished += (object sender, EventArgs ex) => { completed_count++; };
                         szc.CompressionFinished += (object sender, EventArgs ex) => { done = true; };
                         szc.FilesFound += (object sender, IntEventArgs ex) => { };
+                        
                         //if (root.short_path == null)
                         if (parameter2)
                         {
@@ -1095,6 +1100,7 @@ namespace File_Manager
                 OpBW.RunWorkerCompleted += Operation_RunWorkerCompleted;
                 OpBW.ProgressChanged += Operation_ProgressChanged;
                 OpBW.RunWorkerAsync();
+                progress_bar.IsIndeterminate = false;
                 ShowDialog();
             }
             //    new My_MessageBox("File Manager", "Invalid archive or wrong passwod.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
@@ -1228,7 +1234,6 @@ namespace File_Manager
         {
             if (operation_type == Op.Copy)
             {
-                MainWindow.IsPaste = true;
                 try
                 {
                     if (BW != null)

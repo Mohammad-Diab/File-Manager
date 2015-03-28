@@ -368,8 +368,18 @@ namespace File_Manager
                     szc.CompressionMode = CompressionMode.Create;
                     szc.EncryptHeaders = encrypt_headers;
                     //szc.VolumeSize = (int)(1048576 * Math.Pow(2, solid_block.SelectedIndex));
-                    SevenZipCompressor.SetLibraryPath(@"C:\Program Files\7-Zip\7z.dll");
-                    new Operation().ExtractDialogShow(szc, file_path, root.Children, Op.Compress, password_st, sfx_value);
+                    if (File.Exists(@"C:\Program Files\7-Zip\7z.dll"))
+                    {
+                        SevenZipCompressor.SetLibraryPath(@"C:\Program Files\7-Zip\7z.dll");
+                        new Operation().ExtractDialogShow(szc, file_path, root.Children, Op.Compress, password_st, sfx_value);
+                    }
+                    else if (File.Exists(@"C:\Program Files (x86)\7-Zip\7z.dll"))
+                    {
+                        SevenZipCompressor.SetLibraryPath(@"C:\Program Files\7-Zip\7z.dll");
+                        new Operation().ExtractDialogShow(szc, file_path, root.Children, Op.Compress, password_st, sfx_value);
+                    }
+                    else
+                        System.Windows.Forms.MessageBox.Show("Please install 7-zip File Manager.");
                     return;
                 }
                 Thread tt = new Thread(() =>

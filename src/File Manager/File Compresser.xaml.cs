@@ -346,7 +346,15 @@ namespace File_Manager
                 if (ofd.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                 {
                     archive_path = ofd.FileName;
-                    SevenZipExtractor.SetLibraryPath(@"C:\Program Files\7-Zip\7z.dll");
+                    if (File.Exists(@"C:\Program Files\7-Zip\7z.dll"))
+                        SevenZipExtractor.SetLibraryPath(@"C:\Program Files\7-Zip\7z.dll");
+                    else if (File.Exists(@"C:\Program Files (x86)\7-Zip\7z.dll"))
+                        SevenZipExtractor.SetLibraryPath(@"C:\Program Files\7-Zip\7z.dll");
+                    else
+                    {
+                        System.Windows.Forms.MessageBox.Show("Please install 7-zip File Manager.");
+                        return;
+                    }
                     try
                     {
                         sze = new SevenZipExtractor(archive_path);

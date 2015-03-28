@@ -13,8 +13,8 @@
         <Button Content="OK" Margin="0,0,10,10" Visibility="Visible" Background="{x:Null}" BorderBrush="#FFFF8000" Foreground="#FFFF8000" VerticalAlignment="Bottom" Height="26" HorizontalAlignment="Right" Width="79" Click="OK_Click"/>
         <DatePicker x:Name="date_picker" SelectedDate="1/22/1993" Margin="120,15,10,0" VerticalAlignment="Top" Height="28" RenderTransformOrigin="0.5,0.5" DisplayDateStart="1980-01-01" DisplayDateEnd="2100-12-31" FirstDayOfWeek="Saturday" SelectedDateFormat="Long"/>
         <Button Content="Cancel" Margin="0,0,94,10" Visibility="Visible" VerticalAlignment="Bottom" Height="26" Background="{x:Null}" HorizontalAlignment="Right" Width="79" Click="Cancel_Click"/>
-        <TextBlock HorizontalAlignment="Left" Margin="10,10,0,0" TextWrapping="Wrap" Text="Date:" VerticalAlignment="Top" FontSize="24" Foreground="#FFFF9D3A"/>
-        <TextBlock HorizontalAlignment="Left" Margin="10,52,0,0" TextWrapping="Wrap" Text="Time:" VerticalAlignment="Top" FontSize="24" Foreground="#FFC76707"/>
+        <TextBlock HorizontalAlignment="Left" Margin="10,10,0,0" TextWrapping="Wrap" Text="Date:" VerticalAlignment="Top" FontSize="24" Foreground="Black"/>
+        <TextBlock HorizontalAlignment="Left" Margin="10,52,0,0" TextWrapping="Wrap" Text="Time:" VerticalAlignment="Top" FontSize="24" Foreground="Black"/>
         <ComboBox x:Name="hour" HorizontalAlignment="Left" Margin="120,66,0,0" VerticalAlignment="Top" Width="50" SelectedIndex="0">
             <System:String>00</System:String>
             <System:String>01</System:String>
@@ -168,5 +168,6 @@
         <TextBlock HorizontalAlignment="Left" Margin="120,50,0,0" TextWrapping="Wrap" Text="HH" VerticalAlignment="Top"/>
         <TextBlock HorizontalAlignment="Left" Margin="175,50,0,0" TextWrapping="Wrap" Text="MM" VerticalAlignment="Top"/>
         <TextBlock HorizontalAlignment="Left" Margin="230,50,0,0" TextWrapping="Wrap" Text="SS" VerticalAlignment="Top"/>
+        <Button Content="now" HorizontalAlignment="Left" Margin="20,0,0,20" VerticalAlignment="Bottom" Width="75" Background="{x:Null}" Click="Now_Click"/>
     </Grid>
 </Window>

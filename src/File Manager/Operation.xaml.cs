@@ -41,20 +41,25 @@ namespace File_Manager
             paste_in = path_to_paste;
             operation.Text = Title = operation_type == Op.Copy ? "Copying" : operation_type == Op.Delete ? "Deleting" : operation_type == Op.Rename ? "Renaming" : operation_type == Op.Attributes ? "Applaying Attributes" : operation_type == Op.Extract ? "Extracting Files" : "";
             BackgroundWorker CollectFiles = new BackgroundWorker();
-            CollectFiles.DoWork += CollectFiles_DoWork;
+            if (operation_type != Op.Delete)
+                CollectFiles.DoWork += CollectFiles_DoWork;
             if (operation_type == Op.Copy)
             {
                 MainWindow.IsPaste = true;
                 CollectFiles.RunWorkerCompleted += CollectFiles_RunWorkerCompleted;
             }
             else if (operation_type == Op.Delete)
+            {
+                CollectFiles.DoWork += CollectFilesToDelete_DoWork;
                 CollectFiles.RunWorkerCompleted += CollectFilesToDelete_RunWorkerCompleted;
+            }
             else if (operation_type == Op.Rename)
                 CollectFiles.RunWorkerCompleted += CollectFilesToRename_RunWorkerCompleted;
             else if (operation_type == Op.Attributes)
                 CollectFiles.RunWorkerCompleted += CollectFilesToAttribute_RunWorkerCompleted;
             //else if (operation_type == Op.Extract)
             //    CollectFiles.RunWorkerCompleted += CollectFilesToExtract_RunWorkerCompleted;
+            unsucsess = new OperationTree(null, false, "", operation_type, null, false, "Can't delete item");
             CollectFiles.RunWorkerAsync(ToCopyList);
             if (show_dialog)
                 ShowDialog();
@@ -217,7 +222,6 @@ namespace File_Manager
                 }
             }
         }
-
 
         #region Copy and Move Region
 
@@ -457,6 +461,22 @@ namespace File_Manager
 
         #region Delete Region
 
+        private void CollectFilesToDelete_DoWork(object sender, DoWorkEventArgs e)
+        {
+            foreach (FileOperationItem i in (List<FileOperationItem>)e.Argument)
+                if (i.Item is FileInfo)
+                    root.children.Add(new OperationTree((FileInfo)i.Item, false, i.short_path, Op.Delete, root, ""));
+                else
+                {
+                    if (Classes.JunctionPoint.Exists(i.Item.FullName))
+                        try
+                        { Classes.JunctionPoint.Delete(i.Item.FullName); }
+                        catch (Exception ex) { AddError(new OperationTree((DirectoryInfo)i.Item, true, i.short_path, operation_type, root, true, ex.Message), unsucsess); }
+                    else
+                        root.children.Add(new OperationTree((DirectoryInfo)i.Item, false, i.short_path, operation_type, root, true, ""));
+                }
+        }
+
         private void CollectFilesToDelete_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
             foreach (var i in root.children)
@@ -483,10 +503,13 @@ namespace File_Manager
                 }
             });
             progress_thread.Start();
-            unsucsess = new OperationTree(null, false, "", operation_type, null, false, "Can't delete item");
             OperationTree temp;
             foreach (var i in root.children)
+            {
                 DeleteSun(i);
+                while (pause_copy)
+                    Thread.Sleep(100);
+            }
             while (true)
             {
                 if (unsucsess.children.Count > 0)
@@ -547,37 +570,55 @@ namespace File_Manager
                 }
                 else
                 {
-                    foreach (var j in i.children)
-                        DeleteSun(j);
-                    if (i.children.Count == i.completed)
+                    if (i.is_cut)
                     {
-                        if (i.item.Exists)
-                        {
-                            long d = 0;
+                        if (Classes.JunctionPoint.Exists(i.item.FullName))
                             try
-                            { d = ((DirectoryInfo)i.item).GetDirectories().Length + ((DirectoryInfo)i.item).GetFiles().Length; }
-                            catch (Exception) { }
-                            if (d == 0)
+                            { Classes.JunctionPoint.Delete(i.item.FullName); }
+                            catch (Exception ex)
                             {
+                                i.error_message = ex.Message;
+                                AddError(i, unsucsess);
+                            }
+                    }
+                    else
+                    {
+                        foreach (var j in i.children)
+                        {
+                            DeleteSun(j);
+                            while (pause_copy)
+                                Thread.Sleep(100);
+                        }
+                        if (i.children.Count == i.completed)
+                        {
+                            if (i.item.Exists)
+                            {
+                                long d = 0;
                                 try
+                                { d = ((DirectoryInfo)i.item).GetDirectories().Length + ((DirectoryInfo)i.item).GetFiles().Length; }
+                                catch (Exception) { }
+                                if (d == 0)
                                 {
-                                    i.item.Delete();
-                                    i.Done = true;
-                                    progress_value++;
-                                    completed_count++;
+                                    try
+                                    {
+                                        i.item.Delete();
+                                        i.Done = true;
+                                        progress_value++;
+                                        completed_count++;
+                                    }
+                                    catch (Exception ex) { i.error_message = ex.Message; AddError(i, unsucsess); }
                                 }
-                                catch (Exception ex) { i.error_message = ex.Message; AddError(i, unsucsess); }
+                                else
+                                {
+                                    i.error_message = "Can't delete directory, it is not empty.";
+                                    AddError(i, unsucsess);
+                                }
                             }
                             else
                             {
-                                i.error_message = "Can't delete directory, it is not empty.";
+                                i.error_message = "Directory is not exist.";
                                 AddError(i, unsucsess);
                             }
-                        }
-                        else
-                        {
-                            i.error_message = "Directory is not exist.";
-                            AddError(i, unsucsess);
                         }
                     }
                 }

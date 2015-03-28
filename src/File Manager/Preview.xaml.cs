@@ -20,6 +20,8 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Windows.Xps.Packaging;
+using System.Data.SqlClient;
+using System.Configuration;
 
 namespace File_Manager
 {
@@ -37,6 +39,7 @@ namespace File_Manager
         List<FileInfo> neighbors;
         int current_item_in_viewer = 0, clusterSize;
         List<BackgroundWorker> background_workers = new List<BackgroundWorker>();
+
         public Preview()
         {
             InitializeComponent();
@@ -232,6 +235,7 @@ namespace File_Manager
                     open_button_image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Menu/run-command.png"));
                     //antivirus else show be carfull using these files
                     caution.Visibility = Visibility.Visible;
+
                     extract_button.ToolTip = "Run as administrator";
                     extract_button_image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Menu/run-as-adimstrator.png"));
                     extract_button.Click += RunAsAdministratorButton_Click;
@@ -531,6 +535,7 @@ namespace File_Manager
             slider_mover.DoWork += VideoSliderMover_DoWork;
             slider_mover.ProgressChanged += VideoSliderMover_ProgressChanged;
             background_workers.Add(slider_mover);
+            Subtitle_Active = false;
             slider_mover.RunWorkerAsync();
         }
 
@@ -556,23 +561,49 @@ namespace File_Manager
                 video_current_position_time.Text = video_player_element.Position.Hours + ":" + (video_player_element.Position.Minutes < 10 ? ("0" + video_player_element.Position.Minutes) : video_player_element.Position.Minutes.ToString()) + ":" + (video_player_element.Position.Seconds < 10 ? ("0" + video_player_element.Position.Seconds) : video_player_element.Position.Seconds.ToString());
             else
                 video_current_position_time.Text = (video_player_element.Position.Minutes < 10 ? ("0" + video_player_element.Position.Minutes) : video_player_element.Position.Minutes.ToString()) + ":" + (video_player_element.Position.Seconds < 10 ? ("0" + video_player_element.Position.Seconds) : video_player_element.Position.Seconds.ToString());
+            if (Subtitle_Active)
+            {
+                int subtitle_id = SearchSubtitle(video_player_element.Position.TotalMilliseconds, 0, subtitles.Count - 1);
+                if (subtitle_id > -1 && subtitle_id < subtitles.Count)
+                    subtitle_text.Text = subtitle_shadow.Text = subtitles[subtitle_id].text;
+                else
+                    subtitle_text.Text = subtitle_shadow.Text = string.Empty;
+            }
+        }
+
+        private int SearchSubtitle(double pos, int start, int end)
+        {
+            if (subtitles.Count == 0 || start > subtitles.Count || end > subtitles.Count || start > end)
+                return -1;
+            int mid = (start + end) / 2;
+            if (subtitles[mid].start < pos && subtitles[mid].end > pos)
+                return mid;
+            else if (start != end)
+            {
+                if (subtitles[mid].start < pos)
+                    return SearchSubtitle(pos, mid + 1, end);
+                else
+                    return SearchSubtitle(pos, start, mid - 1);
+            }
+            return -1;
         }
 
         private void VideoPlayPause_Click(object sender, RoutedEventArgs e)
         {
-            if (video_paly_button_image.ToolTip.ToString() == "Play")
-            {
-                video_paly_button_image.Source = new BitmapImage(new Uri(@"pack://application:,,,/File Manager;component/Images/Menu/media-pause.png"));
-                video_paly_button_image.ToolTip = "Pause";
-                video_player_element.Play();
-            }
-            else
-            {
-                video_paly_button_image.Source = new BitmapImage(new Uri(@"pack://application:,,,/File Manager;component/Images/Menu/media-play.png"));
-                video_paly_button_image.ToolTip = "Play";
-                video_player_element.Pause();
-                is_play = true;
-            }
+            if (video_player_element.CanPause)
+                if (video_paly_button_image.ToolTip.ToString() == "Play")
+                {
+                    video_paly_button_image.Source = new BitmapImage(new Uri(@"pack://application:,,,/File Manager;component/Images/Menu/media-pause.png"));
+                    video_paly_button_image.ToolTip = "Pause";
+                    video_player_element.Play();
+                }
+                else
+                {
+                    video_paly_button_image.Source = new BitmapImage(new Uri(@"pack://application:,,,/File Manager;component/Images/Menu/media-play.png"));
+                    video_paly_button_image.ToolTip = "Play";
+                    video_player_element.Pause();
+                    is_play = true;
+                }
         }
 
         private void VideoPlayer_MediaOpened(object sender, RoutedEventArgs e)
@@ -852,6 +883,24 @@ namespace File_Manager
             ((ListBox)font_viewer.Children[0]).FontFamily = new FontFamily(new Uri(file.FullName), "Name"); //wrong
         }
 
+        private  void MakeDataBaseViewer(FileInfo file)
+        {
+            //var connectionString = ConfigurationManager.ConnectionStrings["WingtipToys"].ConnectionString;
+            //string queryString = "SELECT Id, ProductName FROM dbo.Products;";
+            //using (var connection = new SqlConnection(connectionString))
+            //{
+            //    var command = new SqlCommand(queryString, connection);
+            //    connection.Open();
+            //    using (var reader = command.ExecuteReader())
+            //    {
+            //        while (reader.Read())
+            //        {
+            //            Console.WriteLine(String.Format("{0}, {1}", reader[0], reader[1]));
+            //        }
+            //    }
+            //} 
+        }
+
         #region Size on disk
 
         long SizeOnDisk(FileInfo info)
@@ -927,7 +976,7 @@ namespace File_Manager
             //calc_directory_change_value.ProgressChanged += CalcDirectorySizeChangeValue_ProgressChanged;
             //calc_directory_change_value.DoWork += CalcDirectorySizeChangeValue_DoWork;
             //calc_directory_change_value.RunWorkerAsync(calc_directory_size);
-            
+
             app_can_open_this_type.Items.Add("File Manager");
             app_can_open_this_type.Items.Add("File Explorer");
             app_can_open_this_type.Items.Add("Windows Explorer");
@@ -951,7 +1000,7 @@ namespace File_Manager
             files_list = new List<FileOperationItem>();
             directory_list = new List<FileOperationItem>();
             BackgroundWorker bw = (BackgroundWorker)sender;
-            Thread m = new Thread(() => 
+            Thread m = new Thread(() =>
             {
                 if (di == null)
                     directory_root = dri;
@@ -959,7 +1008,7 @@ namespace File_Manager
                     directory_root = new DriveInfo(di.Root.FullName);
                 while (bw.IsBusy)
                 {
-                    try{ bw.ReportProgress(0); }
+                    try { bw.ReportProgress(0); }
                     catch (Exception) { }
                     Thread.Sleep(250);
                 }
@@ -1022,7 +1071,7 @@ namespace File_Manager
             app_can_open_this_type.Items.Add("Windows Explorer");
             time_region.Visibility = Visibility.Hidden;
             item_image.Source = Functions.GetDriveImage(driveInfo.DriveType, driveInfo.Name.ToLower().Equals(Functions.SystemDrive), driveInfo.IsReady, 256);
-            
+
             //main menu and tabs
             move_to_button.Visibility = delete_button.Visibility = Visibility.Collapsed;
             preview_tab.IsEnabled = false;
@@ -1727,13 +1776,191 @@ namespace File_Manager
         private void Window_Closing(object sender, CancelEventArgs e)
         {
             CancelEveryThinig = true;
-            foreach(BackgroundWorker bw in background_workers)
+            foreach (BackgroundWorker bw in background_workers)
             {
                 if (bw.IsBusy)
                     bw.CancelAsync();
             }
         }
 
+        #region APP Bar
 
+        private void Window_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            OpenCloseAPPBar();
+        }
+
+        private void OpenCloseAPPBar()
+        {
+            if (app_bar.Margin.Bottom > -30)
+            {
+                ThicknessAnimation ta = new ThicknessAnimation(new Thickness(0, 0, 0, -80), new Duration(new TimeSpan(1000000)));
+                app_bar.Height = 110;
+                app_bar.BeginAnimation(MarginProperty, ta);
+            }
+            else if (app_bar.Margin.Bottom < 0)
+            {
+                ThicknessAnimation ta = new ThicknessAnimation(new Thickness(0, 0, 0, 0), new Duration(new TimeSpan(1000000)));
+                app_bar.Height = 550;
+                app_bar.BeginAnimation(MarginProperty, ta);
+            }
+        }
+
+        private void app_bar_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            OpenCloseAPPBar();
+            //تحذير رفع 10 بكسل
+        }
+
+        #endregion
+
+
+        #region SubTitle
+
+        List<SubtitleItem> subtitles;
+        bool subtitle_active;
+        bool Subtitle_Active
+        {
+            get { return subtitle_active; }
+            set
+            {
+                if (value)
+                    subtitle_text.Visibility = subtitle_shadow.Visibility = Visibility.Visible;
+                else
+                    subtitle_text.Visibility = subtitle_shadow.Visibility = Visibility.Collapsed;
+                subtitle_active = value;
+            }
+        }
+        int subtitle_id
+        {
+            get { return subtitle_id; }
+            set { subtitle_id = value; }
+        }
+
+        private void LoadSubtitle_Click(object sender, RoutedEventArgs e)
+        {
+            if (video_player_element.CanPause)
+            {
+                video_paly_button_image.Source = new BitmapImage(new Uri(@"pack://application:,,,/File Manager;component/Images/Menu/media-play.png"));
+                video_paly_button_image.ToolTip = "Play";
+                video_player_element.Pause();
+            }
+            subtitles = new List<SubtitleItem>();
+            System.Windows.Forms.OpenFileDialog j = new System.Windows.Forms.OpenFileDialog();
+            if (j.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            {
+                StreamReader k = new StreamReader(j.OpenFile(), Encoding.UTF8);
+                if (k.BaseStream.Length < 1048577)      //1 MB
+                {
+                    SubtitleItem.RestCount();
+                    List<string> item = new List<string>();
+                    while (!k.EndOfStream)
+                    {
+                        string s1 = k.ReadLine();
+                        if (s1.Equals(string.Empty))
+                        {
+                            if ((!k.EndOfStream))
+                            {
+                                string s2 = k.ReadLine();
+                                int m;
+                                if (int.TryParse(s2, out m))
+                                {
+                                    subtitles.Add(new SubtitleItem(item));
+                                    item.Clear();
+                                    item.Add(s2);
+                                }
+                                else
+                                    item.Add(s2);
+                            }
+                        }
+                        else
+                            item.Add(s1);
+                    }
+                    k.Close();
+                    subtitles.Sort(SubtitlesSorter);
+                    Subtitle_Active = true;
+                }
+            }
+            VideoPlayPause_Click(sender, null);
+        }
+
+        private int SubtitlesSorter(SubtitleItem x, SubtitleItem y)
+        {
+            return x.start.CompareTo(y.start);
+        }
+
+        #endregion
+
+        private void SubtitleOption_Click(object sender, RoutedEventArgs e)
+        {
+            if (video_player_element.CanPause)
+            {
+                video_paly_button_image.Source = new BitmapImage(new Uri(@"pack://application:,,,/File Manager;component/Images/Menu/media-play.png"));
+                video_paly_button_image.ToolTip = "Play";
+                video_player_element.Pause();
+            }
+            FontWithColor k = new FontWithColor(subtitle_text.FontFamily, subtitle_text.Foreground, subtitle_text.FontSize, subtitle_text.FontStyle.Equals(FontStyles.Italic), subtitle_text.FontWeight.Equals(FontWeights.Bold));
+            var val = new Subtitle_Option().ShowWindow(k);
+            subtitle_text.FontFamily = subtitle_shadow.FontFamily = new System.Windows.Media.FontFamily(val.font_name.Name);
+            subtitle_text.FontSize = subtitle_shadow.FontSize = val.font_size;
+            subtitle_text.Foreground = val.font_color;
+            subtitle_text.FontStyle = subtitle_shadow.FontStyle = val.italic ? FontStyles.Italic : FontStyles.Normal;
+            subtitle_text.FontWeight = subtitle_shadow.FontWeight = val.bold ? FontWeights.Bold : FontWeights.Normal;
+            VideoPlayPause_Click(sender, null);
+        }
+
+        private void MuteVolume_Click(object sender, RoutedEventArgs e)
+        {
+            if (video_player_element.Volume == 0)
+                video_player_element.Volume = 75;
+            else
+                video_player_element.Volume = 0;
+        }
+
+    }
+
+    class SubtitleItem
+    {
+        public static int count;
+        public int ID;
+        public long start;
+        public long end;
+        public string text;
+        public bool error;
+
+        public SubtitleItem(List<string> str)
+        {
+            string[] splitter = { "-->" };
+            count++;
+            ID = count;
+            var time = str[1].Split(splitter, StringSplitOptions.RemoveEmptyEntries);
+            if (time.Length > 1)
+            {
+                time[0] = time[0].Replace(" ", "");
+                time[1] = time[1].Replace(" ", "");
+                int u1, s1, m1, h1, u2, s2, m2, h2;
+                int.TryParse(time[0].Substring(0, time[0].IndexOf(':')), out h1);
+                int.TryParse(time[0].Substring(time[0].IndexOf(':') + 1, 2), out m1);
+                int.TryParse(time[0].Substring(time[0].IndexOf(':') + 4, 2), out s1);
+                int.TryParse(time[0].Substring(time[0].IndexOf(':') + 7, 3), out u1);
+
+                int.TryParse(time[1].Substring(0, time[1].IndexOf(':')), out h2);
+                int.TryParse(time[1].Substring(time[1].IndexOf(':') + 1, 2), out m2);
+                int.TryParse(time[1].Substring(time[1].IndexOf(':') + 4, 2), out s2);
+                int.TryParse(time[1].Substring(time[1].IndexOf(':') + 7, 3), out u2);
+                start = (s1 + (m1 * 60) + (h1 * 3600)) * 1000 + u1;
+                end = (s2 + (m2 * 60) + (h2 * 3600)) * 1000 + u2;
+            }
+            StringBuilder sb = new StringBuilder();
+            for (int i = 2; i < str.Count; i++)
+                if (!str[i].Replace(" ", "").Equals(string.Empty) && !str.Equals("\r\n"))
+                    sb.AppendLine(str[i]);
+            text = sb.ToString(0, sb.Length - 2);
+        }
+
+        public static void RestCount()
+        {
+            count = 0;
+        }
     }
 }

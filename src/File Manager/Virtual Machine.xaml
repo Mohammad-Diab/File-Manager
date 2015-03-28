@@ -5,37 +5,48 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:File_Manager"
         mc:Ignorable="d"
-        Title="Virtual Machine" Height="430" Width="400" ResizeMode="CanMinimize" FontSize="14">
+        Title="Virtual Machine" Height="430" Width="400" ResizeMode="CanMinimize" FontSize="14" Icon="Images/Icons/virtual-machine.png" Closing="Window_Closing">
     <Grid>
-        <Button x:Name="button" Content="RUN" HorizontalAlignment="Right" Margin="0,0,5,5" VerticalAlignment="Bottom" Width="112" Background="{x:Null}" Height="30" BorderBrush="#FF148B80" Foreground="#FF148B80" Click="Run_Click"/>
-        <TextBlock x:Name="textBlock" HorizontalAlignment="Left" Margin="10,10,0,0" TextWrapping="Wrap" Text="Virtual Machine Options" VerticalAlignment="Top" FontSize="29.333" TextDecorations="Underline" Foreground="#FF148B80"/>
-        <TextBlock x:Name="textBlock1" HorizontalAlignment="Left" Margin="10,60,0,0" TextWrapping="Wrap" VerticalAlignment="Top"><Run Text="CPU"/><Run Text=" architecture:"/></TextBlock>
-        <TextBlock x:Name="textBlock2" HorizontalAlignment="Left" Margin="10,96,0,0" TextWrapping="Wrap" Text="CPU Cores:" VerticalAlignment="Top"/>
-        <TextBox x:Name="disk_file" TextWrapping="Wrap" ToolTip="Path" Height="21" VerticalAlignment="Top" Margin="20,250,63,0" BorderBrush="#FF148B80" Foreground="Black"/>
-        <TextBlock x:Name="textBlock3" HorizontalAlignment="Left" TextWrapping="Wrap" Text="Memory Size:" VerticalAlignment="Top" Margin="9,132,0,0"/>
-        <TextBlock x:Name="textBlock5" HorizontalAlignment="Left" TextWrapping="Wrap" Text="Press &quot;Ctrl + Alt&quot; to grab mouse" VerticalAlignment="Bottom" Margin="10,0,0,10"/>
-        <ComboBox x:Name="comboBox" HorizontalAlignment="Left" Margin="150,58,0,0" VerticalAlignment="Top" Width="150" SelectedIndex="0" IsEnabled="False">
-            <ComboBoxItem Content="x86"/>
-            <ComboBoxItem Content="x64"/>
-        </ComboBox>
-        <CheckBox x:Name="full_screen" Content="Full screen" HorizontalAlignment="Left" Margin="20,340,0,0" VerticalAlignment="Top" BorderBrush="#FF148B80"/>
-        <TextBlock x:Name="textBlock6" HorizontalAlignment="Left" Margin="10,290,0,0" TextWrapping="Wrap" Text="VGA" VerticalAlignment="Top"/>
-        <RadioButton x:Name="floppy" Content="Floppy" HorizontalAlignment="Left" Margin="230,225,0,0" VerticalAlignment="Top" Foreground="Black" Checked="FloppyDisk_Checked"/>
-        <RadioButton x:Name="cd_rom" Content="CD Rom" HorizontalAlignment="Left" Margin="120,225,0,0" VerticalAlignment="Top" BorderBrush="#FF148B80" Checked="CDRom_Checked"/>
-        <RadioButton x:Name="hard_disk" Content="Hard Disk" HorizontalAlignment="Left" Margin="20,225,0,0" VerticalAlignment="Top" BorderBrush="#FF148B80" IsChecked="True" Checked="HardDisk_Checked"/>
-        <ComboBox x:Name="cores" HorizontalAlignment="Left" Margin="150,94,0,0" VerticalAlignment="Top" Width="150" SelectedIndex="0">
-            <ComboBoxItem Content="1"/>
-        </ComboBox>
-        <Slider x:Name="memory_size" HorizontalAlignment="Left" ToolTip="Memory Size" Margin="20,160,0,0" VerticalAlignment="Top" TickPlacement="TopLeft" SmallChange="16" TickFrequency="128" LargeChange="128" Maximum="4096" Value="128" Minimum="16" Width="351" Foreground="#FF148B80" ValueChanged="MemorySize_ValueChanged"/>
-        <TextBlock x:Name="textBlock7" HorizontalAlignment="Left" Margin="10,200,0,0" TextWrapping="Wrap" Text="Boot Options" VerticalAlignment="Top"/>
-        <Button x:Name="button1" Content="B" HorizontalAlignment="Right" Margin="0,250,43,0" VerticalAlignment="Top" Width="21" Height="21" Background="{x:Null}" BorderBrush="#FF148B80" FontSize="10.667" Foreground="Black" Click="Browse_Click"/>
-        <ComboBox x:Name="vga" HorizontalAlignment="Left" Margin="150,313,0,0" VerticalAlignment="Top" Width="150" SelectedIndex="0" BorderBrush="#FF148B80">
-            <ComboBoxItem Content="std"/>
-            <ComboBoxItem Content="vmware"/>
-        </ComboBox>
-        <TextBlock x:Name="textBlock4" HorizontalAlignment="Left" Margin="20,315,0,0" TextWrapping="Wrap" Text="Video card type:" VerticalAlignment="Top"/>
-        <TextBox x:Name="memory_size_text" HorizontalAlignment="Left" Margin="150,132,0,0" TextWrapping="Wrap" Text="128 MB" VerticalAlignment="Top" Width="150" BorderBrush="#FF148B80" IsReadOnly="True"/>
-        <Button x:Name="button2" ToolTip="Create New Hard Disk" HorizontalAlignment="Right" Margin="0,250,23,0" VerticalAlignment="Top" Width="21" Height="21" Background="{x:Null}" BorderBrush="#FF148B80"/>
-
+        <ScrollViewer Margin="0,0,0,40" BorderBrush="#FF7498BF">
+            <Grid>
+                <TextBlock x:Name="textBlock" HorizontalAlignment="Left" Margin="52,10,0,0" TextWrapping="Wrap" Text="Virtual Machine Options" VerticalAlignment="Top" FontSize="28" TextDecorations="Underline" Foreground="#FF7498BF"/>
+                <TextBlock x:Name="textBlock1" HorizontalAlignment="Left" Margin="10,60,0,0" TextWrapping="Wrap" VerticalAlignment="Top"><Run Text="CPU"/><Run Text=" architecture:"/></TextBlock>
+                <TextBlock x:Name="textBlock2" HorizontalAlignment="Left" Margin="10,96,0,0" TextWrapping="Wrap" Text="CPU Cores:" VerticalAlignment="Top"/>
+                <TextBox x:Name="disk_file" ToolTip="Path" VerticalAlignment="Top" Margin="20,287,71,0" BorderBrush="#FF7498BF" Foreground="Black"/>
+                <TextBlock x:Name="textBlock3" HorizontalAlignment="Left" TextWrapping="Wrap" Text="Memory Size:" VerticalAlignment="Top" Margin="9,133,0,0"/>
+                <ComboBox x:Name="comboBox" HorizontalAlignment="Left" Margin="150,58,0,0" VerticalAlignment="Top" Width="150" SelectedIndex="0" IsEnabled="False" BorderBrush="#FF7498BF">
+                    <ComboBoxItem Content="x86"/>
+                    <ComboBoxItem Content="x64"/>
+                </ComboBox>
+                <CheckBox x:Name="full_screen" Content="Full screen" HorizontalAlignment="Left" Margin="20,377,0,0" VerticalAlignment="Top" BorderBrush="#FF7498BF"/>
+                <TextBlock x:Name="textBlock6" HorizontalAlignment="Left" Margin="10,327,0,0" TextWrapping="Wrap" Text="VGA" VerticalAlignment="Top"/>
+                <RadioButton x:Name="floppy" Content="Floppy" HorizontalAlignment="Left" Margin="230,262,0,0" VerticalAlignment="Top" Foreground="Black" Checked="FloppyDisk_Checked" BorderBrush="#FF7498BF"/>
+                <RadioButton x:Name="cd_rom" Content="CD Rom" HorizontalAlignment="Left" Margin="120,262,0,0" VerticalAlignment="Top" BorderBrush="#FF7498BF" Checked="CDRom_Checked"/>
+                <RadioButton x:Name="hard_disk" Content="Hard Disk" HorizontalAlignment="Left" Margin="20,262,0,0" VerticalAlignment="Top" BorderBrush="#FF7498BF" IsChecked="True" Checked="HardDisk_Checked"/>
+                <ComboBox x:Name="cores" HorizontalAlignment="Left" Margin="150,94,0,0" VerticalAlignment="Top" Width="150" SelectedIndex="0" BorderBrush="#FF7498BF">
+                    <ComboBoxItem Content="1"/>
+                </ComboBox>
+                <Slider x:Name="memory_size" ToolTip="Memory Size" Margin="20,162,10,0" VerticalAlignment="Top" TickPlacement="TopLeft" SmallChange="16" TickFrequency="128" LargeChange="128" Maximum="4096" Value="128" Minimum="16" Foreground="#FF7498BF" ValueChanged="MemorySize_ValueChanged"/>
+                <TextBlock x:Name="textBlock7" HorizontalAlignment="Left" Margin="10,202,0,0" TextWrapping="Wrap" Text="Boot Options" VerticalAlignment="Top"/>
+                <Button x:Name="button1" Content="B" HorizontalAlignment="Right" Margin="0,287,47,0" VerticalAlignment="Top" Width="25" Height="25" Background="{x:Null}" BorderBrush="#FF7498BF" FontSize="10.667" Foreground="Black" Click="Browse_Click"/>
+                <ComboBox x:Name="vga" HorizontalAlignment="Left" Margin="150,349,0,0" VerticalAlignment="Top" Width="150" SelectedIndex="0" BorderBrush="#FF7498BF">
+                    <ComboBoxItem Content="std"/>
+                    <ComboBoxItem Content="vmware"/>
+                </ComboBox>
+                <TextBlock x:Name="textBlock4" HorizontalAlignment="Left" Margin="20,352,0,0" TextWrapping="Wrap" Text="Video card type:" VerticalAlignment="Top"/>
+                <TextBox x:Name="memory_size_text" HorizontalAlignment="Left" Margin="150,129,0,0" TextWrapping="Wrap" Text="128 MB" VerticalAlignment="Top" Width="150" BorderBrush="#FF7498BF" IsReadOnly="True"/>
+                <Button x:Name="button2" ToolTip="Create New Hard Disk" HorizontalAlignment="Right" Margin="0,287,23,0" VerticalAlignment="Top" Width="25" Height="25" Background="{x:Null}" BorderBrush="#FF7498BF" Click="CreateVHD_Click"/>
+                <Image HorizontalAlignment="Left" Height="37" Margin="10,10,0,0" VerticalAlignment="Top" Width="37" Stretch="Fill" Source="Images/Icons/virtual-machine.png"/>
+                <ComboBox IsEnabled="True" SelectedIndex="0" HorizontalAlignment="Left" Margin="20,227,0,0" VerticalAlignment="Top" Width="167" BorderBrush="#FF7498BF">
+                    <ComboBox.ToolTip>
+                        <TextBlock Text="To edit you must run this tool as adminstartor." Foreground="Red"/>
+                    </ComboBox.ToolTip>
+                    <ComboBoxItem Content="virtual"/>
+                    <ComboBoxItem Content="physical" IsEnabled="False"/>
+                </ComboBox>
+            </Grid>
+        </ScrollViewer>
+        <Button x:Name="button" Content="RUN" HorizontalAlignment="Right" Margin="0,0,10,5" VerticalAlignment="Bottom" Width="110" Background="{x:Null}" Height="30" BorderBrush="#FF7498BF" Foreground="#FF7498BF" Click="Run_Click" FontSize="16"/>
+        <TextBlock x:Name="textBlock5" HorizontalAlignment="Left" TextWrapping="Wrap" Text="Press &quot;Ctrl + Alt + G&quot; to grab mouse" VerticalAlignment="Bottom" Margin="10,0,0,10"/>
     </Grid>
 </Window>

@@ -49,5 +49,13 @@ namespace File_Manager
             date_picker.SelectedDate = null;
             Close();
         }
+
+        private void Now_Click(object sender, RoutedEventArgs e)
+        {
+            date_picker.SelectedDate = DateTime.Now.Date;
+            hour.SelectedIndex = DateTime.Now.Hour;
+            minute.SelectedIndex = DateTime.Now.Minute;
+            second.SelectedIndex = DateTime.Now.Second;
+        }
     }
 }

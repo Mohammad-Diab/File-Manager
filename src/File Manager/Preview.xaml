@@ -1,7 +1,7 @@
 ﻿<Window x:Class="File_Manager.Preview"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Preview" Height="553" Width="806" WindowStartupLocation="CenterScreen" ResizeMode="NoResize" Icon="Images/Menu/file-preview.png" FontSize="14" Closing="Window_Closing">
+        Title="Preview" Height="553" Width="806" WindowStartupLocation="CenterScreen" ResizeMode="NoResize" Icon="Images/Menu/file-preview.png" FontSize="14" Closing="Window_Closing" PreviewMouseRightButtonUp="Window_PreviewMouseRightButtonUp" FontFamily="Segoe UI">
     <Window.Resources>
         <ControlTemplate x:Key="roundButtonTemplate" TargetType="{x:Type Button}">
             <Grid MouseEnter="RoundButton_MouseOver" MouseLeave="RoundButton_MouseLeave" MouseLeftButtonDown="RoundButton_MouseDown" MouseLeftButtonUp="RoundButton_MouseUp">
@@ -19,6 +19,12 @@
             <Grid MouseEnter="RoundButton_MouseOver" MouseLeave="RoundButton_MouseLeave" MouseLeftButtonDown="RoundButton_MouseDown" MouseLeftButtonUp="RoundButton_MouseUp">
                 <Ellipse Width="75" Height="75" Fill="{x:Null}" Stroke="#FFE6E6E6" StrokeThickness="4"/>
                 <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="14"/>
+            </Grid>
+        </ControlTemplate>
+        <ControlTemplate x:Key="appBarButton" TargetType="{x:Type Button}">
+            <Grid MouseEnter="RoundButton_MouseOver" MouseLeave="RoundButton_MouseLeave" MouseLeftButtonDown="RoundButton_MouseDown" MouseLeftButtonUp="RoundButton_MouseUp">
+                <Ellipse Width="56" Height="56" Fill="{x:Null}" Stroke="White" StrokeThickness="5"/>
+                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="11"/>
             </Grid>
         </ControlTemplate>
     </Window.Resources>
@@ -92,7 +98,9 @@
                     <TextBlock x:Name="a_volume_value" HorizontalAlignment="Right" Margin="0,0,19,0" TextWrapping="Wrap" Text="Volume: 75%" VerticalAlignment="Top" Foreground="White" FontSize="12"/>
                 </Grid>
                 <Grid x:Name="video_player" Visibility="Collapsed" MouseMove="VedioPlayerGrid_MouseMove" MouseWheel="VedioPlayerGrid_MouseWheel" Background="#FF404040">
-                    <MediaElement x:Name="video_player_element" HorizontalAlignment="Left" Height="480" VerticalAlignment="Top" Width="800" MediaOpened="VideoPlayer_MediaOpened" MediaFailed="VideoPlayer_MediaFailed" MediaEnded="VideoPlayer_MediaEnded"/>
+                    <MediaElement x:Name="video_player_element" MediaOpened="VideoPlayer_MediaOpened" MediaFailed="VideoPlayer_MediaFailed" MediaEnded="VideoPlayer_MediaEnded" Margin="0,0,0,1"/>
+                    <TextBlock x:Name="subtitle_text" Margin="8.5,0,11.5,31.5" VerticalAlignment="Bottom" FontSize="26" TextAlignment="Center" Foreground="Black"/>
+                    <TextBlock x:Name="subtitle_shadow" Margin="10,0,10,30" VerticalAlignment="Bottom" FontSize="26" TextAlignment="Center" Foreground="White"/>
                     <Grid x:Name="video_control_grid" VerticalAlignment="Top" Margin="164,10,20,0" Opacity="0.75" MouseEnter="VideoControlGrid_MouseEnter" MouseLeave="VideoControlGrid_MouseLeave">
                         <TextBlock x:Name="video_total_time" HorizontalAlignment="Left" Margin="441,0,0,1" TextWrapping="Wrap" Text="--:--" VerticalAlignment="Bottom" Foreground="White"/>
                         <TextBlock x:Name="video_volume_value" HorizontalAlignment="Right" Margin="0,0,-1,0" TextWrapping="Wrap" Text="Volume: 75%" VerticalAlignment="Top" Foreground="LightSkyBlue" FontSize="12"/>
@@ -145,17 +153,21 @@
                         <TextBlock TextWrapping="NoWrap" Text="72-  The Quick brown fox jumps over the lazy dog. 0123456789   فلج الثغور إذا ابتسمن ضواحكا   هيف الخصور نواعم الأبدان" Foreground="White" FontSize="72"/>
                     </ListBox>
                 </Grid>
+                <Grid x:Name="db_viewer_grid" MouseMove="Control_MouseMove" KeyDown="ImageViewer_KeyDown" Width="790" Margin="0,0,10,0" Visibility="Collapsed">
+                    <DataGrid Margin="175,0,0,0" VerticalAlignment="Top" Height="481"/>
+                    <ListBox HorizontalAlignment="Left" Width="175"/>
+                </Grid>
             </Grid>
             <Grid Margin="800,44,0,0" HorizontalAlignment="Left" Width="800">
                 <Image x:Name="item_image" HorizontalAlignment="Left" Height="256" VerticalAlignment="Top" Width="256" Margin="10,46,0,0"/>
-                <TextBox x:Name="item_path" Margin="30,6,30,0" TextWrapping="Wrap" Text="C:\Users\pal\Desktop\cd.iso" VerticalAlignment="Top" FontSize="16" IsReadOnly="True"/>
+                <TextBox x:Name="item_path" Margin="30,6,30,0" Text="C:\Users\pal\Desktop\cd.iso" VerticalAlignment="Top" FontSize="16" IsReadOnly="True"/>
                 <TextBlock Margin="271,227,0,0" TextWrapping="Wrap" Foreground="ForestGreen" FontSize="16" Text="Size:" VerticalAlignment="Top" HorizontalAlignment="Left"/>
                 <TextBlock Margin="271,116,0,0" TextWrapping="Wrap" Foreground="ForestGreen" FontSize="16" VerticalAlignment="Top" Text="Type:" HorizontalAlignment="Left"/>
-                <TextBlock x:Name="item_type_discriotion" Margin="290,166,0,0" TextWrapping="Wrap" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="ISO Standard File Type." HorizontalAlignment="Left"/>
-                <TextBlock x:Name="item_category" Margin="290,190,0,0" TextWrapping="Wrap" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="Disk Image." HorizontalAlignment="Left"/>
+                <TextBlock x:Name="item_type_discriotion" Margin="290,166,0,0" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="ISO Standard File Type." HorizontalAlignment="Left"/>
+                <TextBlock x:Name="item_category" Margin="290,190,0,0" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="Disk Image." HorizontalAlignment="Left"/>
                 <TextBlock Margin="500,116,0,0" TextWrapping="Wrap" Foreground="ForestGreen" FontSize="16" VerticalAlignment="Top" Text="Apps can open this type:" HorizontalAlignment="Left"/>
                 <ListBox x:Name="app_can_open_this_type" Height="72" Margin="500,142,30,0" VerticalAlignment="Top"/>
-                <TextBlock x:Name="item_type" Margin="290,142,0,0" TextWrapping="Wrap" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text=".iso" HorizontalAlignment="Left"/>
+                <TextBlock x:Name="item_type" Margin="290,142,0,0"  Foreground="Black" FontSize="14" VerticalAlignment="Top" Text=".iso" HorizontalAlignment="Left"/>
                 <Rectangle Height="3" Margin="271,219,50,0" Stroke="#FF404040" VerticalAlignment="Top" StrokeThickness="0">
                     <Rectangle.Fill>
                         <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
@@ -177,13 +189,13 @@
                         </LinearGradientBrush>
                     </Rectangle.Fill>
                 </Rectangle>
-                <TextBlock x:Name="item_size" Margin="290,253,0,0" TextWrapping="Wrap" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="4.1 GB (4402341478 bytes)" HorizontalAlignment="Left"/>
-                <TextBlock x:Name="directory_content" Margin="290,301,0,0" TextWrapping="Wrap" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="Directory contains 312 files &amp; 75 directories" HorizontalAlignment="Left"/>
+                <TextBlock x:Name="item_size" Margin="290,253,0,0" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="4.1 GB (4402341478 bytes)" HorizontalAlignment="Left"/>
+                <TextBlock x:Name="directory_content" Margin="290,301,0,0" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="Directory contains 312 files &amp; 75 directories" HorizontalAlignment="Left"/>
 
-                <TextBlock x:Name="item_ondisk_size" Margin="290,277,0,0" TextWrapping="Wrap" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="on disk: 3.42 GB  20% of used space on disk" HorizontalAlignment="Left"/>
+                <TextBlock x:Name="item_ondisk_size" Margin="290,277,0,0" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="on disk: 3.42 GB  20% of used space on disk" HorizontalAlignment="Left"/>
                 <TextBlock Margin="271,34,0,0" TextWrapping="Wrap" Foreground="ForestGreen" FontSize="16" VerticalAlignment="Top" Text="Item:" HorizontalAlignment="Left"/>
-                <TextBlock x:Name="item_name" Margin="290,60,0,0" TextWrapping="Wrap" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="Name: cd.iso" HorizontalAlignment="Left"/>
-                <TextBlock x:Name="item_location" Margin="290,84,0,0" TextWrapping="Wrap" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="Location: &quot;C:\Users\pal\Desktop&quot;" HorizontalAlignment="Left"/>
+                <TextBlock x:Name="item_name" Margin="290,60,0,0" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="Name: cd.iso" HorizontalAlignment="Left"/>
+                <TextBlock x:Name="item_location" Margin="290,84,0,0" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="Location: &quot;C:\Users\pal\Desktop&quot;" HorizontalAlignment="Left"/>
                 <Rectangle Height="3" Margin="271,108,50,0" Stroke="#FF404040" VerticalAlignment="Top" StrokeThickness="0">
                     <Rectangle.Fill>
                         <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
@@ -241,9 +253,9 @@
                 </Grid>
                 <Grid x:Name="time_region" HorizontalAlignment="Left" Margin="277,339,0,0" Width="493" Height="127" VerticalAlignment="Top">
                     <TextBlock Margin="10,8,0,0"  TextWrapping="Wrap" Foreground="ForestGreen" FontSize="16" VerticalAlignment="Top" HorizontalAlignment="Left" Text="Time:"/>
-                    <TextBlock x:Name="creation_time" Margin="26,34,0,0" TextWrapping="Wrap" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="Creation: 30/2/2007 8:12" HorizontalAlignment="Left"/>
-                    <TextBlock x:Name="modified_time" Margin="26,58,0,0" TextWrapping="Wrap" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="Modified: 30/2/2007 8:12" HorizontalAlignment="Left"/>
-                    <TextBlock x:Name="last_accessed_time" Margin="26,82,0,0"  TextWrapping="Wrap" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="Last accessed: 30/2/2007 8:12" HorizontalAlignment="Left"/>
+                    <TextBlock x:Name="creation_time" Margin="26,34,0,0" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="Creation: 30/2/2007 8:12" HorizontalAlignment="Left"/>
+                    <TextBlock x:Name="modified_time" Margin="26,58,0,0" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="Modified: 30/2/2007 8:12" HorizontalAlignment="Left"/>
+                    <TextBlock x:Name="last_accessed_time" Margin="26,82,0,0"  Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="Last accessed: 30/2/2007 8:12" HorizontalAlignment="Left"/>
                     <Button Content="Change" FontSize="11" Margin="279,35,0,0" Visibility="Visible" Background="{x:Null}" BorderBrush="#FFFF8000" Foreground="#FFFF8B00" HorizontalAlignment="Left" VerticalAlignment="Top" Width="60" Height="19" Click="CreationChange_Click"/>
                     <Button Content="Change" FontSize="11" Margin="279,59,0,0" Visibility="Visible" Background="{x:Null}" BorderBrush="#FFFF8000" Foreground="#FFFF8B00" HorizontalAlignment="Left" VerticalAlignment="Top" Width="60" Height="19" Click="ModifiedChange_Click"/>
                     <Button Content="Change" FontSize="11" Margin="279,83,0,0" Visibility="Visible" Background="{x:Null}" BorderBrush="#FFFF8000" Foreground="#FFFF8B00" HorizontalAlignment="Left" VerticalAlignment="Top" Width="60" Height="19" Click="AccessedChange_Click"/>
@@ -430,23 +442,50 @@
                 </Button>
             </StackPanel>
         </Grid>
-        <Grid x:Name="caution" Height="30" VerticalAlignment="Bottom" Visibility="Collapsed">
-            <Rectangle Fill="Black" Height="30" Stroke="Black" VerticalAlignment="Bottom" Opacity="0.5"/>
-            <Rectangle Height="29" VerticalAlignment="Bottom" Opacity="0.9" RenderTransformOrigin="0.5,0.5">
-                <Rectangle.Stroke>
-                    <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
-                        <GradientStop Color="#FFB40100" Offset="0"/>
-                        <GradientStop Color="#FFDC02FF" Offset="1"/>
-                    </LinearGradientBrush>
-                </Rectangle.Stroke>
-                <Rectangle.Fill>
-                    <LinearGradientBrush EndPoint="0.5,1" MappingMode="RelativeToBoundingBox" StartPoint="0.5,0">
-                        <GradientStop Color="#FFB40100" Offset="1"/>
-                        <GradientStop Color="#FFDC0200"/>
-                    </LinearGradientBrush>
-                </Rectangle.Fill>
-            </Rectangle>
-            <TextBlock x:Name="failed" Text="Caution: This file type maybe contain a virus or damage your computer" Foreground="WhiteSmoke" FontSize="16" TextAlignment="Center" HorizontalAlignment="Left" Width="800" Height="24" VerticalAlignment="Top" Margin="0,3,0,0" FontWeight="SemiBold"/>
+        <Grid x:Name="app_bar" Margin="0,0,0,-80" VerticalAlignment="Bottom" Height="110" Background="#00000000">
+            <Rectangle Fill="RoyalBlue" VerticalAlignment="Bottom" Height="100"/>
+            <Grid x:Name="caution" Height="30" VerticalAlignment="Bottom" Visibility="Collapsed" Margin="0,0,0,80">
+                <Rectangle Fill="Black" Height="30" Stroke="Black" VerticalAlignment="Bottom" Opacity="0.5"/>
+                <Rectangle Height="29" VerticalAlignment="Bottom" Opacity="0.9" RenderTransformOrigin="0.5,0.5">
+                    <Rectangle.Stroke>
+                        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                            <GradientStop Color="#FFB40100" Offset="0"/>
+                            <GradientStop Color="#FFDC02FF" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Rectangle.Stroke>
+                    <Rectangle.Fill>
+                        <LinearGradientBrush EndPoint="0.5,1" MappingMode="RelativeToBoundingBox" StartPoint="0.5,0">
+                            <GradientStop Color="#FFB40100" Offset="1"/>
+                            <GradientStop Color="#FFDC0200"/>
+                        </LinearGradientBrush>
+                    </Rectangle.Fill>
+                </Rectangle>
+                <TextBlock x:Name="failed" Text="Caution: This file type maybe contain a virus or damage your computer" Foreground="WhiteSmoke" FontSize="16" TextAlignment="Center" HorizontalAlignment="Left" Width="800" Height="24" VerticalAlignment="Top" Margin="0,3,0,0" FontWeight="SemiBold"/>
+            </Grid>
+            <TextBlock HorizontalAlignment="Right" TextWrapping="Wrap" Text="..." VerticalAlignment="Bottom" Margin="0,-38,10,74" Foreground="White" FontSize="48"/>
+            <Grid PreviewMouseLeftButtonUp="app_bar_PreviewMouseLeftButtonUp" Margin="0,5,0,80" Background="#004169E1"/>
+            <StackPanel Margin="0,30,0,0" Orientation="Horizontal">
+                <Grid Height="76" x:Name="app_bar_button1" VerticalAlignment="Bottom" Margin="205,0,0,0" ToolTip="open subtitle file" Width="56" HorizontalAlignment="Left" >
+                    <Button Background="{x:Null}" Template="{StaticResource appBarButton}" Click="LoadSubtitle_Click" Margin="0,0,0,20" Width="56" Height="56" Content="S" FontSize="26" Foreground="White"/>
+                    <TextBlock Text="load subtitle" VerticalAlignment="Bottom" Margin="0,0,0,5" Foreground="White" FontSize="10" TextTrimming="CharacterEllipsis" TextAlignment="Center"/>
+                </Grid>
+                <Grid Height="76" x:Name="app_bar_button2" VerticalAlignment="Bottom" Margin="25,0,0,0" ToolTip="convert this media" Width="56" HorizontalAlignment="Left" >
+                    <Button Background="{x:Null}" Template="{StaticResource appBarButton}" Margin="0,0,0,20" Width="56" Height="56" Content="C" FontSize="26" Foreground="White"/>
+                    <TextBlock Text="convert" VerticalAlignment="Bottom" Margin="0,0,0,5" Foreground="White" FontSize="10" TextTrimming="CharacterEllipsis" TextAlignment="Center"/>
+                </Grid>
+                <Grid Height="76" x:Name="app_bar_button5" VerticalAlignment="Bottom" Margin="25,0,0,0" ToolTip="mute volume"  Width="56" HorizontalAlignment="Left" >
+                    <Button Background="{x:Null}" Template="{StaticResource appBarButton}" Margin="0,0,0,20" Width="56" Click="MuteVolume_Click" Height="56" Content="V" FontSize="26" Foreground="White"/>
+                    <TextBlock Text="mute" VerticalAlignment="Bottom" Margin="0,0,0,5" Foreground="White" FontSize="10" TextTrimming="CharacterEllipsis" TextAlignment="Center"/>
+                </Grid>
+                <Grid Height="76" x:Name="app_bar_button4" VerticalAlignment="Bottom" Margin="25,0,0,0" ToolTip="go full screen" Width="56" HorizontalAlignment="Left" >
+                    <Button Background="{x:Null}" Template="{StaticResource appBarButton}" Margin="0,0,0,20" Width="56" Height="56" Content="F" FontSize="26" Foreground="White"/>
+                    <TextBlock Text="fullscreen" VerticalAlignment="Bottom" Margin="0,0,0,5" Foreground="White" FontSize="10" TextTrimming="CharacterEllipsis" TextAlignment="Center"/>
+                </Grid>
+                <Grid Height="76" x:Name="app_bar_button3" VerticalAlignment="Bottom" Margin="25,0,0,0" ToolTip="subtitle option" Width="56" HorizontalAlignment="Left" >
+                    <Button Background="{x:Null}" Template="{StaticResource appBarButton}" Margin="0,0,0,20" Width="56" Height="56" Content="O" FontSize="26" Foreground="White" Click="SubtitleOption_Click"/>
+                    <TextBlock Text="view options" VerticalAlignment="Bottom" Margin="0,0,0,5" Foreground="White" FontSize="10" TextTrimming="CharacterEllipsis" TextAlignment="Center"/>
+                </Grid>
+            </StackPanel>
         </Grid>
     </Grid>
 </Window>

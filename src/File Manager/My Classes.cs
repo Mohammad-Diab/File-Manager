@@ -23,7 +23,7 @@ namespace File_Manager
 
         static Window window;
         static string message;
-        static bool condition;
+        static bool cond;
         static double left;
         public static string[] spliter = { "\\" };
 
@@ -153,12 +153,33 @@ namespace File_Manager
             else return "File";
         }
 
+        public static FileCategory GetFileCategory(string extention)
+        {
+            if (FileInfoCombonents.FilesInformation.ContainsKey(extention.ToLower()))
+                return FileInfoCombonents.FilesInformation[extention.ToLower()].Category;
+            else
+                return FileCategory.Unknown;
+        }
+
         public static BitmapImage GetFileImage24(string extension)
         {
             if (FileInfoCombonents.FilesInformation.ContainsKey(extension.ToLower()))
                 return FileInfoCombonents.FilesInformation[extension.ToLower()].Bitmap24;
             else
                 return FileInfoCombonents.FilesInformation["."].Bitmap24;
+        }
+
+        internal static BitmapImage GetSpecialDirectoryImage(string p)
+        {
+            return GetFileImage64("directory");
+        }
+
+        internal static BitmapImage GetFileImage48(string extension)
+        {
+            if (FileInfoCombonents.FilesInformation.ContainsKey(extension.ToLower()))
+                return FileInfoCombonents.FilesInformation[extension.ToLower()].Bitmap64;
+            else
+                return FileInfoCombonents.FilesInformation["."].Bitmap64;
         }
 
         public static int GetFileIndex(string extension)
@@ -269,11 +290,11 @@ namespace File_Manager
 
         #region Shuck Window Functions
 
-        public static void ShuckWindow(Window win, bool cond, string msg)
+        public static void ShuckWindow(Window win, bool show_messege_condition, string msg)
         {
             window = win;
             message = msg;
-            condition = cond;
+            cond = show_messege_condition;
             left = window.Left;
             DoubleAnimation animation = new DoubleAnimation(window.Left, window.Left + 10, new Duration(new TimeSpan(0, 0, 0, 0, 20)));
             window.BeginAnimation(Window.LeftProperty, animation);
@@ -330,7 +351,7 @@ namespace File_Manager
 
         private static void bw_ProgressChanged5(object sender, ProgressChangedEventArgs e)
         {
-            if (condition)
+            if (cond)
                 new My_MessageBox("File Fanager", message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
             window.Left = left;
             //button.IsEnabled = true;
@@ -345,7 +366,7 @@ namespace File_Manager
         #endregion
 
 
-        internal static ImageSource GetFileImage256(string extension)
+        internal static BitmapSource GetFileImage256(string extension)
         {
             if (FileInfoCombonents.FilesInformation.ContainsKey(extension.ToLower()))
                 return FileInfoCombonents.FilesInformation[extension.ToLower()].Bitmap256;
@@ -391,18 +412,20 @@ namespace File_Manager
     {
         internal GeneralPurpose() { }
 
-        //public GeneralPurpose(string file_path,FileInfo file)
-        //{
-        //    FullPath = file_path;//file name or file path;
-        //    Image = Functions.GetFileImage24(file.Extension);
-        //    File = file == null ? new FileInfo(file_path) : file;
-        //}
+        public GeneralPurpose(FileInfo file, string file_path)
+        {
+            FullPath = file_path;//file name or file path;
+            Image = Functions.GetFileImage24(file.Extension);
+            File = file == null ? new FileInfo(file_path) : file;
+            //isDirectory = false;
+        }
 
         public GeneralPurpose(string directory_path, DirectoryInfo directory)
         {
             FullPath = directory_path;      //file name or file path;
             Image = Functions.GetFileImage24("directory");
             Directory = directory == null ? new DirectoryInfo(directory_path) : directory;
+            //isDirectory = true;
         }
 
         private String file_path;
@@ -422,7 +445,56 @@ namespace File_Manager
         public FileInfo File { get; set; }
 
         public DirectoryInfo Directory { get; set; }
+
+        //public bool isDirectory;
+
+        //public int CompareTo(object obj)
+        //{
+        //    GeneralPurpose x = (GeneralPurpose)obj;
+        //    if (x.isDirectory)
+        //        if (this.isDirectory)
+        //            return (x.Directory.FullName.CompareTo(this.Directory.FullName));
+        //        else
+        //            return 1;
+        //    else
+        //        if (this.isDirectory)
+        //            return -1;
+        //        else
+        //            return (x.File.FullName.CompareTo(this.File.FullName));
+        //}
+
+        //public override bool Equals(object obj)
+        //{
+        //    if (obj != null)
+        //    {
+        //        GeneralPurpose x = (GeneralPurpose)obj;
+        //        if (x.isDirectory)
+        //            if (this.isDirectory)
+        //                return (x.Directory.FullName.Equals(this.Directory.FullName));
+        //            else
+        //                return false;
+        //        else
+        //            if (this.isDirectory)
+        //                return false;
+        //            else
+        //                return (x.File.FullName.Equals(this.File.FullName));
+        //    }
+        //    return false;
+        //}
     }
+
+    enum SortItemsBy
+    {
+        Random = 0,
+        Name = 1,
+        Size = 2,
+        type = 3,
+        DateCreation = 4,
+        DateModified = 5,
+        DateLastAccess = 6
+        //and More
+    }
+
 
 
     public class FileInfoCombonents
@@ -771,134 +843,7 @@ namespace File_Manager
 
     #region All ListView Data Context Classes
 
-    public class MainListView
-    {
-        public MainListView(FileInfo file)
-        {
-            File = file;
-            FileName = file.Name;
-            FullPath = File.FullName;
-            if (FileInfoCombonents.FilesInformation.ContainsKey(file.Extension.ToLower()))
-            {
-                Icon = FileInfoCombonents.FilesInformation[file.Extension.ToLower()].Bitmap24;
-                FileType = FileInfoCombonents.FilesInformation[file.Extension.ToLower()].Description;
-                if (FileInfoCombonents.FilesInformation[file.Extension.ToLower()].HasSubtext)
-                    FileExt = FileInfoCombonents.FilesInformation[file.Extension.ToLower()].Subtext;
-                else
-                    FileExt = "";
-            }
-            else
-            {
-                Icon = FileInfoCombonents.FilesInformation["."].Bitmap24;
-                FileType = file.Extension.Length > 1 ? file.Extension.ToLower().Substring(1).ToUpper() + " File" : "File";
-                if (file.Extension.Length > 1 && file.Extension.Length < 6)
-                    FileExt = file.Extension.ToLower().Substring(1);
-                else
-                    FileExt = "";
-            }
-            FileSize = Functions.FileSize(file.Length, 2);
-            DateModified = file.LastWriteTime.ToString();          
-        }
 
-        public MainListView(DirectoryInfo directory)
-        {
-            File = directory;
-            FullPath = directory.FullName;
-            FileName = directory.Name;
-            Icon = FileInfoCombonents.FilesInformation["directory"].Bitmap24;
-            FileType = "Directory";
-            FileSize = "";
-            FileExt = "";
-            DateModified = directory.LastWriteTimeUtc.ToString();
-        }
-
-        public MainListView(DriveInfo drive)
-        {
-            File = null;
-            FullPath = drive.Name;
-            Drive = drive;
-            if (drive.IsReady)
-            {
-                FileName = drive.VolumeLabel + " (" + drive.Name + ")";
-                FileSize = Functions.FileSize(drive.AvailableFreeSpace, 2);
-                DateModified = Functions.FileSize(drive.TotalSize, 2);
-            }
-            else
-            {
-                FileName = drive.Name;
-                FileSize = "Drive is not ready!";
-                DateModified = "";
-            }
-            Icon = Functions.GetDriveImage(drive.DriveType, drive.Name.ToLower().Equals(Functions.SystemDrive), drive.IsReady, 24);
-            FileType = Functions.GetDriveDescription(drive.DriveType);
-            FileExt = "";
-        }
-
-        ContextMenu menu;
-        public ContextMenu Menu
-        {
-            get { return menu; }
-            set { menu = value; }
-        }
-
-        FileSystemInfo file;
-        public FileSystemInfo File
-        {
-            get { return file; }
-            set { file = value; }
-        }
-
-        public string FullPath;
-
-        DriveInfo drive;
-        public DriveInfo Drive
-        {
-            get { return drive; }
-            set { drive = value; }
-        }
-
-        private String file_name;
-        public string FileName
-        {
-            get { return file_name; }
-            set { file_name = value; }
-        }
-
-        private String file_extention;
-        public string FileExt
-        {
-            get { return file_extention; }
-            set { file_extention = value; }
-        }
-
-        private BitmapImage img_source;
-        public BitmapImage Icon
-        {
-            get { return img_source; }
-            set { img_source = value; }
-        }
-
-        private String file_type;
-        public string FileType
-        {
-            get { return file_type; }
-            set { file_type = value; }
-        }
-
-        private String file_size;
-        public string FileSize
-        {
-            get { return file_size; }
-            set { file_size = value; }
-        }
-
-        private String file_date;
-        public string DateModified
-        {
-            get { return file_date; }
-            set { file_date = value; }
-        }
-    }
 
     
 
@@ -1026,7 +971,8 @@ namespace File_Manager
         Destroy = 4,
         Encrypt = 5,
         Compress = 6,
-        Extract = 7
+        Extract = 7,
+        CreateShortcut = 8
     }
 
     #endregion

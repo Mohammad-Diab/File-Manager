@@ -81,17 +81,45 @@
     <Reference Include="WindowsBase" />
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
+    <Reference Include="Xceed.Wpf.AvalonDock">
+      <HintPath>..\packages\Extended.Wpf.Toolkit.2.4\lib\net40\Xceed.Wpf.AvalonDock.dll</HintPath>
+    </Reference>
+    <Reference Include="Xceed.Wpf.AvalonDock.Themes.Aero">
+      <HintPath>..\packages\Extended.Wpf.Toolkit.2.4\lib\net40\Xceed.Wpf.AvalonDock.Themes.Aero.dll</HintPath>
+    </Reference>
+    <Reference Include="Xceed.Wpf.AvalonDock.Themes.Metro">
+      <HintPath>..\packages\Extended.Wpf.Toolkit.2.4\lib\net40\Xceed.Wpf.AvalonDock.Themes.Metro.dll</HintPath>
+    </Reference>
+    <Reference Include="Xceed.Wpf.AvalonDock.Themes.VS2010">
+      <HintPath>..\packages\Extended.Wpf.Toolkit.2.4\lib\net40\Xceed.Wpf.AvalonDock.Themes.VS2010.dll</HintPath>
+    </Reference>
+    <Reference Include="Xceed.Wpf.DataGrid">
+      <HintPath>..\packages\Extended.Wpf.Toolkit.2.4\lib\net40\Xceed.Wpf.DataGrid.dll</HintPath>
+    </Reference>
+    <Reference Include="Xceed.Wpf.Toolkit">
+      <HintPath>..\packages\Extended.Wpf.Toolkit.2.4\lib\net40\Xceed.Wpf.Toolkit.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="About.xaml.cs">
+      <DependentUpon>About.xaml</DependentUpon>
+    </Compile>
     <Compile Include="ChangeDate.xaml.cs">
       <DependentUpon>ChangeDate.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Classes\JunctionPoint.cs" />
     <Compile Include="Compress Files.xaml.cs">
       <DependentUpon>Compress Files.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Create Virtual Hard Disk.xaml.cs">
+      <DependentUpon>Create Virtual Hard Disk.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Desktop Environment.xaml.cs">
+      <DependentUpon>Desktop Environment.xaml</DependentUpon>
     </Compile>
     <Compile Include="File Destroyer.xaml.cs">
       <DependentUpon>File Destroyer.xaml</DependentUpon>
@@ -99,13 +127,26 @@
     <Compile Include="Files Encrepter.xaml.cs">
       <DependentUpon>Files Encrepter.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Files Splitter.xaml.cs">
+      <DependentUpon>Files Splitter.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Files.cs" />
+    <Compile Include="FileSystemSelector.xaml.cs">
+      <DependentUpon>FileSystemSelector.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Make File Structure.xaml.cs">
       <DependentUpon>Make File Structure.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Media Converter.xaml.cs">
+      <DependentUpon>Media Converter.xaml</DependentUpon>
     </Compile>
     <Compile Include="MultiDirectoriesSelector.xaml.cs">
       <DependentUpon>MultiDirectoriesSelector.xaml</DependentUpon>
     </Compile>
     <Compile Include="My Classes.cs" />
+    <Compile Include="New Shortcut.xaml.cs">
+      <DependentUpon>New Shortcut.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Operation.xaml.cs">
       <DependentUpon>Operation.xaml</DependentUpon>
     </Compile>
@@ -118,6 +159,12 @@
     <Compile Include="Renamer.xaml.cs">
       <DependentUpon>Renamer.xaml</DependentUpon>
     </Compile>
+    <Compile Include="SelectFileDialog.xaml.cs">
+      <DependentUpon>SelectFileDialog.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Subtitle Option.xaml.cs">
+      <DependentUpon>Subtitle Option.xaml</DependentUpon>
+    </Compile>
     <Compile Include="System Monitor.xaml.cs">
       <DependentUpon>System Monitor.xaml</DependentUpon>
     </Compile>
@@ -127,6 +174,10 @@
     <Compile Include="Virtual Machine.xaml.cs">
       <DependentUpon>Virtual Machine.xaml</DependentUpon>
     </Compile>
+    <Page Include="About.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Big File Finder.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -136,6 +187,14 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Compress Files.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Create Virtual Hard Disk.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Desktop Environment.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -164,6 +223,14 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Files Encrepter.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Files Splitter.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="FileSystemSelector.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -215,11 +282,19 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Media Converter.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="MultiDirectoriesSelector.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="My MessageBox.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="New Shortcut.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -236,6 +311,14 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Renamer.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="SelectFileDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Subtitle Option.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -273,6 +356,7 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+    <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -446,6 +530,87 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Images\Appearance\operation-cut-sign.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <COMReference Include="IWshRuntimeLibrary">
+      <Guid>{F935DC20-1CF0-11D0-ADB9-00C04FD58A0B}</Guid>
+      <VersionMajor>1</VersionMajor>
+      <VersionMinor>0</VersionMinor>
+      <Lcid>0</Lcid>
+      <WrapperTool>tlbimp</WrapperTool>
+      <Isolated>False</Isolated>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </COMReference>
+    <COMReference Include="Shell32">
+      <Guid>{50A7E9B0-70EF-11D1-B75A-00A0C90564FE}</Guid>
+      <VersionMajor>1</VersionMajor>
+      <VersionMinor>0</VersionMinor>
+      <Lcid>0</Lcid>
+      <WrapperTool>tlbimp</WrapperTool>
+      <Isolated>False</Isolated>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </COMReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\filp-image.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\go-home-28.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\view-search.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\virtual-machine.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\virtual-hard-drive.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\go-home-48.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\go-apps.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\go-game.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\go-documents.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\go-picture.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\go-music.png" />
+    <Resource Include="Images\Appearance\go-video.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\go-application.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\go-search.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\go-settings.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\go-favorite.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\home-file-manager.jpg" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\48\home-drive.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\48\home-directory.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\App Icon.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\xbill.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

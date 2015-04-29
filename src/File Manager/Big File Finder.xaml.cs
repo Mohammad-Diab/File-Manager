@@ -217,6 +217,16 @@ namespace File_Manager
         {
             CloseWindow = true;
         }
+
+        private void Label1_MouseUp(object sender, MouseButtonEventArgs e)
+        {
+
+        }
+
+        private void label2_MouseUp(object sender, MouseButtonEventArgs e)
+        {
+
+        }
     }
 
     class BigFileListView : GeneralPurpose, IComparable

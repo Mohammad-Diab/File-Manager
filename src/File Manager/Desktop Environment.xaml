@@ -35,7 +35,7 @@
                 <Image Source="Images/Appearance/go-settings.png" Margin="3,3,3,3"/>
             </Grid>
         </StackPanel>
-        <Grid x:Name="mother" Margin="0,0,0,0">
+        <Grid x:Name="mother" Margin="0,-1800,0,0">
             <Grid Height="595" VerticalAlignment="Top">
                 <ListView x:Name="home_list_view" Margin="60,0,0,0" ItemsSource="{Binding}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" >
                     <ListView.View>

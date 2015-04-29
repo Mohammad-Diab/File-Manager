@@ -174,7 +174,7 @@
                 <MenuItem Header="BookMarks" Foreground="#FF41403B" IsCheckable="True"/>
                 <Separator Foreground="#FF41403B"/>
                 <MenuItem Header="Preferences" Foreground="#FF41403B"/>
-                <MenuItem Header="about File Manager" Foreground="#FF41403B" Click="AboutButton_Click"/>
+                <MenuItem Header="about File Manager" Foreground="#FF41403B" Click="MenuItem_Click"/>
                 <MenuItem Header="Help" Foreground="#FF41403B"/>
                 <Separator Foreground="#FF41403B"/>
                 <MenuItem Header="Quit" Foreground="#FF41403B" Click="Quit"/>

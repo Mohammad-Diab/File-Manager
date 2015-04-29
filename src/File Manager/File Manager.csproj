@@ -105,9 +105,6 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Compile Include="About.xaml.cs">
-      <DependentUpon>About.xaml</DependentUpon>
-    </Compile>
     <Compile Include="ChangeDate.xaml.cs">
       <DependentUpon>ChangeDate.xaml</DependentUpon>
     </Compile>
@@ -174,10 +171,6 @@
     <Compile Include="Virtual Machine.xaml.cs">
       <DependentUpon>Virtual Machine.xaml</DependentUpon>
     </Compile>
-    <Page Include="About.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
     <Page Include="Big File Finder.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -605,12 +598,6 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Images\Icons\48\home-directory.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\App Icon.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Images\xbill.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

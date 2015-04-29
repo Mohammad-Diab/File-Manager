@@ -53,16 +53,7 @@ namespace File_Manager
         {
             Initializer();
             img.Source = Icons.GetIcons.GetIcon("computer.png", 256);
-            if (!ContainProcess(Process.GetProcesses(), "explorer", "explorer.exe"))
-                new Desktop_Environment().Show();
-        }
-
-        private bool ContainProcess(Process[] process, string p, string q)
-        {
-            foreach (Process i in process)
-                if (i.ProcessName.ToLower().Equals(p) || i.ProcessName.ToLower().Equals(q))
-                    return true;
-            return false;
+            new Desktop_Environment().Show();
         }
 
         public MainWindow(string PrimePath)
@@ -625,6 +616,11 @@ namespace File_Manager
             if (to_select_file != null)
                 SelectItem(to_select_file);
             string f = Process.GetCurrentProcess().StartInfo.Verb;
+        }
+
+        private void MenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show("File Manager v0.8.0-alpha.1\nby: mohammad.diab93@outlook.com", "FILE MANAGER", MessageBoxButton.OK, MessageBoxImage.Information, MessageBoxResult.OK);
         }
 
         void SelectItem(string to_select_item)
@@ -1622,14 +1618,9 @@ namespace File_Manager
 
         private void OpenFileDialog_Click(object sender, RoutedEventArgs e)
         {
-            //SelectFileDialog df = new SelectFileDialog() { InistialDirectory = "C:\\Windows", dialogMode = SelectFileDialogMode.OpenFile, MultiSelect = true };
-            //df.FilterMenu.Add(new SelectFileFilter() { extentions = ".exe|.bat".Split('|'), display_name = "Application" });
-            //df.ShowWindow();
-        }
-
-        private void AboutButton_Click(object sender, RoutedEventArgs e)
-        {
-            new About().ShowDialog();
+            SelectFileDialog df = new SelectFileDialog() { InistialDirectory = "C:\\Windows", dialogMode = SelectFileDialogMode.OpenFile, MultiSelect = true };
+            df.FilterMenu.Add(new SelectFileFilter() { extentions = ".exe|.bat".Split('|'), display_name = "Application" });
+            df.ShowWindow();
         }
 
 

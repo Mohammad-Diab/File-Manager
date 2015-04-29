@@ -136,15 +136,7 @@ namespace File_Manager
         {
             try
             {
-                if (File.Exists(@"C:\Program Files\7-Zip\7z.dll"))
-                    SevenZip.SevenZipExtractor.SetLibraryPath(@"C:\Program Files\7-Zip\7z.dll");
-                else if (File.Exists(@"C:\Program Files (x86)\7-Zip\7z.dll"))
-                    SevenZip.SevenZipExtractor.SetLibraryPath(@"C:\Program Files\7-Zip\7z.dll");
-                else
-                {
-                    MessageBox.Show("Please install 7-zip File Manager.");
-                    return null;
-                }
+                SevenZip.SevenZipExtractor.SetLibraryPath(@"C:\Program Files\7-Zip\7z.dll");
                 SevenZip.SevenZipExtractor sze = new SevenZip.SevenZipExtractor(fileInfo.FullName);
                 int index = -1;
                 double random = HomeItem.rand.NextDouble();

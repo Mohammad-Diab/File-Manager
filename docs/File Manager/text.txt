@@ -1,0 +1,113 @@
+<TabControl Margin="-641,107,641,0">
+            <TabItem Header="File Distroyer">
+                <TabItem.Background>
+                    <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                        <GradientStop Color="#FFFFE6E6" Offset="0"/>
+                        <GradientStop Color="#FFF7B9B9" Offset="1"/>
+                    </LinearGradientBrush>
+                </TabItem.Background>
+                <Grid>
+                    <Grid.Background>
+                        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                            <GradientStop Color="White" Offset="0"/>
+                            <GradientStop Color="#FFF5E1E1" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Grid.Background>
+                    <Grid Margin="10" x:Name="destroy_control">
+                        <CheckBox x:Name="delet8e_files" Content="Delete files after destroy." HorizontalAlignment="Left" Margin="0,0,0,49" VerticalAlignment="Bottom" FontSize="14" Foreground="Red" BorderBrush="Green" IsChecked="True"/>
+                        <Button ToolTip="Add folder (add all files in it)" Margin="5,79,0,0" VerticalAlignment="Top" Click="AddFolder_Click" HorizontalAlignment="Left" Background="{x:Null}">
+                            <Image Source="Images/Appearance/add-folder.png" Height="28" Width="28" Stretch="UniformToFill"/>
+                        </Button>
+                        <Button ToolTip="Clear list" Margin="5,187,0,0" VerticalAlignment="Top" Click="ClearList_Click" HorizontalAlignment="Left" Background="{x:Null}">
+                            <Image Source="Images/Appearance/list-clear.png" Height="28" Width="28" Stretch="UniformToFill"/>
+                        </Button>
+                        <Button ToolTip="Setting" VerticalAlignment="Top" HorizontalAlignment="Left" Background="{x:Null}" Margin="5,258,0,0">
+                            <Image Source="Images/Appearance/setting.png" Height="28" Width="28" Stretch="UniformToFill"/>
+                        </Button>
+                        <Button ToolTip="Remove selected files" Margin="5,150,0,0" VerticalAlignment="Top" Click="RemoveSelected_Click" HorizontalAlignment="Left" Background="{x:Null}">
+                            <Image Source="Images/Appearance/list-remove.png" Height="28" Width="28" Stretch="UniformToFill"/>
+                        </Button>
+                        <ListView x:Name="files_list8" Margin="42,42,0,129" SelectionMode="Extended" ItemsSource="{Binding}" Background="{x:Null}">
+                            <ListView.View>
+                                <GridView>
+                                    <GridViewColumn Header="Name" Width="300">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" ContextMenu="{Binding Menu}">
+                                                    <TextBlock Margin="28,4,0,0" Text="{Binding FullPath}" HorizontalAlignment="Left"/>
+                                                    <Image Margin="0" Source="{Binding Image}" Height="24" Width="24" VerticalAlignment="Top" HorizontalAlignment="Left"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                    <GridViewColumn Header="Progress" Width="100">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <ProgressBar Height="10" VerticalAlignment="Top" HorizontalAlignment="Left" Width="75" Value="{Binding CurrentProgress}" Maximum="{Binding MaxValue}"/>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                </GridView>
+                            </ListView.View>
+                        </ListView>
+                        <TextBlock HorizontalAlignment="Left" Margin="42,320,0,0" TextWrapping="Wrap" Text="Destroy options" VerticalAlignment="Top"/>
+                        <Rectangle Fill="Red" HorizontalAlignment="Left" Height="5" Margin="42,295,0,0" VerticalAlignment="Top" Width="322"/>
+                        <Button VerticalAlignment="Bottom" Click="Destroy_Click" Height="32" Background="#FFE14141" Foreground="White" HorizontalAlignment="Right" Width="109">
+                            <Button.Content>
+                                <Grid Width="105" Height="28">
+                                    <TextBlock Text="Destroy" Foreground="WhiteSmoke" Margin="35,5,0,0" FontSize="14" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+                                    <Image Source="Images/Appearance/rename.png" Width="28" Stretch="Fill" HorizontalAlignment="Left" Margin="2,0,0,0"/>
+                                </Grid>
+                            </Button.Content>
+                        </Button>
+                        <TextBlock HorizontalAlignment="Right" x:Name="items_count" Margin="0,0,10,53" TextWrapping="Wrap" VerticalAlignment="Bottom" FontSize="14">
+                            <TextBlock.Foreground>
+                                <RadialGradientBrush>
+                                    <GradientStop Color="#FFFF6800" Offset="0"/>
+                                    <GradientStop Color="Red" Offset="1"/>
+                                </RadialGradientBrush>
+                            </TextBlock.Foreground>
+                        </TextBlock>
+                        <TextBlock HorizontalAlignment="Left" TextWrapping="Wrap" Text="Repetitions of operation:" VerticalAlignment="Bottom" FontSize="14" Margin="0,0,0,1"/>
+                        <ComboBox x:Name="method_cb" SelectedIndex="0" HorizontalAlignment="Left"  Margin="180,0,0,22" VerticalAlignment="Bottom" Width="110">
+                            <ComboBoxItem Content="Quick destroy"/>
+                            <ComboBoxItem Content="Secure destroy"/>
+                        </ComboBox>
+                        <TextBox x:Name="repete_tb" HorizontalAlignment="Left" Margin="180,0,0,1" TextWrapping="Wrap" Text="1" VerticalAlignment="Bottom" Width="110" MaxLength="3" TextAlignment="Center"/>
+                        <TextBlock HorizontalAlignment="Left" Margin="0,0,0,25" TextWrapping="Wrap" Text="Method" VerticalAlignment="Bottom" FontSize="14"/>
+                    </Grid>
+                    <ProgressBar x:Name="total_progress" Height="18" Margin="202,0,10,60" VerticalAlignment="Bottom" Visibility="Hidden"/>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Deleted Files On Disk Distroyer">
+                <TabItem.Background>
+                    <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                        <GradientStop Color="#FFECFFCB" Offset="0"/>
+                        <GradientStop Color="#FFE8FF7E" Offset="1"/>
+                    </LinearGradientBrush>
+                </TabItem.Background>
+                <Grid>
+                    <Grid.Background>
+                        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                            <GradientStop Color="White" Offset="0"/>
+                            <GradientStop Color="#FFFFFCC0" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Grid.Background>
+                    <Button x:Name="destroy_button" Content="Destroy" Margin="125,175,125,0" VerticalAlignment="Top" Height="78" FontSize="36" Background="#FFECFF93" Click="DestroyDisk_Click" Foreground="Black" BorderBrush="#FF5E47C7"/>
+                    <TextBlock HorizontalAlignment="Left" Margin="10,10,0,0" TextWrapping="Wrap" Text="This tool makes your deleted files unrecoverable." VerticalAlignment="Top" FontSize="16" Foreground="#FF0800B0"/>
+                    <TextBlock Margin="10,62,10,0" TextWrapping="Wrap" Text="To start choose disk letter then click on button below" VerticalAlignment="Top" FontSize="16" TextAlignment="Center"/>
+                    <ProgressBar x:Name="total_progress_disk" Height="22" Margin="10,0,51,10" VerticalAlignment="Bottom"/>
+                    <TextBlock Margin="10,0,51,37" VerticalAlignment="Bottom" FontSize="14" TextTrimming="CharacterEllipsis" Foreground="Black"><Run Text="Total: "/><Run x:Name="completed_MB" FontSize="16"/><Run Text=" completed of "/><Run x:Name="total_MB" FontSize="16"/></TextBlock>
+                    <ComboBox x:Name="drive_list" Margin="125,90,180,0" VerticalAlignment="Top" FontSize="14" SelectionChanged="DriveList_SelectionChanged"/>
+                    <Button x:Name="refresh" Content="refresh" HorizontalAlignment="Right" Margin="0,90,125,0" VerticalAlignment="Top" Width="50" Height="25" Background="{x:Null}" Click="Refresh_Click"/>
+                    <ComboBox x:Name="method_cb2" Margin="186,135,125,0" VerticalAlignment="Top" FontSize="14" SelectedIndex="0" SelectionChanged="DriveList_SelectionChanged">
+                        <ComboBoxItem Content="Quick destroy"/>
+                        <ComboBoxItem Content="Secure destroy"/>
+                    </ComboBox>
+                    <TextBlock HorizontalAlignment="Left" Margin="125,136,0,0" TextWrapping="Wrap" Text="Method" VerticalAlignment="Top" FontSize="16"/>
+                    <Button x:Name="play_pause" HorizontalAlignment="Right" Margin="0,0,9,16" VerticalAlignment="Bottom" Visibility="Hidden" Background="{x:Null}" Click="PlayPause_Click">
+                        <Image x:Name="play_pause_img" Source="Images/Menu/copy-pause.png" Width="32" Height="32"/>
+                    </Button>
+                </Grid>
+            </TabItem>
+        </TabControl>

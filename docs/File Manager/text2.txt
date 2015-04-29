@@ -1,0 +1,76 @@
+                    <Grid Margin="10" x:Name="destroy_control">
+                        <Button ToolTip="Add files" VerticalAlignment="Top" Click="AddFile_Click" HorizontalAlignment="Left" Background="{x:Null}">
+                            <Button.Content>
+                                <Image Source="Images/Appearance/add-files.png" Width="28" Height="28" Stretch="UniformToFill"/>
+                            </Button.Content>
+                        </Button>
+                        <Button ToolTip="Add folder (add all files in it)" Margin="37,0,0,0" VerticalAlignment="Top" Click="AddFolder_Click" HorizontalAlignment="Left" Background="{x:Null}">
+                            <Button.Content>
+                                <Image Source="Images/Appearance/add-folder.png" Height="28" Width="28" Stretch="UniformToFill"/>
+                            </Button.Content>
+                        </Button>
+                        <Button ToolTip="Clear list" Margin="0,0,37,0" VerticalAlignment="Top" Click="ClearList_Click" HorizontalAlignment="Right" Background="{x:Null}">
+                            <Button.Content>
+                                <Image Source="Images/Appearance/list-clear.png" Height="28" Width="28" Stretch="UniformToFill"/>
+                            </Button.Content>
+                        </Button>
+                        <Button ToolTip="Setting" VerticalAlignment="Top" HorizontalAlignment="Right" Background="{x:Null}">
+                            <Button.Content>
+                                <Image Source="Images/Appearance/setting.png" Height="28" Width="28" Stretch="UniformToFill"/>
+                            </Button.Content>
+                        </Button>
+                        <Button ToolTip="Remove selected files" Margin="0,0,74,0" VerticalAlignment="Top" Click="RemoveSelected_Click" HorizontalAlignment="Right" Background="{x:Null}">
+                            <Image Source="Images/Appearance/list-remove.png" Height="28" Width="28" Stretch="UniformToFill"/>
+                        </Button>
+                        <Button VerticalAlignment="Bottom" Click="Encrypt_Click" Height="32" Background="#FF40E2E2" Foreground="White" HorizontalAlignment="Right" Width="109">
+                            <Button.Content>
+                                <Grid Width="105" Height="28">
+                                    <TextBlock Text="Encrypt" Foreground="White" Margin="35,5,0,0" FontSize="14" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+                                    <Image Source="Images/Appearance/rename.png" Width="28" Stretch="Fill" HorizontalAlignment="Left" Margin="2,0,0,0"/>
+                                </Grid>
+                            </Button.Content>
+                        </Button>
+                        <TextBlock HorizontalAlignment="Right" x:Name="items_count" Margin="0,0,10,63" TextWrapping="Wrap" VerticalAlignment="Bottom" FontSize="14">
+                            <TextBlock.Foreground>
+                                <RadialGradientBrush>
+                                    <GradientStop Color="#FFFF6800" Offset="0"/>
+                                    <GradientStop Color="Red" Offset="1"/>
+                                </RadialGradientBrush>
+                            </TextBlock.Foreground>
+                        </TextBlock>
+                        <PasswordBox x:Name="enc_password" HorizontalAlignment="Left" Margin="58,0,0,10" VerticalAlignment="Bottom" Width="150"/>
+                        <TextBox x:Name="enc_password_text" HorizontalAlignment="Left" Margin="58,0,0,10" VerticalAlignment="Bottom" Width="150" Visibility="Hidden"/>
+                        <TextBlock HorizontalAlignment="Left" Margin="0,0,0,11" TextWrapping="Wrap" Text="Password:" VerticalAlignment="Bottom"/>
+                        <Button x:Name="show_password" Content="Show" HorizontalAlignment="Left" Margin="216,0,0,9" VerticalAlignment="Bottom" Width="50" Background="{x:Null}" Click="ENC_ShowPassword_Click"/>
+                        <Button Content="Browse" HorizontalAlignment="Right" Margin="0,0,0,38" VerticalAlignment="Bottom" Width="75" Height="20" Background="{x:Null}" Click="ENC_Browser_Click"/>
+                        <TextBox x:Name="output" Margin="58,0,80,39" Text="D:\" VerticalAlignment="Bottom"/>
+                        <TextBlock HorizontalAlignment="Left" Margin="0,0,0,41" TextWrapping="Wrap" Text="Output:" VerticalAlignment="Bottom"/>
+                        <CheckBox x:Name="delete_files2" Content="Delete files after encryption." HorizontalAlignment="Left" Margin="0,0,0,62" VerticalAlignment="Bottom" FontSize="14" Foreground="Red" BorderBrush="Green" IsChecked="False"/>
+                        <ProgressBar x:Name="total_progress" Height="18" Margin="205,0,0,63" VerticalAlignment="Bottom" Visibility="Hidden"/>
+                    </Grid>
+                    <ListView x:Name="files_list2" Margin="10,47,10,96" SelectionMode="Extended" ItemsSource="{Binding}" Background="{x:Null}">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="Name" Width="300">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" ContextMenu="{Binding Menu}">
+                                                <TextBlock Margin="28,4,0,0" Text="{Binding FullPath}" HorizontalAlignment="Left"/>
+                                                <Image Margin="0" Source="{Binding Image}" Height="24" Width="24" VerticalAlignment="Top" HorizontalAlignment="Left"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="Progress" Width="100">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" ContextMenu="{Binding Menu}">
+                                                <TextBlock Margin="0,4,0,0" Visibility="{Binding TextBlockVisibility}" Text="{Binding ErrorMassege}" HorizontalAlignment="Left" Foreground="Tomato"/>
+                                                <ProgressBar Height="10" VerticalAlignment="Top" HorizontalAlignment="Left" Width="75" Visibility="{Binding ProgressBarVisibility}" Value="{Binding CurrentProgress}" Maximum="{Binding MaxValue}"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                            </GridView>
+                        </ListView.View>
+                    </ListView>

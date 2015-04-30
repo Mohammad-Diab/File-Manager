@@ -53,7 +53,6 @@ namespace File_Manager
 
                 viewed_page = value;
             }
-        
         }
 
         ObservableCollection<HomeItem> home_list_data = new ObservableCollection<HomeItem>();

@@ -51,13 +51,13 @@ namespace File_Manager
                             }
                             catch (Exception ex/* extra info*/)
                             {
-                                OperationTree unsucsess = new OperationTree(null, false, "", Op.Attributes, null, false, "We can not create shortcut.");
+                                OperationTree unsucsess = new OperationTree(null, false, "", OperationType.Attributes, null, false, "We can not create shortcut.");
                                 if (System.IO.File.Exists(o_path.Text))
-                                    unsucsess.children.Add(new OperationTree(new FileInfo(o_path.Text), false, "", Op.CreateShortcut, unsucsess, "We can not create shortcut."));
+                                    unsucsess.children.Add(new OperationTree(new FileInfo(o_path.Text), false, "", OperationType.CreateShortcut, unsucsess, "We can not create shortcut."));
                                 else if (Directory.Exists(o_path.Text))
-                                    unsucsess.children.Add(new OperationTree(new DirectoryInfo(o_path.Text), false, "", Op.CreateShortcut, unsucsess, false, "We can not create shortcut."));
+                                    unsucsess.children.Add(new OperationTree(new DirectoryInfo(o_path.Text), false, "", OperationType.CreateShortcut, unsucsess, false, "We can not create shortcut."));
                                 else
-                                    unsucsess.children.Add(new OperationTree(new FileInfo(o_path.Text), false, "", Op.CreateShortcut, unsucsess, "We can not find original file."));
+                                    unsucsess.children.Add(new OperationTree(new FileInfo(o_path.Text), false, "", OperationType.CreateShortcut, unsucsess, "We can not find original file."));
                                 new File_s_Transferring_Error(unsucsess, "Error while creating shortcut.").ShowThisDialog();
                                 if (unsucsess.children[0].user_option == OperationOption.Skip)
                                     replay = false;
@@ -121,13 +121,13 @@ namespace File_Manager
                     }
                     catch (Exception ex/* extra info*/)
                     {
-                        OperationTree unsucsess = new OperationTree(null, false, "", Op.Attributes, null, false, "We can not create reparse point.");
+                        OperationTree unsucsess = new OperationTree(null, false, "", OperationType.Attributes, null, false, "We can not create reparse point.");
                         if (not_empty)
-                            unsucsess.children.Add(new OperationTree(new DirectoryInfo(d_path.Text), false, "", Op.CreateShortcut, unsucsess, false, "Target directory is not empty."));
+                            unsucsess.children.Add(new OperationTree(new DirectoryInfo(d_path.Text), false, "", OperationType.CreateShortcut, unsucsess, false, "Target directory is not empty."));
                         else if (Directory.Exists(d_path.Text))
-                            unsucsess.children.Add(new OperationTree(new DirectoryInfo(d_path.Text), false, "", Op.CreateShortcut, unsucsess, false, "We can not create reparse point."));
+                            unsucsess.children.Add(new OperationTree(new DirectoryInfo(d_path.Text), false, "", OperationType.CreateShortcut, unsucsess, false, "We can not create reparse point."));
                         else
-                            unsucsess.children.Add(new OperationTree(new DirectoryInfo(d_path.Text), false, "", Op.CreateShortcut, unsucsess, false, "We can not find original directory."));
+                            unsucsess.children.Add(new OperationTree(new DirectoryInfo(d_path.Text), false, "", OperationType.CreateShortcut, unsucsess, false, "We can not find original directory."));
                         new File_s_Transferring_Error(unsucsess, "Error while creating reparse point.").ShowThisDialog();
                         if (unsucsess.children[0].user_option == OperationOption.Skip)
                             replay = false;

@@ -23,16 +23,15 @@ namespace File_Manager
     /// </summary>
     public partial class Empty_Folder_Remover : Window
     {
-        int process_value = 0;
-        List<EmptyDirectoriesFilesListView> worker_list;
-        BackgroundWorker find_emptey_BackgroundWorker;
+        int progress_value = 0;
+        List<EmptyDirectoriesFilesListView> worker_list = new List<EmptyDirectoriesFilesListView>();
         bool CloseWindow = false;
-        ObservableCollection<EmptyDirectoriesFilesListView> list_to_view = new ObservableCollection<EmptyDirectoriesFilesListView>();
+        //ObservableCollection<EmptyDirectoriesFilesListView> list_to_view = new ObservableCollection<EmptyDirectoriesFilesListView>();
 
         public Empty_Folder_Remover()
         {
             InitializeComponent();
-            items_list.DataContext = list_to_view;
+            items_list.DataContext = worker_list;
             if (Functions.IsRunningAsAdmin())
             {
                 items_list.Margin = new Thickness(10, 41, 10, 10);
@@ -40,77 +39,95 @@ namespace File_Manager
             }
         }
 
+        public Empty_Folder_Remover(string path)
+        {
+            InitializeComponent();
+            items_list.DataContext = worker_list;
+            if (Functions.IsRunningAsAdmin())
+            {
+                items_list.Margin = new Thickness(10, 41, 10, 10);
+                caution.Visibility = Visibility.Collapsed;
+            }
+            BegainSearch(path);
+        }
+
         private void FindEmptey_Click(object sender, RoutedEventArgs e)
         {
-            string path = new Folder_Picker().ShowThisDialog();
-            if (path != null)
+            SelectFileDialog sfd = new SelectFileDialog();
+            sfd.dialogMode = SelectFileDialogMode.SelectDirectory;
+            sfd.CreateFolderEnable = false;
+            sfd.DialogTitle = "Searching for empty directories in...";
+            sfd.AddExtension = false;
+            if (sfd.ShowWindow() == MyMessageBoxResult.OK)
+                BegainSearch(sfd.SelectedItem);
+        }
+
+        private void BegainSearch(string path)
+        {
+            if (Directory.Exists(path))
             {
-                ClearList_Click(clear_list, null);
+                if (worker_list.Count > 0)
+                    if (MessageBox.Show("Clear list", "FILE MANAGER", MessageBoxButton.YesNoCancel, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                        ClearList_Click(clear_list, null);
                 progressbar.Visibility = Visibility.Visible;
-                find_emptey_BackgroundWorker = new BackgroundWorker();
-                find_emptey_BackgroundWorker.WorkerSupportsCancellation = true;
-                find_emptey_BackgroundWorker.WorkerReportsProgress = true;
-                find_emptey_BackgroundWorker.DoWork += FindEmptey_DoWork;
-                find_emptey_BackgroundWorker.ProgressChanged += FindEmptey_ProgressChanged;
-                find_emptey_BackgroundWorker.RunWorkerCompleted += FindEmptey_RunWorkerCompleted;
-                find_emptey_BackgroundWorker.RunWorkerAsync(path);
-            }
-        }
-
-        void FindEmptey_DoWork(object sender, DoWorkEventArgs e)
-        {
-            Thread progress_thread = new Thread(() =>
-            {
-                for (int i = 1; i < 5000 && process_value < 5100; i++)
+                BackgroundWorker find_emptey_BackgroundWorker = new BackgroundWorker();
+                find_emptey_BackgroundWorker.WorkerSupportsCancellation = find_emptey_BackgroundWorker.WorkerReportsProgress = true;
+                find_emptey_BackgroundWorker.DoWork += (object sender, DoWorkEventArgs e) =>
                 {
-                    if (CloseWindow) break;
-                    int sleep_time = i < 4500 ? i / 500 : i / 200;
-                    if (!find_emptey_BackgroundWorker.IsBusy)
-                        break;
+                    Thread progress_thread = new Thread(() =>
+                    {
+                        for (int i = 1; i < 5000 && progress_value < 5100; i++)
+                        {
+                            if (CloseWindow) break;
+                            int sleep_time = i < 4500 ? i / 500 : i / 200;
+                            if (!find_emptey_BackgroundWorker.IsBusy)
+                                break;
+                            else
+                                try
+                                { find_emptey_BackgroundWorker.ReportProgress(i); }
+                                catch (Exception) { }
+                            Thread.Sleep(sleep_time);
+                        }
+                    });
+                    progress_thread.Start();
                     try
-                    { find_emptey_BackgroundWorker.ReportProgress(i); }
-                    catch (Exception) { }
-                    Thread.Sleep(sleep_time);
-                }
-            });
-            progress_thread.Start();
-            worker_list = new List<EmptyDirectoriesFilesListView>();
-            try
-            { EmptyDirectoriesFilesListView root = new EmptyDirectoriesFilesListView(new DirectoryInfo(e.Argument.ToString()), null, worker_list, ref CloseWindow); }
-            catch (Exception ex) { find_emptey_BackgroundWorker.ReportProgress(0, ex); }
-        }
-
-        void FindEmptey_ProgressChanged(object sender, ProgressChangedEventArgs e)
-        {
-            if (CloseWindow) return;
-            if (e.ProgressPercentage == 0)
-            {
-                ClearList_Click(clear_list, null);
-                new My_MessageBox("File Manager", e.UserState.ToString(), new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                    { EmptyDirectoriesFilesListView root = new EmptyDirectoriesFilesListView(new DirectoryInfo(path), null, worker_list, ref CloseWindow); }
+                    catch (Exception ex) { find_emptey_BackgroundWorker.ReportProgress(0, ex); }
+                };
+                find_emptey_BackgroundWorker.ProgressChanged += (object sender, ProgressChangedEventArgs e) =>
+                {
+                    if (CloseWindow) return;
+                    if (e.ProgressPercentage == 0)
+                        //{
+                        //ClearList_Click(clear_list, null);
+                        new My_MessageBox("FILE MANAGER", e.UserState.ToString(), new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                    //}
+                    else if (progressbar.Value < 5100)
+                        progressbar.Value = progress_value = e.ProgressPercentage;
+                    
+                };
+                find_emptey_BackgroundWorker.RunWorkerCompleted += (object sender, RunWorkerCompletedEventArgs e) =>
+                {
+                    if (!CloseWindow)
+                    {
+                        //if (worker_list != null)
+                        //    foreach (var i in worker_list)
+                        //        list_to_view.Add(i);
+                        items_list.Items.Refresh();
+                        progressbar.Value = 5100;
+                        progress_value = 5100;
+                        if (items_list.Items.Count > 0)
+                            delete_items.IsEnabled = select_all.IsEnabled = clear_list.IsEnabled = true;
+                        else
+                            new My_MessageBox("File Manager", "No empty files or directories here.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-information.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-information.wav")).ShowDialog();
+                        Thread.Sleep(5);
+                        progressbar.Visibility = Visibility.Hidden;
+                    }
+                };
+                find_emptey_BackgroundWorker.RunWorkerAsync();
             }
-            else if (progressbar.Value < 5100)
-            {
-                process_value = e.ProgressPercentage;
-                progressbar.Value = e.ProgressPercentage;
-            }
-        }
-
-        void FindEmptey_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
-        {
-            if (!CloseWindow)
-            {
-                if (worker_list != null)
-                    foreach (var i in worker_list)
-                        list_to_view.Add(i);
-                progressbar.Value = 5100;
-                process_value = 5100;
-                if (list_to_view.Count > 0)
-                    delete_items.IsEnabled = select_all.IsEnabled = clear_list.IsEnabled = true;
-                else
-                    new My_MessageBox("File Manager", "No empty files or directories here.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-information.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-information.wav")).ShowDialog();
-                Thread.Sleep(5);
-                progressbar.Visibility = Visibility.Hidden;
-            }
+            else
+                MessageBox.Show("We can not find directory '" + path + "'");
         }
 
         private void DeleteItems_Click(object sender, RoutedEventArgs e)
@@ -130,13 +147,14 @@ namespace File_Manager
                     messagebox = new My_MessageBox(files[0].Item);
                 if (messagebox.ShowThisDialog() == MyMessageBoxResult.Yes)
                 {
-                    new Operation().CopyDialogShow(files, Op.Delete, "", true);
+                    new Operation().CopyDialogShow(files, OperationType.Delete, "", true);
                     for (int i = items_list.SelectedItems.Count - 1; i > 0; i--)
                     {
                         EmptyDirectoriesFilesListView current_item = items_list.SelectedItems[i] as EmptyDirectoriesFilesListView;
                         if ((!current_item.isDirectory && !File.Exists(current_item.FullPath)) || (current_item.isDirectory && !Directory.Exists(current_item.FullPath)))
-                            list_to_view.Remove(current_item);
+                            worker_list.Remove(current_item);
                     }
+                    items_list.Items.Refresh();
                     new My_MessageBox("File Manager", "Files deleted done.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-information.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-information.wav")).ShowDialog();
                 }
             }
@@ -146,8 +164,8 @@ namespace File_Manager
 
         private void ClearList_Click(object sender, RoutedEventArgs e)
         {
-            list_to_view.Clear();
-            process_value = 0;
+            worker_list.Clear();
+            progress_value = 0;
             progressbar.Value = 0;
             delete_items.IsEnabled = select_all.IsEnabled = clear_list.IsEnabled = false;
         }

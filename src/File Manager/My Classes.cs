@@ -67,22 +67,22 @@ namespace File_Manager
             catch (Exception ex) { un_done.Add(new UnCompleatedRename(Item, new_name, ex.Message)); }
         }
 
-        public static BitmapImage GetDriveImage(DriveType type, bool isSystem, bool isReady, int width)
+        public static BitmapImage GetDriveImage(DriveInfo drive, int width)
         {
-            switch (type)
+            switch (drive.DriveType)
             {
                 case DriveType.Fixed:
-                    if (isSystem)
-                        return Icons.GetIcons.GetIcon("hard-disk.png", width);
+                    if (drive.Name.ToLower().Equals(Functions.SystemDrive.ToLower()))
+                        return Icons.GetIcons.GetIcon("hard-disk.png", width);//**** system hard drive
                     else
                         return Icons.GetIcons.GetIcon("hard-disk.png", width);
                 case DriveType.CDRom:
-                    if (isReady)
+                    if (drive.IsReady)
                         return Icons.GetIcons.GetIcon("CD.png", width);
                     else
                         return Icons.GetIcons.GetIcon("optical-drive.png", width);
                 case DriveType.Removable:
-                    if (isReady)
+                    if (drive.IsReady)
                         return Icons.GetIcons.GetIcon("removable-usb.png", width);
                     else
                         return Icons.GetIcons.GetIcon("removable-media.png", width);
@@ -108,19 +108,73 @@ namespace File_Manager
             switch (num)
             {
                 case 0:
-                    return "Byte";
+                    return "byte";
                 case 1:
-                    return "KB";
+                    return "KiB";
                 case 2:
-                    return "MB";
+                    return "MiB";
                 case 3:
-                    return "GB";
+                    return "GiB";
                 case 4:
-                    return "TB";
+                    return "TiB";
                 case 5:
-                    return "PB";
+                    return "PiB";
+                case 6:
+                    return "EiB";
+                case 7:
+                    return "ZiB";
+                case 8:
+                    return "YiB";
                 default:
-                    return "Byte";
+                    return "byte";
+            }
+        }
+
+        internal static string FileSize1000(double SizeInByte, int digits_count)
+        {
+            string unit;
+            if (SizeInByte < 1)
+                return "0";
+            byte i = 0;
+            while (SizeInByte / 1000 > 1)
+            {
+                SizeInByte /= 1000;
+                i++;
+            }
+            unit = FileSizeUnit1000(i);
+            int j = Convert.ToInt32(SizeInByte);
+            if ((j + unit).Length > digits_count)
+                digits_count = (j + unit).Length;
+            if (digits_count > 2)
+                return Math.Round(SizeInByte, digits_count - (j + unit).Length).ToString() + unit;
+            else
+                return Math.Round(SizeInByte, 0).ToString() + unit;
+        }
+
+        private static string FileSizeUnit1000(byte num)
+        {
+            switch (num)
+            {
+                case 0:
+                    return "";
+                case 1:
+                    return "K";
+                case 2:
+                    return "M";
+                case 3:
+                    return "G";
+                case 4:
+                    return "T";
+                case 5:
+                    return "P";
+                case 6:
+                    return "E";
+                case 7:
+                    return "Z";
+                case 8:
+                    return "Y";
+                default:
+                    return "";
             }
         }
 
@@ -246,12 +300,12 @@ namespace File_Manager
             }
         }
 
-        public static string ToString(long num)
+        internal static string FormalDigits(int number, int digits)
         {
-            if (num < 10)
-                return "0" + num;
-            else
-                return num.ToString();
+            string N = number.ToString();
+            while (N.Length < digits)
+                N = "0" + N;
+            return N;
         }
 
         public static void OpenWith(string path, ItemType file_type)
@@ -960,19 +1014,6 @@ namespace File_Manager
         Skip = 5,
         Rety = 6,
         Abort = 7
-    }
-
-    public enum Op
-    {
-        Copy = 0,
-        Attributes = 1,
-        Delete = 2,
-        Rename = 3,
-        Destroy = 4,
-        Encrypt = 5,
-        Compress = 6,
-        Extract = 7,
-        CreateShortcut = 8
     }
 
     #endregion

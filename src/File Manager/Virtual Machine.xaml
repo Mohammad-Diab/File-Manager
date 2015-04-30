@@ -5,9 +5,9 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:File_Manager"
         mc:Ignorable="d"
-        Title="Virtual Machine" Height="430" Width="400" ResizeMode="CanMinimize" FontSize="14" Icon="Images/Icons/virtual-machine.png" Closing="Window_Closing">
+        Title="Virtual Machine" Height="470" Width="410" ResizeMode="CanMinimize" FontSize="14" Icon="Images/Icons/virtual-machine.png" Closing="Window_Closing">
     <Grid>
-        <ScrollViewer Margin="0,0,0,40" BorderBrush="#FF7498BF">
+        <ScrollViewer Margin="0,0,0,40" BorderBrush="#FF7498BF" VerticalScrollBarVisibility="Auto">
             <Grid>
                 <TextBlock x:Name="textBlock" HorizontalAlignment="Left" Margin="52,10,0,0" TextWrapping="Wrap" Text="Virtual Machine Options" VerticalAlignment="Top" FontSize="28" TextDecorations="Underline" Foreground="#FF7498BF"/>
                 <TextBlock x:Name="textBlock1" HorizontalAlignment="Left" Margin="10,60,0,0" TextWrapping="Wrap" VerticalAlignment="Top"><Run Text="CPU"/><Run Text=" architecture:"/></TextBlock>

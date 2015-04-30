@@ -9,10 +9,6 @@
         </LinearGradientBrush>
     </Window.Background>
     <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="1*"/>
-            <RowDefinition Height="40"/>
-        </Grid.RowDefinitions>
         <TextBlock HorizontalAlignment="Left" TextWrapping="Wrap" VerticalAlignment="Top" Margin="10,10,0,0" Foreground="DarkBlue" FontSize="22"><Run Text="What do you want to do?"/><LineBreak/><Run x:Name="sub_containt" Foreground="Black" FontSize="14" Text="File Operation Error."/></TextBlock>
         <RadioButton x:Name="retry_radiobutton" Content="Retry all" HorizontalAlignment="Right" Margin="0,65,115,0" VerticalAlignment="Top" FontSize="15" Checked="RetryAll_Checked" Unchecked="RetryAll_Unchecked"/>
         <RadioButton x:Name="skip_radiobutton" Content="Skip all" HorizontalAlignment="Right" Margin="0,65,20,0" VerticalAlignment="Top" FontSize="15" Checked="SkipAll_Checked" Unchecked="SkipAll_Unchecked"/>
@@ -21,8 +17,8 @@
         <Button Content="Done" HorizontalAlignment="Right" Margin="0,0,10,9" VerticalAlignment="Bottom" Width="75" Height="22" Click="Done_Click" Grid.Row="1" Background="{x:Null}"/>
         <TextBlock x:Name="source_checkbox_Copy" Text="Items" HorizontalAlignment="Left" Margin="10,65,0,0" VerticalAlignment="Top" FontSize="15"/>
         <Button Content="Retry All" HorizontalAlignment="Left" Margin="90,0,0,9" VerticalAlignment="Bottom" Width="75" Height="22" Click="Retry_Click" Grid.Row="1" Background="{x:Null}"/>
-        <ListView Margin="0,85,0,0" x:Name="container" Background="{x:Null}" ItemsSource="{Binding}" SelectionChanged="Container_SelectionChanged">
-            <ListView.ItemTemplate>
+        <ItemsControl Margin="2,85,3,40" x:Name="container" VirtualizingStackPanel.IsVirtualizing="True" ScrollViewer.CanContentScroll="True" ItemsSource="{Binding}">
+            <ItemsControl.ItemTemplate>
                 <DataTemplate>
                     <Grid HorizontalAlignment="Stretch" VerticalAlignment="Top" Width="500">
                         <RadioButton Margin="0,20,100,0" IsChecked="{Binding Path=RetryIsChecked}" HorizontalAlignment="Right" FontSize="14" Content="Retry" VerticalAlignment="Top" Click="ItemRadio_Click"/>
@@ -34,7 +30,29 @@
                         <Rectangle Fill="YellowGreen" Height="1" Margin="0, 64, 0, 0" VerticalAlignment="Top"/>
                     </Grid>
                 </DataTemplate>
-            </ListView.ItemTemplate>
-        </ListView>
+            </ItemsControl.ItemTemplate>
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <VirtualizingStackPanel />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.Template>
+                <ControlTemplate>
+                    <Border
+            BorderThickness="{TemplateBinding Border.BorderThickness}"
+            Padding="{TemplateBinding Control.Padding}"
+            BorderBrush="{TemplateBinding Border.BorderBrush}"
+            Background="{TemplateBinding Panel.Background}"
+            SnapsToDevicePixels="True">
+                        <ScrollViewer
+                    Padding="{TemplateBinding Control.Padding}"
+                    Focusable="False">
+                            <ItemsPresenter
+                        SnapsToDevicePixels="{TemplateBinding UIElement.SnapsToDevicePixels}" />
+                        </ScrollViewer>
+                    </Border>
+                </ControlTemplate>
+            </ItemsControl.Template>
+        </ItemsControl>
     </Grid>
 </Window>

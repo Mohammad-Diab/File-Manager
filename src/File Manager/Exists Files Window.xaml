@@ -9,12 +9,8 @@
         </LinearGradientBrush>
     </Window.Background>
     <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="1*"/>
-            <RowDefinition Height="40"/>
-        </Grid.RowDefinitions>
-        <ListView Margin="0,85,0,0" x:Name="container" Background="{x:Null}" ItemsSource="{Binding}" SelectionChanged="Container_SelectionChanged">
-            <ListView.ItemTemplate>
+        <ItemsControl Margin="2,85,3,40" x:Name="container" VirtualizingStackPanel.IsVirtualizing="True" ScrollViewer.CanContentScroll="True" ItemsSource="{Binding}">
+            <ItemsControl.ItemTemplate>
                 <DataTemplate>
                     <Grid Margin="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Width="500">
                         <TextBlock Margin="10, 5, 0, 0" Text="{Binding Path=FileName}" HorizontalAlignment="Left" FontSize="14" TextTrimming="CharacterEllipsis" VerticalAlignment="Top" Foreground="#FF646464"/>
@@ -37,15 +33,37 @@
                         <Rectangle Fill="YellowGreen" Height="1" Margin="0, 95, 0, 0" VerticalAlignment="Top"/>
                     </Grid>
                 </DataTemplate>
-            </ListView.ItemTemplate>
-        </ListView>
+            </ItemsControl.ItemTemplate>
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <VirtualizingStackPanel />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.Template>
+                <ControlTemplate>
+                    <Border
+            BorderThickness="{TemplateBinding Border.BorderThickness}"
+            Padding="{TemplateBinding Control.Padding}"
+            BorderBrush="{TemplateBinding Border.BorderBrush}"
+            Background="{TemplateBinding Panel.Background}"
+            SnapsToDevicePixels="True">
+                        <ScrollViewer
+                    Padding="{TemplateBinding Control.Padding}"
+                    Focusable="False">
+                            <ItemsPresenter
+                        SnapsToDevicePixels="{TemplateBinding UIElement.SnapsToDevicePixels}" />
+                        </ScrollViewer>
+                    </Border>
+                </ControlTemplate>
+            </ItemsControl.Template>
+        </ItemsControl>
         <TextBlock HorizontalAlignment="Left" TextWrapping="Wrap" VerticalAlignment="Top" Margin="10,10,0,0" Foreground="DarkBlue" FontSize="22"><Run Text="Which files do you want to Keep?"/><LineBreak/><Run Foreground="Black" FontSize="14" Text="if you choose both files the copy file will have a number added to its name."/></TextBlock>
         <CheckBox x:Name="source_checkbox" Content="File from source" HorizontalAlignment="Left" Margin="10,65,0,0" VerticalAlignment="Top" FontSize="14" Checked="CheckSource_Checked" Unchecked="CheckSource_Unloaded"/>
         <CheckBox x:Name="target_checkbox" Content="File already in target" HorizontalAlignment="Left" Margin="255,65,0,0" VerticalAlignment="Top" FontSize="14" Checked="CheckTarget_Checked" Unchecked="CheckTarget_Unloaded"/>
         <Rectangle Height="1" Margin="0,85,0,0" Stroke="Chocolate" VerticalAlignment="Top"/>
-        <Button Content="Skip All" HorizontalAlignment="Right" Margin="0,0,90,9" Width="75" Click="Cancel_Click" Grid.Row="1" Height="22" VerticalAlignment="Bottom" Background="{x:Null}"/>
-        <Button Content="Done" HorizontalAlignment="Right" Margin="0,0,10,9" VerticalAlignment="Bottom" Width="75" Height="22" Click="OK_Click" Grid.Row="1" Background="{x:Null}"/>
-        <ComboBox x:Name="skip_items" HorizontalAlignment="Left" Margin="10,0,0,8" FontSize="13.8" SelectionChanged="SkipSame_SelectionChanged" SelectedIndex="0" Width="250" Background="{x:Null}" BorderBrush="#FFA23838" Grid.Row="1" Height="24" VerticalAlignment="Bottom">
+        <Button Content="Skip All" HorizontalAlignment="Right" Margin="0,0,90,9" Width="75" Click="Cancel_Click" Height="22" VerticalAlignment="Bottom" Background="{x:Null}"/>
+        <Button Content="Done" HorizontalAlignment="Right" Margin="0,0,10,9" VerticalAlignment="Bottom" Width="75" Height="22" Click="OK_Click" Background="{x:Null}"/>
+        <ComboBox x:Name="skip_items" HorizontalAlignment="Left" Margin="10,0,0,8" FontSize="13.8" SelectionChanged="SkipSame_SelectionChanged" SelectedIndex="0" Width="250" Background="{x:Null}" BorderBrush="#FFA23838" Height="24" VerticalAlignment="Bottom">
             <ComboBoxItem Content="Do Nothing"/>
             <ComboBoxItem>
                 <ComboBoxItem.Content>

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using System.Windows;
@@ -14,13 +15,24 @@ using System.Windows.Shapes;
 namespace File_Manager
 {
     /// <summary>
-    /// Interaction logic for FileSystemSelector.xaml
+    /// Interaction logic for AboutTool.xaml
     /// </summary>
-    public partial class FileSystemSelector : Window
+    public partial class AboutTool : Window
     {
-        public FileSystemSelector()
+        ObservableCollection<Feature> new_data = new ObservableCollection<Feature>();
+        public AboutTool()
         {
             InitializeComponent();
         }
+
+        private void button_Click(object sender, RoutedEventArgs e)
+        {
+            Close();
+        }
+
+        class Feature
+        {
+
+        };
     }
 }

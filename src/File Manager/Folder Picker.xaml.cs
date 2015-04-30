@@ -47,9 +47,9 @@ namespace File_Manager
             //FolderExplorer.DataContext = list_to_rename;
             foreach (var i in DriveInfo.GetDrives())
                 if (i.IsReady)
-                    FolderExplorer.Items.Add(make_grid(Functions.GetDriveImage(i.DriveType,false,i.IsReady, 16), i.VolumeLabel + " (" + i.Name + ")", new DirectoryInfo(i.Name)));
+                    FolderExplorer.Items.Add(make_grid(Functions.GetDriveImage(i, 16), i.VolumeLabel + " (" + i.Name + ")", new DirectoryInfo(i.Name)));
                 else
-                    FolderExplorer.Items.Add(make_grid(Functions.GetDriveImage(i.DriveType, false, i.IsReady, 16), i.Name, new DirectoryInfo(i.Name)));
+                    FolderExplorer.Items.Add(make_grid(Functions.GetDriveImage(i, 16), i.Name, new DirectoryInfo(i.Name)));
         }
 
         private TreeViewItem make_grid(BitmapImage icon, string header, DirectoryInfo full_path)
@@ -177,7 +177,7 @@ namespace File_Manager
             if (FolderExplorer.SelectedItem != null)
             {
                 string new_name = null;
-                new_name = new Rename("new directory").ShowthisDialog();
+                new_name = new Rename().ShowWindow("new directory", false);
                 string dir_name = null; ;
                 if (new_name != null)
                 {

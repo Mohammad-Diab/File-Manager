@@ -69,6 +69,7 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Management" />
+    <Reference Include="System.Numerics" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="Microsoft.CSharp" />
@@ -105,6 +106,15 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="about app.xaml.cs">
+      <DependentUpon>about app.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="AboutTool.xaml.cs">
+      <DependentUpon>AboutTool.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="ArchiveOperation.xaml.cs">
+      <DependentUpon>ArchiveOperation.xaml</DependentUpon>
+    </Compile>
     <Compile Include="ChangeDate.xaml.cs">
       <DependentUpon>ChangeDate.xaml</DependentUpon>
     </Compile>
@@ -118,6 +128,9 @@
     <Compile Include="Desktop Environment.xaml.cs">
       <DependentUpon>Desktop Environment.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Directory analyze.xaml.cs">
+      <DependentUpon>Directory analyze.xaml</DependentUpon>
+    </Compile>
     <Compile Include="File Destroyer.xaml.cs">
       <DependentUpon>File Destroyer.xaml</DependentUpon>
     </Compile>
@@ -128,17 +141,11 @@
       <DependentUpon>Files Splitter.xaml</DependentUpon>
     </Compile>
     <Compile Include="Files.cs" />
-    <Compile Include="FileSystemSelector.xaml.cs">
-      <DependentUpon>FileSystemSelector.xaml</DependentUpon>
-    </Compile>
     <Compile Include="Make File Structure.xaml.cs">
       <DependentUpon>Make File Structure.xaml</DependentUpon>
     </Compile>
     <Compile Include="Media Converter.xaml.cs">
       <DependentUpon>Media Converter.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="MultiDirectoriesSelector.xaml.cs">
-      <DependentUpon>MultiDirectoriesSelector.xaml</DependentUpon>
     </Compile>
     <Compile Include="My Classes.cs" />
     <Compile Include="New Shortcut.xaml.cs">
@@ -165,12 +172,21 @@
     <Compile Include="System Monitor.xaml.cs">
       <DependentUpon>System Monitor.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Viewer.xaml.cs">
-      <DependentUpon>Viewer.xaml</DependentUpon>
-    </Compile>
     <Compile Include="Virtual Machine.xaml.cs">
       <DependentUpon>Virtual Machine.xaml</DependentUpon>
     </Compile>
+    <Page Include="about app.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="AboutTool.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="ArchiveOperation.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Big File Finder.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -191,6 +207,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Directory analyze.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Empty Folder Remover.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -207,10 +227,6 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="File Operation.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
     <Page Include="File%27s Transferring Error.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -220,10 +236,6 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Files Splitter.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="FileSystemSelector.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -255,9 +267,6 @@
     <Compile Include="File Compresser.xaml.cs">
       <DependentUpon>File Compresser.xaml</DependentUpon>
     </Compile>
-    <Compile Include="File Operation.xaml.cs">
-      <DependentUpon>File Operation.xaml</DependentUpon>
-    </Compile>
     <Compile Include="File%27s Transferring Error.xaml.cs">
       <DependentUpon>File%27s Transferring Error.xaml</DependentUpon>
     </Compile>
@@ -276,10 +285,6 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Media Converter.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="MultiDirectoriesSelector.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -316,10 +321,6 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="System Monitor.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Viewer.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -598,6 +599,13 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Images\Icons\48\home-directory.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\App Icon.png" />
+    <Resource Include="Images\xbill.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\warning-grey.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

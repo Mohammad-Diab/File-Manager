@@ -6,11 +6,14 @@ using System.Windows;
 using System.Windows.Media.Imaging;
 using System.Security.Cryptography;
 using System.IO;
-using System.Windows.Forms;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Controls;
+using System.Windows.Media.Animation;
+using System.Windows.Input;
+using System.Windows.Media;
 
 
 namespace File_Manager
@@ -20,37 +23,31 @@ namespace File_Manager
     /// </summary>
     public partial class Files_Encrepter : Window
     {
-        bool CloseWindow = false;
+        bool CloseWindow = false, starting_window = true;
+
+        EncryptPages current_page = EncryptPages.FilesEncrypt;
+        EncryptPages CurrentPage
+        {
+            get { return current_page; }
+            set { current_page = value; }
+        }
+
         public Files_Encrepter()
         {
             InitializeComponent();
-            files_list.DataContext = list_to_encrypt;
-            files_list2.DataContext = list_to_decrypt;
         }
 
-        private string PrepareFile(FileInfo fileInfo, string output_directory)
+        public Files_Encrepter(string file, bool encrypt)//true for encrypt and false foredcrypt
         {
-            if (!Directory.Exists(output_directory))
-            {
-                string[] s = output_directory.Split(Functions.spliter, StringSplitOptions.RemoveEmptyEntries);
-                string pp = s[0];
-                for (int i = 1; i < s.Length; i++)
-                {
-                    pp += ("\\" + s[i]);
-                    if (!Directory.Exists(pp))
-                        try { Directory.CreateDirectory(pp); }
-                        catch (Exception) { }
-                }
-            }
-            string new_path = output_directory + "\\" + fileInfo.Name;
-            int k = 1;
-            string name = fileInfo.Name.Remove(fileInfo.Name.Length - fileInfo.Extension.Length);
-            while (File.Exists(new_path) || Directory.Exists(new_path))
-            { new_path = output_directory + "\\" + name + " (" + k + ")" + fileInfo.Extension; k++; }
-            try
-            { File.Create(new_path).Close(); }
-            catch (Exception) { }
-            return new_path;
+            InitializeComponent();
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            rec.Width = label1.ActualWidth;
+            starting_window = false;
+            encrypt_list.DataContext = encrypt_data;
+            decrypt_list.DataContext = decrypt_data;
         }
 
         private byte[] PreparePassword(string pass)
@@ -72,537 +69,330 @@ namespace File_Manager
             CloseWindow = true;
         }
 
-        #region ENCRYPT
-        private byte[] enc_password_byte;
-        ObservableCollection<DestroyListView> list_to_encrypt = new ObservableCollection<DestroyListView>();
-        int complete;
-        bool delete;
-        string enc_output_directory;
-
         private void AddFile_Click(object sender, RoutedEventArgs e)
         {
-            OpenFileDialog OFD = new OpenFileDialog();
-            OFD.Multiselect = true;
-            if (OFD.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                foreach (string i in OFD.FileNames)
-                {
-                    FileInfo file = new FileInfo(i);
-                    list_to_encrypt.Add(new DestroyListView(i, Functions.GetFileImage24(file.Extension), file));
-                    items_count.Text = list_to_encrypt.Count + (list_to_encrypt.Count > 1 ? " Item" : " Items");
-                }
+            SelectFileDialog sfd = new SelectFileDialog();
+            sfd.dialogMode = SelectFileDialogMode.OpenFile;
+            sfd.CreateFolderEnable = false;
+            sfd.DialogTitle = "Select files to encrypt";
+            sfd.AddExtension = false;
+            sfd.MultiSelect = true;
+            if (sfd.ShowWindow() == MyMessageBoxResult.OK)
+                AddFiles(sfd.SelectedItems.ToArray(), sender == encrypt_add_button ? encrypt_data : decrypt_data, sender == encrypt_add_button ? encrypt_list : decrypt_list);
         }
 
-        private void AddFolder_Click(object sender, RoutedEventArgs e)
+        private void AddFiles(string[] files, List<DestroyListView> data_list, ListView list)
         {
-            string path = new Folder_Picker().ShowThisDialog();
-            if (path != null)
+            foreach (string i in files)
+                data_list.Add(new DestroyListView(new FileInfo(i)));
+            list.Items.Refresh();
+        }
+
+        private void AddDirectory_Click(object sender, RoutedEventArgs e)
+        {
+            SelectFileDialog sfd = new SelectFileDialog();
+            sfd.dialogMode = SelectFileDialogMode.SelectDirectory;
+            sfd.CreateFolderEnable = false;
+            sfd.DialogTitle = "Add all files in this directory.";
+            sfd.AddExtension = false;
+            List<DestroyListView> add_in = sender == encrypt_add_folder_button ? encrypt_data : decrypt_data;
+            ListView list = sender == encrypt_add_folder_button ? encrypt_list : decrypt_list;
+            if (sfd.ShowWindow() == MyMessageBoxResult.OK)
+                AddDirectory(sfd.SelectedItem, sender == encrypt_add_folder_button ? encrypt_data : decrypt_data, sender == encrypt_add_folder_button ? encrypt_list : decrypt_list);
+        }
+
+        private void AddDirectory(string path, List<DestroyListView> data_list, ListView list)
+        {
+            main_grid.IsEnabled = false;
+            BackgroundWorker add_files_in_directory = new BackgroundWorker();
+            add_files_in_directory.WorkerReportsProgress = true;
+            add_files_in_directory.DoWork += (object bw_sender, DoWorkEventArgs e_bw) =>
+            { GetAllFiles(new DirectoryInfo(path), add_files_in_directory); };
+
+            add_files_in_directory.ProgressChanged += (object bw_sender, ProgressChangedEventArgs bw_e) =>
+            { data_list.Add(new DestroyListView((FileInfo)bw_e.UserState)); };
+
+            add_files_in_directory.RunWorkerCompleted += (object bw_sender, RunWorkerCompletedEventArgs bw_e) =>
             {
-                destroy_control.IsEnabled = false;
-                BackgroundWorker add_all_files_in_dir_bw = new BackgroundWorker();
-                add_all_files_in_dir_bw.WorkerReportsProgress = true;
-                add_all_files_in_dir_bw.DoWork += AddFilesBW_DoWork;
-                add_all_files_in_dir_bw.ProgressChanged += AddFilesBW_ProgressChanged;
-                add_all_files_in_dir_bw.RunWorkerCompleted += AddFilesBW_RunWorkerCompleted;
-                add_all_files_in_dir_bw.RunWorkerAsync(path);
-            }
+                list.Items.Refresh();
+                main_grid.IsEnabled = true;
+            };
+
+            add_files_in_directory.RunWorkerAsync();
         }
 
-        void AddFilesBW_DoWork(object sender, DoWorkEventArgs e)
+        private void GetAllFiles(DirectoryInfo dir, BackgroundWorker worker)
         {
-            Functions.GetAllFiles(new DirectoryInfo(e.Argument.ToString()), (BackgroundWorker)sender, ref CloseWindow);
-        }
-
-        void AddFilesBW_ProgressChanged(object sender, ProgressChangedEventArgs e)
-        {
-            FileInfo i = (FileInfo)e.UserState;
             try
-            { list_to_encrypt.Add(new DestroyListView(i.FullName, Functions.GetFileImage24(i.Extension), i)); }
+            {
+                var sub_dirs = dir.GetDirectories();
+                foreach (var i in sub_dirs)
+                {
+                    if (CloseWindow)
+                        return;
+                    try { GetAllFiles(i, worker); }
+                    catch (Exception) { }
+                }
+            }
             catch (Exception) { }
-        }
-
-        void AddFilesBW_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
-        {
-            if (list_to_encrypt.Count > 0)
-                items_count.Text = list_to_encrypt.Count + (list_to_encrypt.Count > 1 ? " Items" : " Item");
-            else
-                items_count.Text = "";
-            destroy_control.IsEnabled = true;
+            FileInfo[] files = null;
+            try
+            {
+                files = dir.GetFiles();
+                foreach (var i in files)
+                {
+                    if (CloseWindow)
+                        return;
+                    try { worker.ReportProgress(0, i); }
+                    catch (Exception) { }
+                }
+            }
+            catch (Exception) { }
         }
 
         private void RemoveSelected_Click(object sender, RoutedEventArgs e)
         {
-            for (int i = files_list.SelectedItems.Count - 1; i >= 0; i--)
-                list_to_encrypt.RemoveAt(files_list.Items.IndexOf(files_list.SelectedItems[i]));
-            if (list_to_encrypt.Count > 0)
-                items_count.Text = list_to_encrypt.Count + (list_to_encrypt.Count == 1 ? " Item" : " Items");
+            if (sender == encrypt_remove_button)
+            {
+                encrypt_data.RemoveAll(x => encrypt_list.SelectedItems.Contains(x));
+                encrypt_list.Items.Refresh();
+            }
             else
-                items_count.Text = string.Empty;
+            {
+                decrypt_data.RemoveAll(x => encrypt_list.SelectedItems.Contains(x));
+                decrypt_list.Items.Refresh();
+            }
         }
 
         private void ClearList_Click(object sender, RoutedEventArgs e)
         {
-            list_to_encrypt.Clear();
-            items_count.Text = "";
+            if (sender == encrypt_clear_button)
+            {
+                encrypt_data.Clear();
+                encrypt_list.Items.Refresh();
+            }
+            else
+            {
+                decrypt_data.Clear();
+                decrypt_list.Items.Refresh();
+            }
+
         }
+
+        private void ShowPassword_Click(object sender, RoutedEventArgs e)
+        {
+            PasswordBox password = sender == enc_show_password ? enc_password : dec_password;
+            TextBox password_text = sender == enc_show_password ? enc_password_text : dec_password_text;
+            if (password.Visibility == Visibility.Visible)
+            {
+                ((Button)sender).Content = "Hide";
+                password.Visibility = Visibility.Hidden;
+                password_text.Visibility = Visibility.Visible;
+                password_text.Text = password.Password;
+            }
+            else
+            {
+                ((Button)sender).Content = "Show";
+                password.Visibility = Visibility.Visible;
+                password_text.Visibility = Visibility.Hidden;
+                password.Password = password_text.Text;
+            }
+        }
+
+        private void Browser_Click(object sender, RoutedEventArgs e)
+        {
+            SelectFileDialog sfd = new SelectFileDialog();
+            sfd.dialogMode = SelectFileDialogMode.SelectDirectory;
+            sfd.CreateFolderEnable = true;
+            sfd.DialogTitle = "Save output files in:";
+            sfd.AddExtension = false;
+            if (sfd.ShowWindow() == MyMessageBoxResult.OK)
+            {
+                if (sender == encrypt_browser_button)
+                    enc_output.Text = sfd.SelectedItem;
+                else
+                    dec_output.Text = sfd.SelectedItem;
+            }
+        }
+
+        #region ENCRYPT
+
+        List<DestroyListView> encrypt_data = new List<DestroyListView>();
 
         private void Encrypt_Click(object sender, RoutedEventArgs e)
         {
-            //message box question???????????????????????????????????????????????
-            if (output.Text == string.Empty)
-                new My_MessageBox("FILE MANAGER", "Please select output directory.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
-            else if ((enc_password.Visibility == Visibility.Hidden ? enc_password_text.Text.Length : enc_password.Password.Length) < 6)
-                new My_MessageBox("FILE MANAGER", "Password must be at least 6 charectars.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
-            else if (list_to_encrypt.Count < 1)
+            bool encrypt = false;
+            string password = enc_password.Visibility == Visibility.Hidden ? enc_password_text.Text : enc_password.Password;
+            if (encrypt_data.Count < 1)
                 new My_MessageBox("FILE MANAGER", "List is empty!!!", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
-            else if (new My_MessageBox("FILE MANAGER", "Start Encription?", "Caution: all files in list will encrypt with same password make sure you do not miss your password.", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-Warning.png")), null, null).ShowThisDialog() == MyMessageBoxResult.Yes)
+            else if (password.Length < 8)
+                new My_MessageBox("FILE MANAGER", "Password must be at least 8 charectars.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+            else if (enc_output.Text == string.Empty)
+                new My_MessageBox("FILE MANAGER", "Please select output directory.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+            else if (enc_output.Text.Any(x => Path.GetInvalidPathChars().Any(y => y.Equals(x))))
+                new My_MessageBox("FILE MANAGER", "We have found invalid charectars in your selected path.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+            else if (!Directory.Exists(enc_output.Text))
             {
-                complete = 0;
-                destroy_control.IsEnabled = false;
-                BackgroundWorker encrypt_BackgroundWorker = new BackgroundWorker();
-                encrypt_BackgroundWorker.WorkerReportsProgress = true;
-                encrypt_BackgroundWorker.DoWork += EncryptBW_DoWork;
-                encrypt_BackgroundWorker.ProgressChanged += EncryptBW_ProgressChanged;
-                encrypt_BackgroundWorker.RunWorkerCompleted += EncryptBW_RunWorkerCompleted;
-                delete = delete_files.IsChecked.Value;
-                total_progress.Visibility = Visibility.Visible;
-                total_progress.Value = 0;
-                total_progress.Maximum = list_to_encrypt.Count;
-                enc_output_directory = output.Text;
-                enc_password_byte = PreparePassword(enc_password.Visibility == Visibility.Visible ? enc_password.Password : enc_password_text.Text);
-                encrypt_BackgroundWorker.RunWorkerAsync();
+                if (new My_MessageBox("FILE MANAGER", "We can not find directory '" + enc_output.Text + "', try to create it?", "", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-Warning.png")), null, null).ShowThisDialog() == MyMessageBoxResult.Yes)
+                    encrypt = true;
             }
-        }
-
-        private void EncryptBW_DoWork(object sender, DoWorkEventArgs e)
-        {
-            BackgroundWorker bw = (BackgroundWorker)sender;
-            Thread process_thread = new Thread(() =>
+            else
+                encrypt = true;
+            if (encrypt && new My_MessageBox("FILE MANAGER", "Start Encription?", "Caution: all files in list will encrypt with same password, be sure you do not miss your password.", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-Warning.png")), null, null).ShowThisDialog() == MyMessageBoxResult.Yes)
             {
-                while (bw.IsBusy)
+                bool delete;
+                string save_in = enc_output.Text;
+                if (!Directory.Exists(save_in))
                 {
-                    if (CloseWindow) return;
-                    bw.ReportProgress(0);
-                    Thread.Sleep(200);
-                }
-            });
-            process_thread.Start();
-            for (int index = 0; index < list_to_encrypt.Count; index++)
-            {
-                if (CloseWindow) return;
-                list_to_encrypt[index].CurrentProgress = 0;
-                string write_file_in = PrepareFile(list_to_encrypt[index].File, enc_output_directory);
-                bool done = false;
-                BinaryReader BR = null;
-                BinaryWriter BW = null;
-                try
-                {
-                    if (!File.Exists(write_file_in))
-                        throw new Exception("File can't been writen.");
-                    if (!list_to_encrypt[index].File.Exists)
-                        throw new Exception("File isn't exists.");
-                     BR = new BinaryReader(list_to_encrypt[index].File.OpenRead());
-                     BW = new BinaryWriter(File.Open(write_file_in, FileMode.OpenOrCreate));
-                    long k;
-                    BW.Write("THIS FILE HAD ENCRYPTED WITH FILE MANAGER");
-                    for (int i = 0; i < 256; i++)
-                        BW.Write(enc_password_byte[i]);
-                    for (k = 65536; k <= list_to_encrypt[index].File.Length; k += 65536)
+                    try { Directory.CreateDirectory(save_in); }
+                    catch (Exception ex)
                     {
-                        if (CloseWindow)
-                        {
-                            if (File.Exists(write_file_in))
-                                try
-                                {
-                                    if (BR != null) BR.Close();
-                                    if (BW != null) BW.Close();
-                                    File.Delete(write_file_in);
-                                }
-                                catch (Exception) { }
-                            return;
-                        }
-                        BW.Write(Encrypt(BR.ReadBytes(65536)));
-                        list_to_encrypt[index].CurrentProgress += 65536;
-                    }
-                    int remain = (int)(list_to_encrypt[index].File.Length - (k - 65536));
-                    BW.Write(Encrypt(BR.ReadBytes(remain)));
-                    list_to_encrypt[index].CurrentProgress += remain;
-                    done = true;
-                    list_to_encrypt[index].TextBlockVisibility = Visibility.Collapsed;
-                }
-                catch (Exception ex)
-                {
-                    list_to_encrypt[index].CurrentProgress = 0;
-                    list_to_encrypt[index].TextBlockVisibility = Visibility.Visible;
-                    list_to_encrypt[index].ProgressBarVisibility = Visibility.Collapsed;
-                    list_to_encrypt[index].ErrorMassege = ex.Message;
-                    if (BR != null) BR.Close();
-                    if (BW != null) BW.Close();
-                    if (File.Exists(write_file_in))
-                        try { File.Delete(write_file_in); }
-                        catch (Exception) { }
-                    continue;
-                }
-                if (BR != null) BR.Close();
-                if (BW != null) BW.Close();
-                //list_to_destroy[index].CurrentProgress = list_to_destroy[index].MaximumValue;
-                try
-                {
-                    if (done)
-                    {
-                        complete++;
-                        if (delete)
-                            list_to_encrypt[index].File.Delete();
+                        new My_MessageBox("FILE MANAGER", "Some thing error while creating directory +  extra info ." + ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                        return;
                     }
                 }
-                catch (Exception) { }
-            }
-        }
-
-        private byte[] Encrypt(byte[] bytes)
-        {
-            byte[] encrept = new byte[bytes.Length];
-            Parallel.For(0, bytes.Length, (i) => { encrept[i] = (byte)(bytes[i] + enc_password_byte[i]); });
-            return encrept;
-        }
-
-        private void EncryptBW_ProgressChanged(object sender, ProgressChangedEventArgs e)
-        {
-            files_list.Items.Refresh();
-            total_progress.Value = complete;
-        }
-
-        private void EncryptBW_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
-        {
-            if (!CloseWindow)
-            {
-                destroy_control.IsEnabled = true;
-                total_progress.Visibility = Visibility.Hidden;
-                files_list.Items.Refresh();
+                delete = enc_delete_files.IsChecked.Value;
+                List<FileInfo> files_list = new List<FileInfo>();
+                foreach (var i in encrypt_data)
+                    files_list.Add(i.File);
+                byte[] bytes = new byte[password.Length * sizeof(char)];
+                Buffer.BlockCopy(password.ToCharArray(), 0, bytes, 0, bytes.Length);
+                bytes = new MD5Cng().ComputeHash(bytes);
+                new Operation().StartEncrept(files_list, bytes, delete, save_in, true);
+                
+                ClearList_Click(encrypt_clear_button, null);
                 new My_MessageBox("FILE MANAGER", "Operation done.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-information.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-information.wav")).ShowDialog();
             }
         }
 
-        private void ENC_ShowPassword_Click(object sender, RoutedEventArgs e)
+        private void EncryptList_Drop(object sender, DragEventArgs e)
         {
-            if (enc_password.Visibility == Visibility.Visible)
-            {
-                show_password.Content = "Hide";
-                enc_password.Visibility = Visibility.Hidden;
-                enc_password_text.Visibility = Visibility.Visible;
-                enc_password_text.Text = enc_password.Password;
-            }
-            else
-            {
-                show_password.Content = "Show";
-                enc_password.Visibility = Visibility.Visible;
-                enc_password_text.Visibility = Visibility.Hidden;
-                enc_password.Password = enc_password_text.Text;
-            }
+            string[] data;
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                if ((data = (string[])e.Data.GetData(DataFormats.FileDrop)).Length == 1 && Directory.Exists(data[0]))
+                    AddDirectory(data[0], encrypt_data, encrypt_list);
+                else if (data.Length > 0)
+                    AddFiles(data, encrypt_data, encrypt_list);
         }
 
-        private void ENC_Browser_Click(object sender, RoutedEventArgs e)
+        private void EncOutputText_Drop(object sender, DragEventArgs e)
         {
-            string selected_path;
-            if ((selected_path = new Folder_Picker().ShowThisDialog()) != null)
-                output.Text = selected_path;
+            string[] data;
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                if ((data = (string[])e.Data.GetData(DataFormats.FileDrop)).Length == 1 && Directory.Exists(data[0]))
+                    enc_output.Text = data[0];
         }
 
         #endregion
 
         #region DECRYPT
-        private byte[] dec_password_byte;
-        ObservableCollection<DestroyListView> list_to_decrypt = new ObservableCollection<DestroyListView>();
-        int de_complete;
-        string dec_output_directory;
 
-        private void AddFile2_Click(object sender, RoutedEventArgs e)
-        {
-            OpenFileDialog OFD = new OpenFileDialog();
-            OFD.Multiselect = true;
-            if (OFD.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                foreach (string i in OFD.FileNames)
-                {
-                    FileInfo file = new FileInfo(i);
-                    list_to_decrypt.Add(new DestroyListView(i, Functions.GetFileImage24(file.Extension), file));
-                    items_count2.Text = list_to_decrypt.Count + (list_to_decrypt.Count > 1 ? " Item" : " Items");
-                }
-        }
-
-        private void AddFolder2_Click(object sender, RoutedEventArgs e)
-        {
-            string path = new Folder_Picker().ShowThisDialog();
-            if (path != null)
-            {
-                destroy_control.IsEnabled = false;
-                BackgroundWorker add_all_files_in_dir_bw = new BackgroundWorker();
-                add_all_files_in_dir_bw.WorkerReportsProgress = true;
-                add_all_files_in_dir_bw.DoWork += AddFilesBW_DoWork;
-                add_all_files_in_dir_bw.ProgressChanged += AddFilesBW2_ProgressChanged;
-                add_all_files_in_dir_bw.RunWorkerCompleted += AddFilesBW2_RunWorkerCompleted;
-                add_all_files_in_dir_bw.RunWorkerAsync(path);
-            }
-        }
-
-        void AddFilesBW2_ProgressChanged(object sender, ProgressChangedEventArgs e)
-        {
-            FileInfo i = (FileInfo)e.UserState;
-            try
-            { list_to_decrypt.Add(new DestroyListView(i.FullName, Functions.GetFileImage24(i.Extension), i)); }
-            catch (Exception) { }
-        }
-
-        void AddFilesBW2_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
-        {
-            if (list_to_decrypt.Count > 0)
-                items_count2.Text = list_to_decrypt.Count + (list_to_decrypt.Count > 1 ? " Items" : " Item");
-            else
-                items_count2.Text = "";
-            destroy_control2.IsEnabled = true;
-        }
-
-        private void RemoveSelected2_Click(object sender, RoutedEventArgs e)
-        {
-            for (int i = files_list2.SelectedItems.Count - 1; i >= 0; i--)
-                list_to_decrypt.RemoveAt(files_list2.Items.IndexOf(files_list2.SelectedItems[i]));
-            if (list_to_decrypt.Count > 0)
-                items_count2.Text = list_to_decrypt.Count + (list_to_decrypt.Count == 1 ? " Item" : " Items");
-            else
-                items_count.Text = string.Empty;
-        }
-
-        private void ClearList2_Click(object sender, RoutedEventArgs e)
-        {
-            list_to_decrypt.Clear();
-            items_count2.Text = "";
-        }
+        List<DestroyListView> decrypt_data = new List<DestroyListView>();
 
         private void Decrypt_Click(object sender, RoutedEventArgs e)
         {
-
-            if (dec_output.Text == string.Empty)
-                new My_MessageBox("FILE MANAGER", "Please select output directory.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
-            else if ((dec_password.Visibility == Visibility.Hidden ? dec_password_text.Text.Length : dec_password.Password.Length) < 6)
-                new My_MessageBox("FILE MANAGER", "Password must be at least 6 charectars.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
-            else if (list_to_decrypt.Count < 1)
+            bool decrypt = false;
+            string password = dec_password.Visibility == Visibility.Hidden ? dec_password_text.Text : dec_password.Password;
+            if (decrypt_data.Count < 1)
                 new My_MessageBox("FILE MANAGER", "List is empty!!!", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
-            else if (new My_MessageBox("FILE MANAGER", "Start Decription?", "Caution: Make sure that all files in the list have the same password.", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-Warning.png")), null, null).ShowThisDialog() == MyMessageBoxResult.Yes)
+            else if (password.Length < 8)
+                new My_MessageBox("FILE MANAGER", "Password must be at least 8 charectars.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+            else if (dec_output.Text == string.Empty)
+                new My_MessageBox("FILE MANAGER", "Please select output directory.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+            else if (dec_output.Text.Any(x => Path.GetInvalidPathChars().Any(y => y.Equals(x))))
+                new My_MessageBox("FILE MANAGER", "We have found invalid charectars in your selected path.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+            else if (!Directory.Exists(dec_output.Text))
             {
-                de_complete = 0;
-                destroy_control2.IsEnabled = false;
-                BackgroundWorker decrypt_BackgroundWorker = new BackgroundWorker();
-                decrypt_BackgroundWorker.WorkerReportsProgress = true;
-                decrypt_BackgroundWorker.DoWork += DecryptBW_DoWork;
-                decrypt_BackgroundWorker.ProgressChanged += DecryptBW_ProgressChanged;
-                decrypt_BackgroundWorker.RunWorkerCompleted += DecryptBW_RunWorkerCompleted;
-                total_progress2.Visibility = Visibility.Visible;
-                total_progress2.Value = 0;
-                total_progress2.Maximum = list_to_encrypt.Count;
-                dec_password_byte = PreparePassword(dec_password.Visibility == Visibility.Visible ? dec_password.Password : dec_password_text.Text);
-                dec_output_directory = dec_output.Text;
-                decrypt_BackgroundWorker.RunWorkerAsync();
+                if (new My_MessageBox("FILE MANAGER", "We can not find directory '" + dec_output.Text + "', try to create it?", "", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-Warning.png")), null, null).ShowThisDialog() == MyMessageBoxResult.Yes)
+                    decrypt = true;
             }
-        }
-
-        private void DecryptBW_DoWork(object sender, DoWorkEventArgs e)
-        {
-            BackgroundWorker bw = (BackgroundWorker)sender;
-            Thread process_thread = new Thread(() =>
+            else
+                decrypt = true;
+            if (decrypt && new My_MessageBox("FILE MANAGER", "Start De-Encription?", "Caution: be sure that all files in the list has same password.", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-Warning.png")), null, null).ShowThisDialog() == MyMessageBoxResult.Yes)
             {
-                while (bw.IsBusy)
+                string save_in = dec_output.Text;
+                if (!Directory.Exists(save_in))
                 {
-                    if (CloseWindow) return;
-                    bw.ReportProgress(0);
-                    Thread.Sleep(200);
-                }
-            });
-            process_thread.Start();
-            for (int index = 0; index < list_to_decrypt.Count; index++)
-            {
-                if (CloseWindow) return;
-                list_to_decrypt[index].CurrentProgress = 0;
-                string write_file_in = PrepareFile(list_to_decrypt[index].File, dec_output_directory);
-                BinaryReader BR = null; 
-                BinaryWriter BW = null;
-                bool done = false;
-                try
-                {
-                    if (!File.Exists(write_file_in))
-                        throw new Exception("File can't been writen.");
-                    if (!list_to_decrypt[index].File.Exists)
-                        throw new Exception("File isn't exists.");
-                    BR = new BinaryReader(list_to_decrypt[index].File.OpenRead());
-                    BW = new BinaryWriter(File.Open(write_file_in, FileMode.OpenOrCreate));
-                    long k;
-                    if (BR.ReadString() == "THIS FILE HAD ENCRYPTED WITH FILE MANAGER")
+                    try { Directory.CreateDirectory(save_in); }
+                    catch (Exception ex)
                     {
-                        if (Compare(BR.ReadBytes(256), dec_password_byte))
-                        {
-                            for (k = 65536; k <= list_to_decrypt[index].File.Length; k += 65536)
-                            {
-                                if (CloseWindow)
-                                {
-                                    if (File.Exists(write_file_in))
-                                        try
-                                        {
-                                            if (BR != null) BR.Close();
-                                            if (BW != null) BW.Close();
-                                            File.Delete(write_file_in);
-                                        }
-                                        catch (Exception) { }
-                                    return;
-                                }
-                                BW.Write(Decrypt(BR.ReadBytes(65536)));
-                                list_to_decrypt[index].CurrentProgress += 65536;
-                            }
-                            int remain = (int)(list_to_decrypt[index].File.Length - (k - 65536));
-                            BW.Write(Decrypt(BR.ReadBytes(remain)));
-                            list_to_decrypt[index].CurrentProgress += remain;
-                            list_to_decrypt[index].TextBlockVisibility = Visibility.Collapsed;
-                            done = true;
-                        }
-                        else
-                            throw new Exception("Wrong Password");
+                        new My_MessageBox("FILE MANAGER", "Some thing error while creating directory +  extra info ." + ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                        return;
                     }
-                    else
-                        throw new Exception("Invaled File"); 
                 }
-                catch (Exception ex)
-                {
-                    list_to_decrypt[index].CurrentProgress = 0;
-                    list_to_decrypt[index].TextBlockVisibility = Visibility.Visible;
-                    list_to_decrypt[index].ProgressBarVisibility = Visibility.Collapsed;
-                    list_to_decrypt[index].ErrorMassege = ex.Message;
-                    if (BR != null) BR.Close();
-                    if (BW != null) BW.Close();
-                    if (File.Exists(write_file_in))
-                        try { File.Delete(write_file_in); }
-                        catch (Exception) { } continue;
-                }
-                if (BR != null) BR.Close();
-                if (BW != null) BW.Close();
-                if (done)
-                    de_complete++;
-            }
-        }
-
-        private bool Compare(byte[] p, byte[] password_byte)
-        {
-            for (int i = 0; i < p.Length; i++)
-                if (p[i] != password_byte[i])
-                    return false;
-            return true;
-        }
-
-        private byte[] Decrypt(byte[] bytes)
-        {
-            byte[] decrept = new byte[bytes.Length];
-            Parallel.For(0, bytes.Length, (i) => { decrept[i] = (byte)(bytes[i] - dec_password_byte[i]); });
-            return decrept;
-        }
-
-        private void DecryptBW_ProgressChanged(object sender, ProgressChangedEventArgs e)
-        {
-            files_list2.Items.Refresh();
-            total_progress.Value = de_complete;
-        }
-
-        private void DecryptBW_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
-        {
-            if (!CloseWindow)
-            {
-                destroy_control2.IsEnabled = true;
-                total_progress2.Visibility = Visibility.Hidden;
-                files_list2.Items.Refresh();
+                List<FileInfo> files_list = new List<FileInfo>();
+                foreach (var i in decrypt_data)
+                    files_list.Add(i.File);
+                byte[] bytes = new byte[password.Length * sizeof(char)];
+                Buffer.BlockCopy(password.ToCharArray(), 0, bytes, 0, bytes.Length);
+                bytes = new MD5Cng().ComputeHash(bytes);
+                new Operation().StartDecrept(files_list, bytes, save_in, true);
+                ClearList_Click(null, null);
                 new My_MessageBox("FILE MANAGER", "Operation done.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-information.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-information.wav")).ShowDialog();
             }
         }
 
-        private void DEC_ShowPassword_Click(object sender, RoutedEventArgs e)
+        private void DecryptList_Drop(object sender, DragEventArgs e)
         {
-            if (dec_password.Visibility == Visibility.Visible)
-            {
-                dec_show_password.Content = "Hide";
-                dec_password.Visibility = Visibility.Hidden;
-                dec_password_text.Visibility = Visibility.Visible;
-                dec_password_text.Text = dec_password.Password;
-            }
-            else
-            {
-                dec_show_password.Content = "Show";
-                dec_password.Visibility = Visibility.Visible;
-                dec_password_text.Visibility = Visibility.Hidden;
-                dec_password.Password = dec_password_text.Text;
-            }
+            string[] data;
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                if ((data = (string[])e.Data.GetData(DataFormats.FileDrop)).Length == 1 && Directory.Exists(data[0]))
+                    AddDirectory(data[0], decrypt_data, decrypt_list);
+                else if (data.Length > 0)
+                    AddFiles(data, decrypt_data, decrypt_list);
         }
 
-        private void DEC_Browser_Click(object sender, RoutedEventArgs e)
+        private void DecOutputText_Drop(object sender, DragEventArgs e)
         {
-            string selected_path;
-            if ((selected_path = new Folder_Picker().ShowThisDialog()) != null)
-                dec_output.Text = selected_path;
+            string[] data;
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                if ((data = (string[])e.Data.GetData(DataFormats.FileDrop)).Length == 1 && Directory.Exists(data[0]))
+                    dec_output.Text = data[0];
         }
 
         #endregion
 
+        void TabChange_MouseButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            ThicknessAnimation ta = new ThicknessAnimation(new Thickness((-1 * tab_panal.Children.IndexOf((Label)sender)) * ActualWidth, 0, 0, 0), new Duration(new TimeSpan(2000000)));
+            double rec_wid = 0;
+            foreach (Label i in tab_panal.Children)
+                if (i != sender)
+                    rec_wid += i.ActualWidth;
+                else
+                    break;
+            ThicknessAnimation ta2 = new ThicknessAnimation(new Thickness(rec_wid, 32, 0, 0), new Duration(new TimeSpan(2000000)));
+            rec.Width = ((Label)sender).ActualWidth;
+            rec.BeginAnimation(MarginProperty, ta2);
+            mother.BeginAnimation(MarginProperty, ta);
+            label1.Background = Brushes.Black; label1.Foreground = Brushes.White;
+            label2.Background = Brushes.Black; label2.Foreground = Brushes.White;
+            ((Label)sender).Background = Brushes.White;
+            ((Label)sender).Foreground = Brushes.Black;
+            CurrentPage = (EncryptPages)tab_panal.Children.IndexOf((Label)sender) + 1;
+        }
+
+        private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (!starting_window)
+            {
+                //if(current_page==DestroyPages.DiskDestroy)//****
+                double t = (-1 * ((int)CurrentPage - 1)) * e.NewSize.Width;
+                ThicknessAnimation ta = new ThicknessAnimation(new Thickness(t, 0, 0, 0), new Duration(new TimeSpan(0)));
+                mother.BeginAnimation(MarginProperty, ta);
+                for (int i = 0; i < mother.Children.Count; i++)
+                {
+                    ((Grid)mother.Children[i]).Width = ActualWidth - 5;
+                    ((Grid)mother.Children[i]).Margin = new Thickness(i * e.NewSize.Width, 0, 0, 0);
+                }
+            }
+        }
+
+    }
+
+    enum EncryptPages
+    {
+        FilesEncrypt = 1,
+        FilesDecrypt = 2
     }
 }
-
-
-//private byte[] GetPasswordBytes(SecureString pass)
-//{
-//    //SHA1Cng sha1 = new SHA1Cng();
-//    //return sha1.ComputeHash(Encoding.UTF8.GetBytes(pass));
-//    byte[] ba = null;
-
-//    if (pass.Length == 0)
-//        ba = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8 };
-//    else
-//    {
-//        IntPtr unmanagedBytes = Marshal.SecureStringToGlobalAllocAnsi(pass);
-//        try
-//        {
-//            unsafe
-//            {
-//                byte* byteArray = (byte*)unmanagedBytes.ToPointer();
-//                byte* pEnd = byteArray;
-//                while (*pEnd++ != 0) { }
-//                int length = (int)((pEnd - byteArray) - 1);
-//                ba = new byte[length];
-//                for (int i = 0; i < length; ++i)
-//                {
-//                    byte dataAtIndex = *(byteArray + i);
-//                    ba[i] = dataAtIndex;
-//                }
-//            }
-//        }
-//        finally
-//        { Marshal.ZeroFreeGlobalAllocAnsi(unmanagedBytes); }
-//    }
-//    return System.Security.Cryptography.SHA256.Create().ComputeHash(ba);
-//}
-
-
-//private byte[] AES_Encrypt(byte[] bytesToBeEncrypted)
-//{
-//    byte[] encryptedBytes = null;
-//    byte[] saltBytes = new byte[] { 12, 22, 255, 124, 78, 63, 23, 89, 54, 35, 89, 125, 225, 101, 3, 88, 4, 2, 86, 12, 32, 1, 47, 20, 14, 232, 17, 3, 1, 7, 89, 66 };
-//    using (MemoryStream ms = new MemoryStream())
-//    {
-//        using (RijndaelManaged AES = new RijndaelManaged())
-//        {
-//            AES.KeySize = 256;
-//            AES.BlockSize = 128;
-//            var key = new Rfc2898DeriveBytes(enc_password_bytes, saltBytes, 10);
-//            AES.Key = key.GetBytes(32);
-//            AES.IV = key.GetBytes(16);
-//            AES.Mode = CipherMode.CBC;
-//            using (CryptoStream cs = new CryptoStream(ms, AES.CreateEncryptor(), CryptoStreamMode.Write))
-//            {
-//                cs.Write(bytesToBeEncrypted, 0, bytesToBeEncrypted.Length);
-//                cs.Close();
-//            }
-//            encryptedBytes = ms.ToArray();
-//        }
-//    }
-//    return encryptedBytes;
-//}

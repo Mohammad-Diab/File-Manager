@@ -135,11 +135,6 @@ namespace File_Manager
                 target_checkbox.IsChecked = null;
         }
 
-        private void Container_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            container.SelectedIndex = -1;
-        }
-
         private void SkipSame_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (user_active)
@@ -151,53 +146,55 @@ namespace File_Manager
                     foreach (var i in ExistsItemsList)
                         ExistsItemsList_Copy.Add(i);
                 }
+                ExistsItemsList.Clear();
                 foreach (var i in ExistsItemsList_Copy)
                     ExistsItemsList.Add(i);
-                ExistsItemsList.Clear();
-                if (skip_items.SelectedIndex == 1)
+                switch (skip_items.SelectedIndex)
                 {
-                    if (same != null || new My_MessageBox("File Manager", "This operation maybe take long time according to files size and amount of files, do you want to continue?", "", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/list.png")), null/*buttons*/, null/* button_actions*/).ShowThisDialog() == MyMessageBoxResult.Yes)
-                    {
-                        RemoveSame();
-                        for (int i = same.Count - 1; i > -1; i--)
+                    case 1:
+                        if (same != null || new My_MessageBox("File Manager", "This operation maybe take long time according to files size and amount of files, do you want to continue?", "", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/list.png")), null/*buttons*/, null/* button_actions*/).ShowThisDialog() == MyMessageBoxResult.Yes)
                         {
-                            ExistsItemsList[same[i]].source_item.user_option = OperationOption.Skip;
-                            ExistsItemsList.RemoveAt(same[i]);
-                        }
-                    }
-                    else
-                        skip_items.SelectedIndex = 0;
-                }
-                else if (skip_items.SelectedIndex == 2)
-                {
-                    RemoveSameSize();
-                    for (int i = same_size.Count - 1; i > -1; i--)
-                    {
-                        ExistsItemsList[same_size[i]].source_item.user_option = OperationOption.Skip;
-                        ExistsItemsList.RemoveAt(same_size[i]);
-                    }
-                }
-                else if (skip_items.SelectedIndex == 3)
-                {
-                    RemoveSameSizeDate();
-                    for (int i = same_size_date.Count - 1; i > -1; i--)
-                    {
-                        ExistsItemsList[same_size_date[i]].source_item.user_option = OperationOption.Skip;
-                        ExistsItemsList.RemoveAt(same_size_date[i]);
-                    }
-                }
-                else if (skip_items.SelectedIndex == 4)
-                    for (int i = 0; i < ExistsItemsList.Count; i++)
-                        if (ExistsItemsList[i].source_item.item.LastWriteTime.Ticks > ExistsItemsList[i].TargetFile.LastWriteTime.Ticks)
-                        {
-                            ExistsItemsList[i].TargetIsChecked = false;
-                            ExistsItemsList[i].SourceIsChecked = true;
+                            RemoveSame();
+                            for (int i = same.Count - 1; i > -1; i--)
+                            {
+                                ExistsItemsList[same[i]].source_item.user_option = OperationOption.Skip;
+                                ExistsItemsList.RemoveAt(same[i]);
+                            }
                         }
                         else
+                            skip_items.SelectedIndex = 0;
+                        break;
+                    case 2:
+                        RemoveSameSize();
+                        for (int i = 0; i < same_size.Count; i++)
                         {
-                            ExistsItemsList[i].TargetIsChecked = true;
-                            ExistsItemsList[i].SourceIsChecked = false;
+                            ExistsItemsList[same_size[i]].source_item.user_option = OperationOption.Skip;
+                            ExistsItemsList.RemoveAt(same_size[i]);
                         }
+                        break;
+                    case 3:
+                        RemoveSameSizeDate();
+                        for (int i = 0; i < same_size_date.Count; i++)
+                        {
+                            ExistsItemsList[same_size_date[i]].source_item.user_option = OperationOption.Skip;
+                            ExistsItemsList.RemoveAt(same_size_date[i]);
+                        }
+                        break;
+                    case 4:
+                        for (int i = 0; i < ExistsItemsList.Count; i++)
+                            if (ExistsItemsList[i].source_item.item.LastWriteTime.Ticks > ExistsItemsList[i].TargetFile.LastWriteTime.Ticks)
+                            {
+                                ExistsItemsList[i].TargetIsChecked = false;
+                                ExistsItemsList[i].SourceIsChecked = true;
+                            }
+                            else
+                            {
+                                ExistsItemsList[i].TargetIsChecked = true;
+                                ExistsItemsList[i].SourceIsChecked = false;
+                            }
+                        break;
+                }
+
             }
         }
 
@@ -205,31 +202,27 @@ namespace File_Manager
         {
             if (same == null)
             {
-
                 same = new List<int>();
                 for (int i = 0; i < ExistsItemsList.Count; i++)
                 {
                     if (ExistsItemsList[i].source_item.size == ExistsItemsList[i].TargetFile.Length)
                     {
                         SHA1 HashComputer = new SHA1Cng();
-                        bool equal = true;
                         try
                         {
-                            byte[] first = HashComputer.ComputeHash(File.OpenRead(ExistsItemsList[i].source_item.item.FullName));
-                            byte[] second = HashComputer.ComputeHash(File.OpenRead(ExistsItemsList[i].TargetFile.FullName));
-                            for (int j = 0; j < first.Length; j++)
-                                if (!(first[j] == second[j]))
-                                {
-                                    equal = false;
-                                    break;
-                                }
+                            FileStream source_stream = File.OpenRead(ExistsItemsList[i].source_item.item.FullName);
+                            FileStream target_stream = File.OpenRead(ExistsItemsList[i].TargetFile.FullName);
+                            byte[] first = HashComputer.ComputeHash(source_stream);
+                            byte[] second = HashComputer.ComputeHash(target_stream);
+                            source_stream.Close();
+                            target_stream.Close();
+                            if (first.SequenceEqual(second))
+                                same.Add(i);
                         }
-                        catch (Exception) { equal = false; }
-                        if (equal)
-                            same.Add(i);
+                        catch (Exception) {  }
                     }
                 }
-                same_containt.Text = same.Count + "";
+                same_containt.Text = same.Count.ToString();
             }
         }
 
@@ -238,7 +231,7 @@ namespace File_Manager
             if (same_size == null)
             {
                 same_size = new List<int>();
-                for (int i = ExistsItemsList.Count - 1; i >= 0; i--)
+                for (int i = ExistsItemsList.Count - 1; i > -1; i--)
                     if (ExistsItemsList[i].source_item.size == ExistsItemsList[i].TargetFile.Length)
                         same_size.Add(i);   
                 same_file_size.Text = same_size.Count.ToString();

@@ -33,7 +33,7 @@ namespace File_Manager
             container.DataContext = OperationErrorList;
             if (header != null)
                 sub_containt.Text = header;
-            AddSuns(root, root.operation != Op.Copy);
+            AddSuns(root, root.operation != OperationType.Copy);
         }
 
         private void AddSuns(OperationTree root, bool add_directory)
@@ -46,24 +46,10 @@ namespace File_Manager
                 {
                     if (add_directory)
                         OperationErrorList.Add(new OperationErrorListView(i));
-                    AddSuns(i, i.operation == Op.Delete);
+                    AddSuns(i, i.operation == OperationType.Delete);
                 }
                 i.error_message = "";
             }
-        }
-
-        //public File_s_Transferring_Error(List<UnCompleatedRename> uncomplete, string header)
-        //{
-        //    InitializeComponent();
-        //    foreach (var i in uncomplete)
-        //        OperationErrorList.Add(new OperationErrorListView(i.Item, i.ErrorMessage));
-        //    if (header != null)
-        //        sub_containt.Text = header;
-        //}
-
-        private void Container_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            container.SelectedIndex = -1;
         }
 
         private void RetryAll_Checked(object sender, RoutedEventArgs e)

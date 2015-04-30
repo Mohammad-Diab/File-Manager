@@ -10,6 +10,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+//using Xceed.Wpf.Toolkit;
 
 namespace File_Manager
 {
@@ -21,6 +22,8 @@ namespace File_Manager
         public ChangeDate()
         {
             InitializeComponent();
+            //DateTimePicker h = new DateTimePicker();
+            //(Content as Grid).Children.Add(h);
         }
 
         internal DateTime? ShowDialog(DateTime elementary_date)

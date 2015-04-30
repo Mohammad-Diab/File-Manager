@@ -23,7 +23,7 @@ namespace File_Manager
     /// Interaction logic for SelectFileDialog.xaml
     /// </summary>
     public partial class SelectFileDialog : Window
-    {
+    {//**** save dialog set file name
         internal SelectFileDialogMode dialogMode = SelectFileDialogMode.OpenFile;
         internal bool CreateFolderEnable = true;
         internal bool OpenAsReadOnlyEnable = false;
@@ -31,7 +31,7 @@ namespace File_Manager
         internal List<QuickAccessMenuItem> QuickAccessMenuItems = new List<QuickAccessMenuItem>();
         internal List<SelectFileFilter> FilterMenu = new List<SelectFileFilter>();
         internal string DialogTitle;
-        internal string InistialDirectory;
+        internal string InitialDirectory;
         internal object[] OkAndCancelContent;
         static string LastSelectedPath = "root";
         SortItemsBy sort_by = SortItemsBy.Name;
@@ -66,7 +66,7 @@ namespace File_Manager
         {
             InitializeComponent();
             DialogTitle = "Open File";
-            InistialDirectory = "root";
+            InitialDirectory = "root";
         }
 
         internal MyMessageBoxResult ShowWindow()
@@ -85,14 +85,16 @@ namespace File_Manager
             Title = DialogTitle != null && DialogTitle != string.Empty ? DialogTitle : Title;
             if (dialogMode == SelectFileDialogMode.SelectDirectory)
                 Filter_ComboBox.Items.Add(new ComboBoxItem() { Content = "Directory", Tag = "directory" });
+            
             else if (FilterMenu.Count == 0)
                 Filter_ComboBox.Items.Add(new ComboBoxItem() { Content = "All files", Tag = "" });
+
             else
                 foreach (var i in FilterMenu)
                     Filter_ComboBox.Items.Add(new ComboBoxItem() { Content = i.display_name, Tag = i.extentions });
             Filter_ComboBox.SelectedIndex = 0;
-            if (InistialDirectory != null && InistialDirectory != string.Empty)
-                CurrentPath = InistialDirectory;
+            if (InitialDirectory != null && InitialDirectory != string.Empty)
+                CurrentPath = InitialDirectory;
             else
                 CurrentPath = LastSelectedPath;
             Initializing = false;
@@ -159,7 +161,7 @@ namespace File_Manager
             get_drivers.RunWorkerCompleted += (object sender, RunWorkerCompletedEventArgs e) =>
             {
                 for (int i = drivers.Length - 1; i > -1; i--)
-                    quick_access_data.Insert(0, new QuickAccessMenuItem() { FullPath = drivers[i].IsReady ? ((drivers[i].VolumeLabel.Equals(string.Empty) ? "Local Drive" : drivers[i].VolumeLabel) + " (" + drivers[i].Name + ")") : drivers[i].Name, driveInfo = drivers[i], Image = Functions.GetDriveImage(drivers[i].DriveType, drivers[i].Name[0] == Functions.SystemDrive[0], drivers[i].IsReady, 24), isDrive = true, FontSize = 14 });
+                    quick_access_data.Insert(0, new QuickAccessMenuItem() { FullPath = drivers[i].IsReady ? ((drivers[i].VolumeLabel.Equals(string.Empty) ? "Local Drive" : drivers[i].VolumeLabel) + " (" + drivers[i].Name + ")") : drivers[i].Name, driveInfo = drivers[i], Image = Functions.GetDriveImage(drivers[i], 24), isDrive = true, FontSize = 14 });
                 quick_access_data.Insert(0, new QuickAccessMenuItem() { FullPath = "Hard Disk Drives", isDrive = false, Directory = null, FontSize = 12, IsEnable = false , TextMargin = new Thickness(5, 0, 0, 0) });
             };
             get_drivers.RunWorkerAsync();
@@ -222,7 +224,7 @@ namespace File_Manager
             get_drivers.RunWorkerCompleted += (object senderw, RunWorkerCompletedEventArgs ew) =>
             {
                 foreach (DriveInfo i in drivers)
-                    items.Add(new RootItem() { FullPath = i.IsReady ? ((i.VolumeLabel.Equals(string.Empty) ? "Local Drive" : i.VolumeLabel) + " (" + i.Name + ")") : i.Name, Header = "Hard Disk Drivers", isDrive = true, driveInfo = i, toolTip = i.Name, Image = Functions.GetDriveImage(i.DriveType, i.Name[0] == Functions.SystemDrive[0], i.IsReady, 64) });
+                    items.Add(new RootItem() { FullPath = i.IsReady ? ((i.VolumeLabel.Equals(string.Empty) ? "Local Drive" : i.VolumeLabel) + " (" + i.Name + ")") : i.Name, Header = "Hard Disk Drivers", isDrive = true, driveInfo = i, toolTip = i.Name, Image = Functions.GetDriveImage(i, 64) });
                 CollectionView view = (CollectionView)CollectionViewSource.GetDefaultView(RootPage.ItemsSource);
                 PropertyGroupDescription groupDescription = new PropertyGroupDescription("Header");
                 view.GroupDescriptions.Add(groupDescription);
@@ -399,8 +401,9 @@ namespace File_Manager
                         explorer_data.Add(new ExplorerItem() { isDirectory = true, FullPath = i.Name, Directory = i, Image = Functions.GetFileImage24("directory"), Date = string.Format("{0}/{1}/{2}  ", OrginizeDate(i.LastWriteTimeUtc.Day, 2), OrginizeDate(i.LastWriteTimeUtc.Month, 2), OrginizeDate(i.LastWriteTimeUtc.Year, 4)) + string.Format("{0}:{1}", OrginizeDate(i.LastWriteTimeUtc.Hour, 2), OrginizeDate(i.LastWriteTimeUtc.Minute, 2)), IsSelected = false, Size = "", Type = "Directory", ToolTip = i.FullName });
 
             string[] filters = (Filter_ComboBox.SelectedItem as ComboBoxItem).Tag as string[];
+            bool all_files = (Filter_ComboBox.SelectedItem as ComboBoxItem).Tag is string;
             foreach (var i in files)
-                if (filters.Contains(i.Extension.ToLower()))
+                if (all_files || filters.Contains(i.Extension.ToLower()))
                     if (ShowHiddenFiles || (!ShowHiddenFiles && !i.Attributes.HasFlag(FileAttributes.Hidden)))
                         if (i.Name.ToLower().Contains(filter_string))
                             explorer_data.Add(new ExplorerItem() { isDirectory = false, FullPath = i.Name, File = i, Image = Functions.GetFileImage24(i.Extension), Size = Functions.FileSize(i.Length, 2), Date = string.Format("{0}/{1}/{2}  ", OrginizeDate(i.LastWriteTimeUtc.Day, 2), OrginizeDate(i.LastWriteTimeUtc.Month, 2), OrginizeDate(i.LastWriteTimeUtc.Year, 4)) + string.Format("{0}:{1}", OrginizeDate(i.LastWriteTimeUtc.Hour, 2), OrginizeDate(i.LastWriteTimeUtc.Minute, 2)), Type = Functions.GetFileType(i.Extension), ToolTip = i.FullName });
@@ -559,8 +562,18 @@ namespace File_Manager
                         return;
                 }
             if (dialogMode == SelectFileDialogMode.SaveFile)
-                if (AddExtension && Path.GetExtension(explorerItem.ToolTip) == "")
+            {
+                if (AddExtension /*&& Path.GetExtension(explorerItem.ToolTip) == ""*/)
                     explorerItem.ToolTip += ((Filter_ComboBox.SelectedItem as ComboBoxItem).Tag as string[])[0];
+                try
+                {
+                    File.Create(explorerItem.ToolTip);
+                }
+                catch(Exception ex)
+                {
+                    MessageBox.Show("Sorry we can not create file" + "extra info:" + ex.Message, "FILE MANAGER");
+                }
+            }
             SelectedItem = explorerItem.ToolTip;
             SelectedItems = new List<string>();
             SelectedItems.Add(explorerItem.ToolTip);
@@ -582,7 +595,7 @@ namespace File_Manager
         {
             selectedItemName_TextBox.Text = "";
             if (RootPage.SelectedIndex > 0)
-                selectedItemName_TextBox.Text = (RootPage.SelectedItem as RootItem).FullPath;
+                selectedItemName_TextBox.Text = (RootPage.SelectedItem as RootItem).toolTip;
         }
 
         private void Explorer_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -677,8 +690,8 @@ namespace File_Manager
                     if (dialogMode == SelectFileDialogMode.SelectDirectory)
                         if (RootPage.SelectedIndex > -1)
                         {
-                            if (!ItemIsIn((RootPage.SelectedItem as RootItem).FullPath.ToLower(), multiselection_data))
-                                multiselection_data.Add(new MultiSelectionItem() { isDirectory = true, FullPath = (RootPage.SelectedItem as RootItem).FullPath, Image = Functions.GetFileImage24("directory"), Directory = new DirectoryInfo((RootPage.SelectedItem as RootItem).toolTip) });
+                            if (!ItemIsIn((RootPage.SelectedItem as RootItem).toolTip.ToLower(), multiselection_data))
+                                multiselection_data.Add(new MultiSelectionItem() { isDirectory = true, FullPath = (RootPage.SelectedItem as RootItem).toolTip, Image = Functions.GetFileImage24("directory"), Directory = new DirectoryInfo((RootPage.SelectedItem as RootItem).toolTip) });
                         }
                         else
                             MessageBox.Show("Select item first.");
@@ -749,7 +762,7 @@ namespace File_Manager
                 if (CreateFolderEnable)
                 {
                     string new_name = null;
-                    new_name = new Rename("new directory").ShowthisDialog();
+                    new_name = new Rename().ShowWindow("new directory", false);
                     string dir_name = null; ;
                     if (new_name != null && new_name != "")
                     {
@@ -856,9 +869,9 @@ namespace File_Manager
                 else if (dialogMode == SelectFileDialogMode.SelectDirectory)
                 {
                     return_value = MyMessageBoxResult.OK;
-                    SelectedItem = current_path;
+                    SelectedItem = (RootPage.SelectedItem as RootItem).toolTip;
                     SelectedItems = new List<string>();
-                    SelectedItems.Add(current_path);
+                    SelectedItems.Add((RootPage.SelectedItem as RootItem).toolTip);
                     Close();
                 }
                 else
@@ -926,11 +939,24 @@ namespace File_Manager
 
         static Thickness margin = new Thickness(28, 2, 0, 0);
 
-        bool is_enable = true;
+        bool is_enable;
         public bool IsEnable
         {
             get { return is_enable; }
-            set { is_enable = value; }
+            set
+            {
+                if (value)
+                {
+                    ImageHight = 24;
+                    TextForeground = new SolidColorBrush(Colors.WhiteSmoke);
+                }
+                else
+                {
+                    ImageHight = 0;
+                    TextForeground = new SolidColorBrush(Colors.LightGray);
+                }
+                is_enable = value;
+            }
         }
 
         double font_size;
@@ -943,9 +969,24 @@ namespace File_Manager
         public DriveInfo driveInfo;
         public bool isDrive;
 
+        double image_hight;
+        public double ImageHight
+        {
+            get { return image_hight; }
+            set { image_hight = value; }
+        }
+
+        SolidColorBrush text_foreground;
+        public SolidColorBrush TextForeground
+        {
+            get { return text_foreground; }
+            set { text_foreground = value; }
+        }
+
         public QuickAccessMenuItem()
         {
             TextMargin = margin;
+            IsEnable = true;
         }
     }
 

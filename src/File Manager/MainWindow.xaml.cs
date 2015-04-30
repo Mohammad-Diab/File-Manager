@@ -31,9 +31,9 @@ namespace File_Manager
 
         BackgroundWorker show_progress, GetFilesAndDirectory;
         List<FileOperationItem> ToCopyList;
-        
+
         public static string to_go_path = "";
-        
+
         string current_address = "Computer", next_address = "", to_select_file = null;
         static string computer_Name, operating_System, CPU = "Core", Memory_Size;
         Thickness name_thickness = new Thickness(80, 5, 0, 0), size_thickness = new Thickness(80, 25, 0, 0), type_thickness = new Thickness(80, 45, 0, 0), folder_thickness = new Thickness(80, 25, 0, 0);
@@ -53,7 +53,16 @@ namespace File_Manager
         {
             Initializer();
             img.Source = Icons.GetIcons.GetIcon("computer.png", 256);
-            new Desktop_Environment().Show();
+            if (!ContainProcess(Process.GetProcesses(), "explorer", "explorer.exe"))
+                new Desktop_Environment().Show();
+        }
+
+        private bool ContainProcess(Process[] process, string p, string q)
+        {
+            foreach (Process i in process)
+                if (i.ProcessName.ToLower().Equals(p) || i.ProcessName.ToLower().Equals(q))
+                    return true;
+            return false;
         }
 
         public MainWindow(string PrimePath)
@@ -137,7 +146,7 @@ namespace File_Manager
                     i *= 2;
                 }
             };
-            show_progress.ProgressChanged += (object sender, ProgressChangedEventArgs e) => 
+            show_progress.ProgressChanged += (object sender, ProgressChangedEventArgs e) =>
             { progressbar.Value += 100 / e.ProgressPercentage; };
             show_progress.RunWorkerCompleted += (object sender, RunWorkerCompletedEventArgs e) => { progressbar.Value = 100; };
             show_progress.WorkerReportsProgress = show_progress.WorkerSupportsCancellation = true;
@@ -167,7 +176,7 @@ namespace File_Manager
 
             GetFilesAndDirectory.DoWork += (object sender, DoWorkEventArgs e) =>
             {   //desktop //documents //music .... etc
-                if (new_path.ToLower().Equals( "computer"))
+                if (new_path.ToLower().Equals("computer"))
                 {
                     try
                     { drives = DriveInfo.GetDrives(); }
@@ -618,11 +627,6 @@ namespace File_Manager
             string f = Process.GetCurrentProcess().StartInfo.Verb;
         }
 
-        private void MenuItem_Click(object sender, RoutedEventArgs e)
-        {
-            MessageBox.Show("File Manager v0.8.0-alpha.1\nby: mohammad.diab93@outlook.com", "FILE MANAGER", MessageBoxButton.OK, MessageBoxImage.Information, MessageBoxResult.OK);
-        }
-
         void SelectItem(string to_select_item)
         {
             for (int i = 0; i < Explorer.Items.Count; i++)
@@ -656,7 +660,7 @@ namespace File_Manager
             if (path != "Computer")
             {
                 string new_name = null;
-                new_name = new Rename("new directory").ShowthisDialog();
+                new_name = new Rename().ShowWindow("new directory", false);
                 NewDirectory(new_name);
                 Refresh();
             }
@@ -864,7 +868,7 @@ namespace File_Manager
         {
             if (ToCopyList != null && ToCopyList.Count > 0)
                 if (path != "Computer")
-                    new Operation().CopyDialogShow(ToCopyList, Op.Copy, path, false);
+                    new Operation().CopyDialogShow(ToCopyList, OperationType.Copy, path, false);
                 else
                     new My_MessageBox("Paste", "You can not paste any item here!", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-warning.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-warning.wav")).ShowDialog();
             else
@@ -890,7 +894,7 @@ namespace File_Manager
         {
             try
             {
-                string new_name = new Rename(((MainListView)Explorer.SelectedItem).Drive.VolumeLabel).ShowthisDialog();
+                string new_name = new Rename().ShowWindow(((MainListView)Explorer.SelectedItem).Drive.VolumeLabel, false);
                 if (new_name != null)
                     ((MainListView)Explorer.SelectedItem).Drive.VolumeLabel = new_name;
             }
@@ -922,7 +926,7 @@ namespace File_Manager
             if (path != "Computer")
             {
                 string new_name = null;
-                new_name = new Rename("new file").ShowthisDialog();
+                new_name = new Rename().ShowWindow("new file", false);
                 string file_name = null; ;
                 if (new_name != null)
                 {
@@ -965,7 +969,7 @@ namespace File_Manager
 
         private void PreviewItem()
         {
-            if (Address.Text == "Computer")
+            if (Address.Text.ToLower() == "computer")
                 new Preview().ShowDialog(MainList[Explorer.SelectedIndex].Drive, ItemType.Drive);
             else if (MainList[Explorer.SelectedIndex].File is FileInfo && MainList[Explorer.SelectedIndex].File.Exists)
                 new Preview().ShowDialog(MainList[Explorer.SelectedIndex].File, ItemType.File);
@@ -995,7 +999,7 @@ namespace File_Manager
                             to_delete_list.Add(new FileOperationItem((DirectoryInfo)i.File, false, ""));
                         else
                             to_delete_list.Add(new FileOperationItem((FileInfo)i.File, false, ""));
-                    new Operation().CopyDialogShow(to_delete_list, Op.Delete, "", false);
+                    new Operation().CopyDialogShow(to_delete_list, OperationType.Delete, "", false);
                 }
             }
         }
@@ -1265,15 +1269,15 @@ namespace File_Manager
         }
 
         private void PasteIn_Click(object sender, RoutedEventArgs e)
-        {
-            new File_Operation().Show(((MainListView)Explorer.SelectedItem).FullPath);
+        {//****
+            //new Operation().CopyDialogShow(((MainListView)Explorer.SelectedItem).FullPath);
         }
 
         private void RenameFile_Click(object sender, RoutedEventArgs e)
         {
             if (path != "Computer")
             {
-                string new_name = new Rename(((MainListView)Explorer.SelectedItem).File.Name).ShowthisDialog();
+                string new_name = new Rename().ShowWindow(((MainListView)Explorer.SelectedItem).File.FullName, true);
                 if (new_name != null)
                 {
                     if (path != "Computer" && Explorer.SelectedItems.Count > 0)
@@ -1284,7 +1288,7 @@ namespace File_Manager
                                 to_rename_list.Add(new FileOperationItem((DirectoryInfo)i.File, false, new_name));
                             else
                                 to_rename_list.Add(new FileOperationItem((FileInfo)i.File, false, new_name));
-                        new Operation().CopyDialogShow(to_rename_list, Op.Rename, new_name, true);
+                        new Operation().CopyDialogShow(to_rename_list, OperationType.Rename, new_name, true);
                     }
                 }
             }
@@ -1379,7 +1383,7 @@ namespace File_Manager
 
         private void ViewDriveInfo(DriveInfo drive)
         {
-            img.Source = Functions.GetDriveImage(drive.DriveType, drive.Name.ToLower().Equals(Functions.SystemDrive), drive.IsReady, 256);
+            img.Source = Functions.GetDriveImage(drive, 256);
             if (drive.IsReady)
             {
                 name.Text = drive.VolumeLabel + " (" + drive.Name + ")";
@@ -1570,7 +1574,7 @@ namespace File_Manager
         private void SortBySize_Click(object sender, RoutedEventArgs e)
         {
             List<MainListView> list = MainList.ToList<MainListView>();
-            list.Sort((MainListView x, MainListView y) => 
+            list.Sort((MainListView x, MainListView y) =>
             {
                 return ((x.File is FileInfo) ? (x.File as FileInfo).Length : 0).CompareTo((y.File is FileInfo) ? (y.File as FileInfo).Length : 0);
             });
@@ -1618,9 +1622,14 @@ namespace File_Manager
 
         private void OpenFileDialog_Click(object sender, RoutedEventArgs e)
         {
-            SelectFileDialog df = new SelectFileDialog() { InistialDirectory = "C:\\Windows", dialogMode = SelectFileDialogMode.OpenFile, MultiSelect = true };
-            df.FilterMenu.Add(new SelectFileFilter() { extentions = ".exe|.bat".Split('|'), display_name = "Application" });
-            df.ShowWindow();
+            //SelectFileDialog df = new SelectFileDialog() { InistialDirectory = "C:\\Windows", dialogMode = SelectFileDialogMode.OpenFile, MultiSelect = true };
+            //df.FilterMenu.Add(new SelectFileFilter() { extentions = ".exe|.bat".Split('|'), display_name = "Application" });
+            //df.ShowWindow();
+        }
+
+        private void AboutButton_Click(object sender, RoutedEventArgs e)
+        {
+            new about_app().ShowDialog();
         }
 
 
@@ -1685,7 +1694,7 @@ namespace File_Manager
                 FileSize = "Drive is not ready!";
                 DateModified = "";
             }
-            Icon = Functions.GetDriveImage(drive.DriveType, drive.Name.ToLower().Equals(Functions.SystemDrive), drive.IsReady, 24);
+            Icon = Functions.GetDriveImage(drive, 24);
             FileType = Functions.GetDriveDescription(drive.DriveType);
             FileExt = "";
         }

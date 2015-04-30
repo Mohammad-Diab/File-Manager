@@ -7,8 +7,11 @@ using System.Text;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Forms;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
+using System.Security.Cryptography;
 
 namespace File_Manager
 {
@@ -17,126 +20,31 @@ namespace File_Manager
     /// </summary>
     public partial class File_Destroyer : Window
     {
-        bool CloseWindow = false;
-
-        char[] Chars = { '$', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '&', '#', '%', '^', '(', ')', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0' };
-        int buf_size = 32766 / 2;
+        //dont add file with already in list
+        bool CloseWindow = false, starting_window = true;
+        DestroyPages current_page = DestroyPages.FilesDestroy;
+        DestroyPages CurrentPage
+        {
+            get { return current_page; }
+            set
+            {
+                if (value == DestroyPages.DiskDestroy && current_page != DestroyPages.DiskDestroy)
+                    GetDrivers();
+                current_page = value;
+            }
+        }
 
         public File_Destroyer()
         {
             InitializeComponent();
-            files_list.DataContext = list_to_destroy;
-            Refresh_Click(null, null);
         }
 
-        byte[] GetBuffer(bool method, int case_number)
+        public File_Destroyer(List<FileInfo> list)
         {
-            byte[] buffer = new byte[buf_size];
-            if (method)
-                for (int j = 0; j < buf_size; j++)
-                    buffer[j] = 0x00;
-            else
-            {
-                switch (case_number)
-                {
-                    case 0:
-                    case 1:
-                    case 2:
-                    case 3:
-                    case 31:
-                    case 32:
-                    case 33:
-                    case 34:
-                        Random rand = new Random((int)DateTime.Now.Ticks);
-                        rand.NextBytes(buffer);
-                        break;
-                    case 4:
-                        for (int k = 0; k < buf_size; k++)
-                            buffer[k] = 0x55;
-                        break;
-                    case 5:
-                        for (int k = 0; k < buf_size; k++)
-                            buffer[k] = 0xAA;
-                        break;
-                    case 6:
-                    case 25:
-                        for (int k = 2; k < buf_size; k += 3)
-                        { buffer[k] = 0x92; buffer[k - 1] = 0x49; buffer[k - 2] = 0x24; }
-                        break;
-                    case 7:
-                    case 26:
-                        for (int k = 2; k < buf_size; k += 3)
-                        { buffer[k] = 0x49; buffer[k - 1] = 0x24; buffer[k - 2] = 0x92; }
-                        break;
-                    case 8:
-                    case 27:
-                        for (int k = 2; k < buf_size; k += 3)
-                        { buffer[k] = 0x24; buffer[k - 1] = 0x92; buffer[k - 2] = 0x49; }
-                        break;
-                    case 9:
-                    case 10:
-                    case 11:
-                    case 12:
-                    case 13:
-                    case 14:
-                    case 15:
-                    case 16:
-                    case 17:
-                    case 18:
-                    case 19:
-                    case 20:
-                    case 21:
-                    case 22:
-                    case 23:
-                    case 24:
-                        for (int k = 0; k < buf_size; k++)
-                            buffer[k] = (byte)(0x11 * (k - 9));
-                        break;
-                    case 28:
-                        for (int k = 2; k < buf_size; k += 3)
-                        { buffer[k] = 0x6D; buffer[k - 1] = 0xB6; buffer[k - 2] = 0xDB; }
-                        break;
-                    case 29:
-                        for (int k = 2; k < buf_size; k += 3)
-                        { buffer[k] = 0xB6; buffer[k - 1] = 0xDB; buffer[k - 2] = 0x6D; }
-                        break;
-                    case 30:
-                        for (int k = 2; k < buf_size; k += 3)
-                        { buffer[k] = 0xDB; buffer[k - 1] = 0x6d; buffer[k - 2] = 0xB6; }
-                        break;
-                }
-            }
-            return buffer;
-        }
-        //اضافة البروغريس كريفرنس واضافة عامل القسمة للتقسيم على 35
-        byte WriteFile(DestroyListView item, byte[] buffer, long size, bool never_pause, ref double progress, byte division_factor)
-        {
-            try
-            {
-                BinaryWriter BW = new BinaryWriter(File.OpenWrite(item.File.FullName));
-                long k;
-                for (k = buffer.Length; k <= size; k += buffer.Length)
-                {
-                    while (pause && !never_pause)
-                    {
-                        Thread.Sleep(200);
-                        if (CloseWindow) return 0;
-                    }
-                    if (CloseWindow) return 0;
-                    BW.Write(buffer);
-                    progress += buffer.Length / division_factor;
-                }
-                long remain = (size - (k - buffer.Length));
-                for (int i = 0; i < remain; i++)
-                {
-                    if (CloseWindow) return 0;
-                    BW.Write(buffer[i]);
-                }
-                progress += buffer.Length / division_factor;
-                BW.Close();
-                return 1;
-            }
-            catch (Exception) { return 0; }
+            InitializeComponent();
+            foreach (var i in list)
+                destroy_list_data.Add(new DestroyListView(i));
+            Destroy_Click(destroy_button, new RoutedEventArgs());
         }
 
         private void Window_Closing(object sender, CancelEventArgs e)
@@ -146,48 +54,93 @@ namespace File_Manager
 
         #region Destroy Files
 
-        ObservableCollection<DestroyListView> list_to_destroy = new ObservableCollection<DestroyListView>();
-        int complete, repete;
-        bool delete, method;
-        List<FileInfo> Undone;
-        BackgroundWorker add_directory_BackgroundWorker, destroy_files_BackgroundWorker;
+        List<DestroyListView> destroy_list_data = new List<DestroyListView>();
 
         private void AddFile_Click(object sender, RoutedEventArgs e)
         {
-            OpenFileDialog OFD = new OpenFileDialog();
-            OFD.Multiselect = true;
-            if (OFD.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-                foreach (string i in OFD.FileNames)
-                {
-                    FileInfo file = new FileInfo(i);
-                    list_to_destroy.Add(new DestroyListView(i, Functions.GetFileImage24(file.Extension), file));
-                    items_count.Text = list_to_destroy.Count + (list_to_destroy.Count > 1 ? " Item" : " Items");
-                }
+            SelectFileDialog sfd = new SelectFileDialog();
+            sfd.dialogMode = SelectFileDialogMode.OpenFile;
+            sfd.MultiSelect = true;
+            sfd.CreateFolderEnable = false;
+            sfd.DialogTitle = "Select files to destroy";
+            sfd.AddExtension = false;
+            if (sfd.ShowWindow() == MyMessageBoxResult.OK)
+                AddFiles(sfd.SelectedItems.ToArray());
+        }
+
+        private void AddFiles(string[] files)
+        {
+            foreach (string i in files)
+                if (File.Exists(i))
+                    destroy_list_data.Add(new DestroyListView(new FileInfo(i)));
+            files_list.Items.Refresh();
         }
 
         private void AddFolder_Click(object sender, RoutedEventArgs e)
         {
-            string path = new Folder_Picker().ShowThisDialog();
-            if (path != null)
+            SelectFileDialog sfd = new SelectFileDialog();
+            sfd.dialogMode = SelectFileDialogMode.SelectDirectory;
+            sfd.CreateFolderEnable = false;
+            sfd.DialogTitle = "Add all files in this directory.";
+            sfd.AddExtension = false;
+            if (sfd.ShowWindow() == MyMessageBoxResult.OK)
             {
-                destroy_control.IsEnabled = false;
-                add_directory_BackgroundWorker = new BackgroundWorker();
-                add_directory_BackgroundWorker.WorkerSupportsCancellation = true;
-                add_directory_BackgroundWorker.WorkerReportsProgress = true;
-                add_directory_BackgroundWorker.DoWork += (object bw_sender, DoWorkEventArgs e_bw) => { GetAllFiles(new DirectoryInfo(path)); };
-                add_directory_BackgroundWorker.ProgressChanged += AddFilesBW_ProgressChanged;
-                add_directory_BackgroundWorker.RunWorkerCompleted += AddFilesBW_RunWorkerCompleted;
-                add_directory_BackgroundWorker.RunWorkerAsync();
+                main_grid.IsEnabled = false;
+                BackgroundWorker add_files_in_directory = new BackgroundWorker();
+                add_files_in_directory.WorkerReportsProgress = true;
+                add_files_in_directory.DoWork += (object bw_sender, DoWorkEventArgs e_bw) =>
+                {
+                    GetAllFiles(new DirectoryInfo(sfd.SelectedItem), add_files_in_directory);
+                };
+                add_files_in_directory.ProgressChanged += (object bw_sender, ProgressChangedEventArgs bw_e) =>
+                {
+                    destroy_list_data.Add(new DestroyListView((FileInfo)bw_e.UserState));
+                };
+                add_files_in_directory.RunWorkerCompleted += (object bw_sender, RunWorkerCompletedEventArgs bw_e) =>
+                {
+                    files_list.Items.Refresh();
+                    main_grid.IsEnabled = true;
+                };
+                add_files_in_directory.RunWorkerAsync();
             }
         }
 
-        private void GetAllFiles(DirectoryInfo dir)
+        private void AddDirectory(string path)
+        {
+            if (Directory.Exists(path))
+            {
+                main_grid.IsEnabled = false;
+                BackgroundWorker add_files_in_directory = new BackgroundWorker();
+                add_files_in_directory.WorkerReportsProgress = true;
+                add_files_in_directory.DoWork += (object bw_sender, DoWorkEventArgs e_bw) =>
+                {
+                    GetAllFiles(new DirectoryInfo(path), add_files_in_directory);
+                };
+                add_files_in_directory.ProgressChanged += (object bw_sender, ProgressChangedEventArgs bw_e) =>
+                {
+                    destroy_list_data.Add(new DestroyListView((FileInfo)bw_e.UserState));
+                };
+                add_files_in_directory.RunWorkerCompleted += (object bw_sender, RunWorkerCompletedEventArgs bw_e) =>
+                {
+                    files_list.Items.Refresh();
+                    main_grid.IsEnabled = true;
+                };
+                add_files_in_directory.RunWorkerAsync();
+            }
+        }
+
+        private void GetAllFiles(DirectoryInfo dir, BackgroundWorker worker)
         {
             try
             {
                 var sub_dirs = dir.GetDirectories();
                 foreach (var i in sub_dirs)
-                    try { GetAllFiles(i); } catch (Exception) { }
+                {
+                    if (CloseWindow)
+                        return;
+                    try { GetAllFiles(i, worker); }
+                    catch (Exception) { }
+                }
             }
             catch (Exception) { }
             FileInfo[] files = null;
@@ -195,369 +148,231 @@ namespace File_Manager
             {
                 files = dir.GetFiles();
                 foreach (var i in files)
-                    try { add_directory_BackgroundWorker.ReportProgress(0, i); } catch (Exception) { }
+                {
+                    if (CloseWindow)
+                        return;
+                    try { worker.ReportProgress(0, i); }
+                    catch (Exception) { }
+                }
             }
             catch (Exception) { }
         }
 
-        void AddFilesBW_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        private void FilesList_Drop(object sender, DragEventArgs e)
         {
-            FileInfo i = (FileInfo)e.UserState;
-            try
-            { list_to_destroy.Add(new DestroyListView(i.FullName, Functions.GetFileImage24(i.Extension), i)); }
-            catch (Exception) { }
-        }
-
-        void AddFilesBW_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
-        {
-            if (list_to_destroy.Count > 0)
-                items_count.Text = list_to_destroy.Count + (list_to_destroy.Count > 1 ? " Items" : " Item");
-            else
-                items_count.Text = "";
-            destroy_control.IsEnabled = true;
+            string[] data;
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                if ((data = (string[])e.Data.GetData(DataFormats.FileDrop)).Length == 1 && Directory.Exists(data[0]) )
+                    AddDirectory(data[0]);
+                else if(data.Length > 0)
+                    AddFiles(data);
         }
 
         private void Destroy_Click(object sender, RoutedEventArgs e)
         {
-            if (list_to_destroy.Count > 0)
+            if (destroy_list_data.Count > 0)
+            {
                 if (new My_MessageBox("Confirmation", "Are you sure you want to destroy all files in list?", "Caution: these files will permanently lose!", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-Warning.png")), null, null).ShowThisDialog() == MyMessageBoxResult.Yes)
                 {
-                    complete = 0;
-                    destroy_control.IsEnabled = false;
-                    Undone = new List<FileInfo>();
-                    destroy_files_BackgroundWorker = new BackgroundWorker();
-                    destroy_files_BackgroundWorker.WorkerSupportsCancellation = true;
-                    destroy_files_BackgroundWorker.WorkerReportsProgress = true;
-                    destroy_files_BackgroundWorker.DoWork += DestroyBW_DoWork;
-                    destroy_files_BackgroundWorker.ProgressChanged += DestroyBW_ProgressChanged;
-                    destroy_files_BackgroundWorker.RunWorkerCompleted += DestroyBW_RunWorkerCompleted;
-                    delete = delete_files.IsChecked.Value;
-                    method = method_cb.SelectedIndex == 0 ? true : false;
+                    int repete;
+                    bool delete;
+                    DestroyMethod method;
                     int.TryParse(repete_tb.Text, out repete);
                     if (repete < 1) repete = 1;
-                    else if (repete > 999) repete = 999;
-                    repete_tb.Text = repete.ToString();
-                    total_progress.Visibility = Visibility.Visible;
-                    total_progress.Value = 0;
-                    total_progress.Maximum = list_to_destroy.Count;
-                    destroy_files_BackgroundWorker.RunWorkerAsync();
+                    else if (repete > 35) repete = 35;
+                    delete = delete_files.IsChecked.Value;
+                    method = method_cb.SelectedIndex == 0 ? DestroyMethod.FastZero : method_cb.SelectedIndex == 1 ? DestroyMethod.FastOne : DestroyMethod.Secure;
+                    List<FileInfo> files = new List<FileInfo>();
+                    foreach (var i in destroy_list_data)
+                        files.Add(i.File);
+                    new Operation().StartDestroyFiles(files, method, repete, delete, true);
+                    ClearList_Click(null, null);
+                    new My_MessageBox("FILE MANAGER", "Operation done.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-information.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-information.wav")).ShowDialog();
                 }
-        }
-
-        private void DestroyBW_DoWork(object sender, DoWorkEventArgs e)
-        {
-            BackgroundWorker bw = (BackgroundWorker)sender;
-            Thread process_thread = new Thread(() =>
-            {
-                while (bw.IsBusy)
-                {
-                    bw.ReportProgress(0);
-                    Thread.Sleep(200);
-                }
-            });
-            process_thread.Start();
-            for (int index = 0; index < list_to_destroy.Count; index++)
-            {
-                if (CloseWindow) return;
-                list_to_destroy[index].CurrentProgress = 0;
-                try
-                {
-                    string new_name = GetFileName(list_to_destroy[index].File.Directory.FullName);
-                    while (File.Exists(new_name) || Directory.Exists(new_name))
-                        new_name = GetFileName(list_to_destroy[index].File.Directory.FullName);
-                    list_to_destroy[index].File.MoveTo(new_name);
-                }
-                catch (Exception) { continue; }
-                int dones = 0;
-                if (method)
-                {
-                    list_to_destroy[index].MaximumValue = list_to_destroy[index].File.Length * repete;
-                    for (int i = 0; i < repete; i++)
-                        WriteFile(list_to_destroy[index], GetBuffer(method, 0), list_to_destroy[index].File.Length, true, ref list_to_destroy[index].current_progress, 1);
-                    dones = 35;
-                }
-                else
-                {
-                    list_to_destroy[index].MaximumValue = list_to_destroy[index].File.Length * repete * 35;
-                    for (int i = 0; i < repete; i++)
-                        for (int j = 0; j < 35; j++)
-                            dones += WriteFile(list_to_destroy[index], GetBuffer(method, j), list_to_destroy[index].File.Length, true, ref list_to_destroy[index].current_progress, 1);
-                }
-                list_to_destroy[index].CurrentProgress = list_to_destroy[index].MaximumValue;
-                try
-                {
-                    if (dones > 30 && delete)
-                        list_to_destroy[index].File.Delete();
-                    complete++;
-                }
-                catch (Exception) { }
             }
-        }
-
-        private void DestroyBW_ProgressChanged(object sender, ProgressChangedEventArgs e)
-        {
-            files_list.Items.Refresh();
-            total_progress.Value = complete;
-        }
-
-        private void DestroyBW_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
-        {
-            for (int i = list_to_destroy.Count - 1; i >= 0; i--)
-            {
-                if (list_to_destroy[i].MaximumValue == list_to_destroy[i].CurrentProgress)
-                    list_to_destroy.RemoveAt(i);
-                if (CloseWindow) return;
-            }
-            destroy_control.IsEnabled = true;
-            total_progress.Visibility = Visibility.Hidden;
-            files_list.Items.Refresh();
-            new My_MessageBox("FILE MANAGER", "Operation done.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-information.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-information.wav")).ShowDialog();
+            else
+                new My_MessageBox("FILE MANAGER", "List is empety, please add some files first.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-warning.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-warning.wav")).ShowDialog();
         }
 
         private void RemoveSelected_Click(object sender, RoutedEventArgs e)
         {
-            for (int i = files_list.SelectedItems.Count - 1; i >= 0; i--)
-                list_to_destroy.RemoveAt(files_list.Items.IndexOf(files_list.SelectedItems[i]));
-            if (list_to_destroy.Count > 0)
-                items_count.Text = list_to_destroy.Count + (list_to_destroy.Count == 1 ? " Item" : " Items");
-            else
-                items_count.Text = string.Empty;
+            //if to remove items > 0.5 total items rebuild list
+            //**** test  which fast
+            destroy_list_data.RemoveAll(x => files_list.SelectedItems.Contains(x));
+            files_list.Items.Refresh();
+
+            //or
+
+            //for (int i = files_list.SelectedItems.Count - 1; i >= 0; i--)
+            //    destroy_list_data.RemoveAt(files_list.Items.IndexOf(files_list.SelectedItems[i]));
         }
 
         private void ClearList_Click(object sender, RoutedEventArgs e)
         {
-            list_to_destroy.Clear();
-            items_count.Text = "";
+            destroy_list_data.Clear();
+            files_list.Items.Refresh();
         }
 
         #endregion
 
         #region Destroy Disk
 
-        bool method2, pause;
-        DriveInfo drive;
-        double completed_progress_d;
-        byte file_creating_error;
-        BackgroundWorker destroy_disk_BackgroundWorker;
+        DriveInfo[] drivers;
 
-        private void Refresh_Click(object sender, RoutedEventArgs e)
+        private void GetDrivers()
         {
-            try
+            drive_list.Items.Clear();
+            BackgroundWorker get_drivers = new BackgroundWorker();
+            drive_list.IsEnabled = destroy_button.IsEnabled = refresh.IsEnabled = false;
+            get_drivers.DoWork += (object senderw, DoWorkEventArgs ew) => { try { drivers = DriveInfo.GetDrives(); } catch (Exception) { } };
+            get_drivers.RunWorkerCompleted += (object sender, RunWorkerCompletedEventArgs e) =>
             {
-                completed_progress_d = 0;
-                total_MB.Text = "";
                 drive_list.Items.Clear();
-                DriveInfo[] drives = DriveInfo.GetDrives();
-                foreach (var i in drives)
+                foreach (var i in drivers)
                     if (i.IsReady && i.DriveType != DriveType.CDRom && i.TotalFreeSpace > 0)
                         drive_list.Items.Add(i.Name);
-            }
-            catch (Exception ex)
-            { new My_MessageBox("FILE MANAGER", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                drive_list.IsEnabled = destroy_button.IsEnabled = refresh.IsEnabled = true;
+            };
+            get_drivers.RunWorkerAsync();
+
         }
 
         private void DriveList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (drive_list.SelectedIndex > -1)
-            {
-                drive = new DriveInfo(drive_list.SelectedItem.ToString());
-                total_MB.Text = Functions.FileSize(drive.TotalFreeSpace, 2);
-                completed_MB.Text = "0 byte ";
-                total_progress_disk.Maximum = drive.TotalFreeSpace;
-                total_progress.Value = 0;
-            }
+            if (!starting_window)
+                if (drive_list.SelectedIndex > -1)
+                {
+                    DriveInfo drive = new DriveInfo(drive_list.SelectedItem.ToString());
+                    if (drive.IsReady)
+                    {
+                        drive_icon.Source = Functions.GetDriveImage(drive, 256);
+                        drive_name.Text = (drive.VolumeLabel.Equals(string.Empty) ? "Local drive" : drive.VolumeLabel) + string.Format(" ({0})", drive.Name);
+                        drive_format.Text = "File system: " + drive.DriveFormat;
+                        drive_free_size.Text = "Free space " + Functions.FileSize(drive.AvailableFreeSpace, 2);
+                        avalible_size_rec.Width = (total_size_rec.ActualWidth - 2) * (drive.TotalSize - drive.TotalFreeSpace) / drive.TotalSize;
+                        avalible_size_rec.ToolTip = "Used space: " + Functions.FileSize(drive.TotalSize - drive.TotalFreeSpace, 2);
+                        total_size_rec.ToolTip = "Total space: " + Functions.FileSize(drive.TotalSize, 2);
+                    }
+                    else
+                        GetDrivers();
+                }
+                else
+                {
+                    total_size_rec.ToolTip = avalible_size_rec.ToolTip = string.Empty;
+                    drive_icon.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/warning-grey.png"));
+                    drive_name.Text = "-";
+                    drive_format.Text = "-";
+                    drive_free_size.Text = "-";
+                    avalible_size_rec.Width = 0;
+                }
+        }
+
+        private void RefreshList_Click(object sender, RoutedEventArgs e)
+        {
+            GetDrivers();
         }
 
         private void DestroyDisk_Click(object sender, RoutedEventArgs e)
         {
             if (drive_list.SelectedIndex > -1)
             {
-                if (new My_MessageBox("Confirmation", "Are you sure you want to destroy all deleted files in '" + drive.Name + "'?", "Caution: these files will permanently lose!", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-Warning.png")), null, null).ShowThisDialog() == MyMessageBoxResult.Yes)
+                DriveInfo drive = new DriveInfo(drive_list.SelectedItem.ToString());
+                if (drive.IsReady)
                 {
-                    pause = false;
-                    completed_progress_d = 0;
-                    play_pause.Visibility = Visibility.Visible;
-                    DisableEnableControls(false);
-                    file_creating_error = 0;
-                    Undone = new List<FileInfo>();
-                    destroy_disk_BackgroundWorker = new BackgroundWorker();
-                    destroy_disk_BackgroundWorker.WorkerSupportsCancellation = true;
-                    destroy_disk_BackgroundWorker.WorkerReportsProgress = true;
-                    destroy_disk_BackgroundWorker.DoWork += DestroyDiskBW_DoWork;
-                    destroy_disk_BackgroundWorker.ProgressChanged += DestroyDiskBW_ProgressChanged;
-                    destroy_disk_BackgroundWorker.RunWorkerCompleted += DestroyDiskBW_RunWorkerCompleted;
-                    method2 = method_cb2.SelectedIndex == 0 ? true : false;
-                    total_MB.Text = Functions.FileSize(drive.TotalFreeSpace, 2);
-                    total_progress_disk.Maximum = drive.TotalFreeSpace - 1024.0;
-                    destroy_disk_BackgroundWorker.RunWorkerAsync();
+                    if (new My_MessageBox("FILE MANAGER", "Are you sure you want to destroy all deleted files in '" + drive.Name + "'?", "Caution: these files will permanently lose!", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-Warning.png")), null, null).ShowThisDialog() == MyMessageBoxResult.Yes)
+                    {
+                        int repeat;
+                        bool delete;
+                        DestroyMethod method;
+                        int.TryParse(disk_repete_tb.Text, out repeat);
+                        if (repeat < 1) repeat = 1;
+                        else if (repeat > 35) repeat = 35;
+                        delete = disk_delete_files.IsChecked.Value;
+                        method = disk_method_cb.SelectedIndex == 0 ? DestroyMethod.FastZero : disk_method_cb.SelectedIndex == 1 ? DestroyMethod.FastOne : DestroyMethod.Secure;
+                        new Operation().StartDestroyDisk(drive, method, repeat, delete, true);
+                        new My_MessageBox("FILE MANAGER", "Operation done.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-information.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-information.wav")).ShowDialog();
+                        DriveList_SelectionChanged(null, null);
+                    }
                 }
-            }
-            else
-                new My_MessageBox("File Manager", "Select Disk Drive First", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
-        }
-
-        private void DisableEnableControls(bool p)
-        {
-            drive_list.IsEnabled = refresh.IsEnabled = method_cb2.IsEnabled = destroy_button.IsEnabled = p;
-        }
-
-        private void DestroyDiskBW_DoWork(object sender, DoWorkEventArgs e)
-        {
-            Thread process_thread = new Thread(() =>
-            {
-                while (destroy_disk_BackgroundWorker.IsBusy)
-                {
-                    destroy_disk_BackgroundWorker.ReportProgress(0);
-                    Thread.Sleep(200);
-                }
-            });
-            process_thread.Start();
-            List<string> files_name = new List<string>();
-            while (drive.IsReady && drive.TotalFreeSpace > 1073742848 && file_creating_error < 3)
-            {
-                if (CloseWindow) return;
-                PrepareAndWriteFile(files_name, 1073741824);
-            }
-            while (drive.IsReady && drive.TotalFreeSpace > 0 && drive.AvailableFreeSpace > 1025 && file_creating_error < 3)
-            {
-                if (CloseWindow) return;
-                PrepareAndWriteFile(files_name, drive.AvailableFreeSpace - 1024);
-            }
-            if (file_creating_error > 2)
-                destroy_disk_BackgroundWorker.ReportProgress(-100, "Can not destrory deleted files on this drive, try to cleaning up...");
-            int errors = 0;
-            StringBuilder message = new StringBuilder();
-            message.AppendLine("Some files have not deleted successfull you can delete them manually:");
-            for (int i = files_name.Count - 1; i >= 0; i--)
-                try
-                {
-                    File.Delete(files_name[i]);
-                    files_name.RemoveAt(i);
-                }
-                catch (Exception) { errors++; message.AppendLine(files_name[i]); }
-            if (errors > 0)
-                destroy_disk_BackgroundWorker.ReportProgress(-100, message);
-        }
-
-        private void PrepareAndWriteFile(List<string> files_name, long size)
-        {
-            FileInfo fi = new FileInfo(GetFileName(drive.Name));
-            if (method2)
-                if (WriteFile(new DestroyListView("", Functions.GetFileImage24(fi.Extension), fi), GetBuffer(method2, 0), size, false, ref completed_progress_d, 1) == 1)
-                    files_name.Add(fi.FullName);
                 else
-                { destroy_disk_BackgroundWorker.ReportProgress(-100, "Something wronge while creating file \"" + fi.FullName + "\""); file_creating_error++; }
+                {
+                    GetDrivers();
+                    new My_MessageBox("FILE MANAGER", "Your selected drive seem to is not avilable now, please re-select the right drive then try again.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                }
+            }
             else
-            {
-                int count = 0;
-                for (int k = 0; k < 35; k++)
-                    count += WriteFile(new DestroyListView("", Functions.GetFileImage24(fi.Extension), fi), GetBuffer(method2, k), size, false, ref completed_progress_d, 35);
-                if (count > 25)
-                    files_name.Add(fi.FullName);
-                else
-                { destroy_disk_BackgroundWorker.ReportProgress(-100, "Something wronge while creating file \"" + fi.FullName + "\""); file_creating_error++; }
-            }
-        }
-
-        string GetFileName(string parent)
-        {
-            string name = "";
-            while (true)
-            {
-                name = parent + "\\$";
-                Random rand = new Random((int)DateTime.Now.Ticks);
-                for (int i = 0; i < 7; i++)
-                    name += Chars[rand.Next(Chars.Length - 1)];
-                name += ".";
-                for (int i = 0; i < 3; i++)
-                    name += Chars[rand.Next(Chars.Length - 1)];
-                if (!File.Exists(name) && !Directory.Exists(name))
-                    break;
-            }
-            return name;
-        }
-
-        private void DestroyDiskBW_ProgressChanged(object sender, ProgressChangedEventArgs e)
-        {
-            if (e.ProgressPercentage == 0)
-            {
-                completed_MB.Text = Functions.FileSize(completed_progress_d, 2);
-                total_progress_disk.Value = completed_progress_d;
-            }
-            else if (e.ProgressPercentage == -100)
-                new My_MessageBox("FILE MANAGER", e.UserState.ToString(), e.UserState is StringBuilder ? new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-warning.png")) : new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), e.UserState is StringBuilder ? new Uri(Environment.CurrentDirectory + @"\Media\dialog-warning.wav") : new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
-        }
-
-        private void DestroyDiskBW_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
-        {
-            total_progress_disk.Value = total_progress_disk.Maximum;
-            completed_MB.Text = total_MB.Text;
-            DisableEnableControls(true);
-            play_pause.Visibility = Visibility.Hidden;
-            new My_MessageBox("FILE MANAGER", "Operation done.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-information.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-information.wav")).ShowDialog();
-        }
-
-        private void PlayPause_Click(object sender, RoutedEventArgs e)
-        {
-            if (pause)
-                play_pause_img.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Menu/copy-pause.png"));
-            else
-                play_pause_img.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Menu/copy-start.png"));
-            pause = !pause;
+                new My_MessageBox("FILE MANAGER", "You should select drive letter first.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
         }
 
         #endregion
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            rec.Width = label1.ActualWidth;
+            files_list.DataContext = destroy_list_data;
+            rec.Width = label1.ActualWidth;
+            starting_window = false;
+        }
+
+        void TabChange_MouseButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            ThicknessAnimation ta = new ThicknessAnimation(new Thickness((-1 * tab_panal.Children.IndexOf((Label)sender)) * ActualWidth, 0, 0, 0), new Duration(new TimeSpan(2000000)));
+            double rec_wid = 0;
+            foreach (Label i in tab_panal.Children)
+                if (i != sender)
+                    rec_wid += i.ActualWidth;
+                else
+                    break;
+            ThicknessAnimation ta2 = new ThicknessAnimation(new Thickness(rec_wid, 32, 0, 0), new Duration(new TimeSpan(2000000)));
+            rec.Width = ((Label)sender).ActualWidth;
+            rec.BeginAnimation(MarginProperty, ta2);
+            mother.BeginAnimation(MarginProperty, ta);
+            label1.Background = Brushes.Black; label1.Foreground = Brushes.White;
+            label2.Background = Brushes.Black; label2.Foreground = Brushes.White;
+            ((Label)sender).Background = Brushes.White;
+            ((Label)sender).Foreground = Brushes.Black;
+            CurrentPage = (DestroyPages)tab_panal.Children.IndexOf((Label)sender) + 1;
+        }
+
+        private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (!starting_window)
+            {
+                //if(current_page==DestroyPages.DiskDestroy)//****
+                double t = (-1 * ((int)CurrentPage - 1)) * e.NewSize.Width;
+                ThicknessAnimation ta = new ThicknessAnimation(new Thickness(t, 0, 0, 0), new Duration(new TimeSpan(0)));
+                mother.BeginAnimation(MarginProperty, ta);
+                mother.Margin = new Thickness(t, 0, 0, 0);
+                for (int i = 0; i < mother.Children.Count; i++)
+                {
+                    ((Grid)mother.Children[i]).Width = ActualWidth - 5;
+                    ((Grid)mother.Children[i]).Margin = new Thickness(i * e.NewSize.Width, 0, 0, 0);
+                }
+            }
+        }
+
     }
 
-    class DestroyListView : GeneralPurpose
+    internal class DestroyListView : GeneralPurpose
     {
-        public DestroyListView(string file_path, BitmapImage img_source, FileInfo file)
+        public DestroyListView(FileInfo file)
         {
-            if (file_path == "")
-                FullPath = file.FullName;
-            FullPath = file_path;
-            Image = img_source;
+            FullPath = file.FullName;
+            Image = Functions.GetFileImage24(file.Extension);
             File = file;
-            ProgressBarVisibility = Visibility.Visible;
         }
+    }
 
-        private String error_massege;
-        public string ErrorMassege
-        {
-            get { return error_massege; }
-            set { error_massege = value; }
-        }
+    enum DestroyPages
+    {
+        FilesDestroy = 1,
+        DiskDestroy = 2
+    }
 
-        Visibility progressbar_bisibility;
-        public Visibility ProgressBarVisibility
-        {
-            get { return progressbar_bisibility; }
-            set { progressbar_bisibility = value; }
-        }
-
-        Visibility textblock_bisibility;
-        public Visibility TextBlockVisibility
-        {
-            get { return textblock_bisibility; }
-            set { textblock_bisibility = value; }
-        }
-
-        private string file_path;
-
-        private BitmapImage img_source;
-
-        internal double current_progress;
-        public double CurrentProgress
-        {
-            get { return current_progress; }
-            set { current_progress = value; }
-        }
-
-        private double maximum_value;
-        public double MaximumValue
-        {
-            get { return maximum_value; }
-            set { maximum_value = value; }
-        }
+    internal enum DestroyMethod
+    {
+        FastZero = 1,
+        FastOne = 2,
+        Secure = 3
     }
 }

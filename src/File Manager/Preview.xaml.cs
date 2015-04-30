@@ -1070,7 +1070,7 @@ namespace File_Manager
             app_can_open_this_type.Items.Add("File Explorer");
             app_can_open_this_type.Items.Add("Windows Explorer");
             time_region.Visibility = Visibility.Hidden;
-            item_image.Source = Functions.GetDriveImage(driveInfo.DriveType, driveInfo.Name.ToLower().Equals(Functions.SystemDrive), driveInfo.IsReady, 256);
+            item_image.Source = Functions.GetDriveImage(driveInfo, 256);
 
             //main menu and tabs
             move_to_button.Visibility = delete_button.Visibility = Visibility.Collapsed;
@@ -1472,7 +1472,7 @@ namespace File_Manager
             else if (type == ItemType.File)
                 list.Add(new FileOperationItem(fi, remove, fi.Name));
             if (list.Count > 0)
-                new Operation().CopyDialogShow(list, Op.Copy, copy_to, false);
+                new Operation().CopyDialogShow(list, OperationType.Copy, copy_to, false);
         }
 
         private void MainMenuDelete_Click(object sender, RoutedEventArgs e)
@@ -1627,7 +1627,7 @@ namespace File_Manager
                 list.Add(new FileOperationItem(new FileInfo(fi.FullName), false, CalcFileAttributes(FileAttributes.Directory, new FileInfo(fi.FullName).Attributes, attributes)));
             else
                 list.Add(new FileOperationItem(new DirectoryInfo(di == null ? dri.Name : di.FullName), false, CalcFileAttributes(FileAttributes.Directory, new DirectoryInfo(di == null ? dri.Name : di.FullName).Attributes, attributes)));
-            new Operation().CopyDialogShow(list, Op.Attributes, "", true);
+            new Operation().CopyDialogShow(list, OperationType.Attributes, "", true);
         }
 
         private void ApplyAttreputeToAllContent_Click(object sender, RoutedEventArgs e)
@@ -1650,7 +1650,7 @@ namespace File_Manager
                         i.short_path = CalcFileAttributes(0, i.Item.Attributes, attributes);
                         list.Add(i);
                     }
-                    new Operation().CopyDialogShow(list, Op.Attributes, "", true);
+                    new Operation().CopyDialogShow(list, OperationType.Attributes, "", true);
                 }
         }
 
@@ -1891,6 +1891,8 @@ namespace File_Manager
 
         #endregion
 
+        double subtitle_sync = 0;
+        Encoding subtitle_encode = Encoding.UTF8;
         private void SubtitleOption_Click(object sender, RoutedEventArgs e)
         {
             if (video_player_element.CanPause)
@@ -1899,14 +1901,17 @@ namespace File_Manager
                 video_paly_button_image.ToolTip = "Play";
                 video_player_element.Pause();
             }
-            FontWithColor k = new FontWithColor(subtitle_text.FontFamily, subtitle_text.Foreground, subtitle_text.FontSize, subtitle_text.FontStyle.Equals(FontStyles.Italic), subtitle_text.FontWeight.Equals(FontWeights.Bold));
-            var val = new Subtitle_Option().ShowWindow(k);
-            subtitle_text.FontFamily = subtitle_shadow.FontFamily = new System.Windows.Media.FontFamily(val.font_name.Name);
+            FontWithColor current_font = new FontWithColor(subtitle_text.FontFamily, subtitle_text.Foreground, subtitle_text.FontSize, subtitle_text.FontStyle.Equals(FontStyles.Italic), subtitle_text.FontWeight.Equals(FontWeights.Bold), Encoding.UTF8, subtitle_sync, subtitle_text.Margin.Left, subtitle_text.Margin.Bottom);
+            var val = new Subtitle_Option().ShowWindow(current_font);
+            subtitle_text.FontFamily = subtitle_shadow.FontFamily = new FontFamily(val.font_name.Name);
             subtitle_text.FontSize = subtitle_shadow.FontSize = val.font_size;
             subtitle_text.Foreground = val.font_color;
             subtitle_text.FontStyle = subtitle_shadow.FontStyle = val.italic ? FontStyles.Italic : FontStyles.Normal;
             subtitle_text.FontWeight = subtitle_shadow.FontWeight = val.bold ? FontWeights.Bold : FontWeights.Normal;
             VideoPlayPause_Click(sender, null);
+            subtitle_sync = val.async_millisecond;
+            subtitle_text.Margin = new Thickness(val.position.X, 0, val.position.X, val.position.Y);
+            subtitle_shadow.Margin = new Thickness(val.position.X - 1.5, 0, val.position.X + 1.5, val.position.Y + 1.5);
         }
 
         private void MuteVolume_Click(object sender, RoutedEventArgs e)

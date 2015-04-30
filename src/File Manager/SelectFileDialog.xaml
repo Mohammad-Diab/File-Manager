@@ -44,13 +44,13 @@
             </Viewport3D>
         </Grid>
         <Grid x:Name="containt_grid" Visibility="Collapsed">
-            <TextBox x:Name="address" Margin="265,5,227,0" Text="root" VerticalAlignment="Top" KeyUp="Address_KeyUp" Height="25"/>
-            <Button ToolTip="Go up" x:Name="Up_Button" HorizontalAlignment="Left" Margin="232,3.5,0,0" VerticalAlignment="Top" Width="28" Height="28" Background="{x:Null}" Click="UpButton_Click">
+            <TextBox x:Name="address" Margin="257,5,216,0" Text="root" VerticalAlignment="Top" KeyUp="Address_KeyUp" Height="24"/>
+            <Button ToolTip="Go up" x:Name="Up_Button" HorizontalAlignment="Left" Margin="228,5,0,0" VerticalAlignment="Top" Width="24" Height="24" Background="{x:Null}" Click="UpButton_Click" BorderBrush="#FFABADB3">
                 <Button.Content>
                     <Image Source="Images/Appearance/go-up.png" Stretch="Fill"/>
                 </Button.Content>
             </Button>
-            <TextBox x:Name="Filter_TextBox" HorizontalAlignment="Right" Margin="0,5,31,0" ToolTip="Filter or search" VerticalAlignment="Top" Width="158" TextChanged="FilterTextBox_TextChanged" KeyUp="FilterTextBox_KeyUp"/>
+            <TextBox x:Name="Filter_TextBox" HorizontalAlignment="Right" Margin="0,5,26,0" ToolTip="Filter or search" VerticalAlignment="Top" Width="162" Height="24" TextChanged="FilterTextBox_TextChanged" KeyUp="FilterTextBox_KeyUp"/>
             <Button x:Name="CreateFolder_Button" ToolTip="Create new directory" HorizontalAlignment="Left" Margin="205,0,0,10" VerticalAlignment="Bottom" Width="28" Height="28" Background="{x:Null}" Click="CreateFolderButton_Click">
                 <Button.Content>
                     <Image Source="Images/Appearance/new-folder.png" Stretch="Fill" />
@@ -158,21 +158,21 @@
             <ComboBox x:Name="Filter_ComboBox" HorizontalAlignment="Right" Margin="0,0,3,43" VerticalAlignment="Bottom" Width="157" Background="{x:Null}" SelectionChanged="FilterComboBox_SelectionChanged"/>
             <Button x:Name="OK_Button" Content="OK" HorizontalAlignment="Right" Margin="0,0,10,9" VerticalAlignment="Bottom" Width="75" Background="{x:Null}" Height="24" Click="OKButton_Click"/>
             <Button x:Name="ShowSelectedList_Button" Content="Show Multi Selection List" ToolTip="please note that if you use this button and then press OK your selected items is on the list not the selected item top." HorizontalAlignment="Right" Margin="0,0,170,9" VerticalAlignment="Bottom" Width="75" Background="{x:Null}" Height="24" Click="ShowSelectedList_Button_Click"/>
-            <Button ToolTip="Refresh" HorizontalAlignment="Right" Margin="0,3.5,199,0" VerticalAlignment="Top" Width="28" Height="28" Background="{x:Null}" Click="RefreshButton_Click">
+            <Button ToolTip="Refresh" HorizontalAlignment="Right" Margin="0,5,193,0" VerticalAlignment="Top" Width="24" Height="24" Background="{x:Null}" Click="RefreshButton_Click" BorderBrush="#FFABADB3">
                 <Button.Content>
                     <Image Source="Images/Appearance/view-refresh.png" Stretch="Fill"/>
                 </Button.Content>
             </Button>
             <CheckBox x:Name="ReadOnly_CheckBox" Content="Open as read only" HorizontalAlignment="Left" Margin="250,0,0,14" VerticalAlignment="Bottom"/>
             <TextBlock HorizontalAlignment="Left" Margin="205,0,0,46" TextWrapping="Wrap" Text="Items name" VerticalAlignment="Bottom"/>
-            <Button ToolTip="Go home" HorizontalAlignment="Left" Margin="205,3.5,0,0" VerticalAlignment="Top" Width="28" Height="28" Background="{x:Null}" Click="GoHomeButton_Click">
+            <Button ToolTip="Go home" HorizontalAlignment="Left" Margin="205,5,0,0" VerticalAlignment="Top" Width="24" Height="24" Background="{x:Null}" Click="GoHomeButton_Click" BorderBrush="#FFABADB3">
                 <Button.Content>
                     <Image Source="Images/Appearance/go-home-28.png" Stretch="Fill" />
                 </Button.Content>
             </Button>
             <Button x:Name="Cancel_Button" Content="Cancel" HorizontalAlignment="Right" Margin="0,0,90,9" VerticalAlignment="Bottom" Width="75" Background="{x:Null}" Height="24" Click="CancelButton_Click"/>
             <TextBlock x:Name="NoFiles_TextBlock" Margin="185,60,10,0" TextWrapping="Wrap" VerticalAlignment="Top" TextAlignment="Center" FontSize="16" Text="No item much your search." Visibility="Hidden" Foreground="Gray"/>
-            <Button ToolTip="Search" HorizontalAlignment="Right" Margin="0,3.5,3,0" Height="28" VerticalAlignment="Top" Width="28" Background="{x:Null}" Click="SearchButton_Click">
+            <Button ToolTip="Search" HorizontalAlignment="Right" Margin="0,5,3,0" Height="24" VerticalAlignment="Top" Width="24" Background="{x:Null}" Click="SearchButton_Click" BorderBrush="#FFABADB3">
                 <Button.Content>
                     <Image Stretch="Fill" Source="Images/Appearance/view-search.png"/>
                 </Button.Content>
@@ -213,9 +213,10 @@
                 <ListBox x:Name="QuickAccess_List" Background="#FF404040" ItemsSource="{Binding}" Foreground="White" SelectionChanged="QuickAccessList_SelectionChanged">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch" IsEnabled="{Binding Path=IsEnable}">
-                                <Image Margin="0" Source="{Binding Path=Image}" Height="24" Width="24" VerticalAlignment="Top" HorizontalAlignment="Left"/>
-                                <TextBlock Margin="{Binding Path=TextMargin}" Text="{Binding Path=FullPath}" HorizontalAlignment="Left" FontSize="{Binding Path=FontSize}"/>
+                            <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch" IsEnabled="{Binding Path=IsEnable}" Cursor="Hand" Background="#00404040">
+                                <Image Margin="0" Source="{Binding Path=Image}" Height="{Binding Path=ImageHigh}" Width="24" VerticalAlignment="Top" HorizontalAlignment="Left"/>
+                                <TextBlock Margin="{Binding Path=TextMargin}" Text="{Binding Path=FullPath}" HorizontalAlignment="Left" Foreground="{Binding Path=TextForeground}" FontSize="{Binding Path=FontSize}">
+                                </TextBlock>
                             </Grid>
                         </DataTemplate>
                     </ListBox.ItemTemplate>

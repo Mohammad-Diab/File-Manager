@@ -172,7 +172,7 @@ namespace File_Manager
         {
             if (destroy_list_data.Count > 0)
             {
-                if (new My_MessageBox("Confirmation", "Are you sure you want to destroy all files in list?", "Caution: these files will permanently lose!", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-Warning.png")), null, null).ShowThisDialog() == MyMessageBoxResult.Yes)
+                if (Messages.ShowMessage("Are you sure you want to destroy all files in list?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "", "These files will permanently lose!") == MyMessageBoxResult.Yes)
                 {
                     int repete;
                     bool delete;
@@ -187,11 +187,11 @@ namespace File_Manager
                         files.Add(i.File);
                     new Operation().StartDestroyFiles(files, method, repete, delete, true);
                     ClearList_Click(null, null);
-                    new My_MessageBox("FILE MANAGER", "Operation done.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-information.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-information.wav")).ShowDialog();
+                    Messages.ShowMessage("Destroying done.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
                 }
             }
             else
-                new My_MessageBox("FILE MANAGER", "List is empety, please add some files first.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-warning.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-warning.wav")).ShowDialog();
+                Messages.ShowMessage("Some field is missing.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "List is empty.");
         }
 
         private void RemoveSelected_Click(object sender, RoutedEventArgs e)
@@ -279,7 +279,7 @@ namespace File_Manager
                 DriveInfo drive = new DriveInfo(drive_list.SelectedItem.ToString());
                 if (drive.IsReady)
                 {
-                    if (new My_MessageBox("FILE MANAGER", "Are you sure you want to destroy all deleted files in '" + drive.Name + "'?", "Caution: these files will permanently lose!", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-Warning.png")), null, null).ShowThisDialog() == MyMessageBoxResult.Yes)
+                    if (Messages.ShowMessage("Are you sure you want to destroy all deleted files in '" + drive.Name + "'?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "", "Delete files will be unrecoverable!") == MyMessageBoxResult.Yes)
                     {
                         int repeat;
                         bool delete;
@@ -290,25 +290,24 @@ namespace File_Manager
                         delete = disk_delete_files.IsChecked.Value;
                         method = disk_method_cb.SelectedIndex == 0 ? DestroyMethod.FastZero : disk_method_cb.SelectedIndex == 1 ? DestroyMethod.FastOne : DestroyMethod.Secure;
                         new Operation().StartDestroyDisk(drive, method, repeat, delete, true);
-                        new My_MessageBox("FILE MANAGER", "Operation done.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-information.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-information.wav")).ShowDialog();
+                        Messages.ShowMessage("Destroying done.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
                         DriveList_SelectionChanged(null, null);
                     }
                 }
                 else
                 {
                     GetDrivers();
-                    new My_MessageBox("FILE MANAGER", "Your selected drive seem to is not avilable now, please re-select the right drive then try again.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                    Messages.ShowMessage("Your selected drive seem to is not avilable now, please re-select the right drive then try again.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
                 }
             }
             else
-                new My_MessageBox("FILE MANAGER", "You should select drive letter first.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                Messages.ShowMessage("You should select drive letter first.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
         }
 
         #endregion
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            rec.Width = label1.ActualWidth;
             files_list.DataContext = destroy_list_data;
             rec.Width = label1.ActualWidth;
             starting_window = false;

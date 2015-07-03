@@ -131,6 +131,9 @@
     <Compile Include="Directory analyze.xaml.cs">
       <DependentUpon>Directory analyze.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Directory Explorer.xaml.cs">
+      <DependentUpon>Directory Explorer.xaml</DependentUpon>
+    </Compile>
     <Compile Include="File Destroyer.xaml.cs">
       <DependentUpon>File Destroyer.xaml</DependentUpon>
     </Compile>
@@ -146,6 +149,9 @@
     </Compile>
     <Compile Include="Media Converter.xaml.cs">
       <DependentUpon>Media Converter.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="ModrenMessageBox.xaml.cs">
+      <DependentUpon>ModrenMessageBox.xaml</DependentUpon>
     </Compile>
     <Compile Include="My Classes.cs" />
     <Compile Include="New Shortcut.xaml.cs">
@@ -166,8 +172,8 @@
     <Compile Include="SelectFileDialog.xaml.cs">
       <DependentUpon>SelectFileDialog.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Subtitle Option.xaml.cs">
-      <DependentUpon>Subtitle Option.xaml</DependentUpon>
+    <Compile Include="SubtitleSetting.xaml.cs">
+      <DependentUpon>SubtitleSetting.xaml</DependentUpon>
     </Compile>
     <Compile Include="System Monitor.xaml.cs">
       <DependentUpon>System Monitor.xaml</DependentUpon>
@@ -208,6 +214,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Directory analyze.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Directory Explorer.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -288,6 +298,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="ModrenMessageBox.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="My MessageBox.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -316,7 +330,7 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Subtitle Option.xaml">
+    <Page Include="SubtitleSetting.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -606,6 +620,109 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Images\Appearance\warning-grey.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Menu\about-tool.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Tools Icon\subtitle-options.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\show-passwoed.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\dialog-question.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\warning.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\button-retry.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\button-cancel.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\button-skip.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\button-default.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\dialog-cross.png" />
+    <Resource Include="Images\Appearance\dialog-tick.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\front.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\back.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\back-menu.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\down.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\up.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\refresh.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\search.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\new.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\edit.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\view.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\option.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\help.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\exit.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\recent.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\tools.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\new-window-admin.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\new-window.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\new-directory.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\new-file.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\new-shortcut.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\new-tab.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\history.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\quick-access.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\bookmark.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

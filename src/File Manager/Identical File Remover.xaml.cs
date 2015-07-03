@@ -113,7 +113,7 @@ namespace File_Manager
 
         private void FindDuplicate_Click(object sender, RoutedEventArgs e)
         {
-            if (dublicate_data.Count == 0 || MessageBox.Show("Clear List?", "FILE MANAGER", MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
+            if (dublicate_data.Count == 0 || Messages.ShowMessage("You should clear list before continue, do you want to do that?", ModrenMessageButton.YesNo, ModrenMessageImage.Question,ModrenMessageSound.Question,false,"") == MyMessageBoxResult.Yes)
             {
                 SelectFileDialog sfd = new SelectFileDialog();
                 sfd.dialogMode = SelectFileDialogMode.SelectDirectory;
@@ -165,8 +165,6 @@ namespace File_Manager
                             find_duplicate.ReportProgress(0, 70.0 / files.Count);
                             start_i = i;
                             int same_size = 0;
-                            //if (files[i].file.FullName.ToLower() == @"K:\VALUEADD\MSFT\USMT\ANSI\ICONLIB.DLL".ToLower() || files[i].file.FullName.ToLower() == @"K:\VALUEADD\MSFT\USMT\ICONLIB.DLL".ToLower())
-                            //    MessageBox.Show("");
                             if (files.Count > i + 1 && files[i].size == files[i + 1].size)
                             {
                                 ReadPartsOF(files[i]);
@@ -286,7 +284,7 @@ namespace File_Manager
                                 item_group_viewer.Items.Refresh();
                                 progressbar.Value = 100;
                                 TaskbarItemInfo.ProgressValue = 100;
-                                new My_MessageBox("FILE MANAGER", "Search done.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-information.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-information.wav")).ShowDialog();
+                                Messages.ShowMessage("Search done.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, true, dublicate_data.Count > 0 ? string.Format("We found {0} item{1}", dublicate_data.Count, dublicate_data.Count > 1 ? "s" : "") : "Congratulations we did not find any dublicates here.");
                                 TaskbarItemInfo.ProgressValue = 0;
                                 progressbar.Visibility = Visibility.Hidden;
                                 flow_shart.Visibility = Visibility.Visible;
@@ -369,7 +367,7 @@ namespace File_Manager
             if (dublicate_data[item_group_viewer.SelectedIndex].cheched_count == dublicate_data[item_group_viewer.SelectedIndex].Dublicats.Count - 1)
                 if (show_message_again)
                 {
-                    if (new My_MessageBox("File Manager", "You are about to remove all copies of this file, do you want to do that?", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-Warning.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-Warning.wav"), true).ShowThisDialog(out show_message_again) == MyMessageBoxResult.Yes)
+                    if (Messages.ShowMessage("You are about to remove all copies of this file, do you want to do that?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "", out show_message_again) == MyMessageBoxResult.Yes)
                         CheckAllSun(dublicate_data[item_group_viewer.SelectedIndex], 1);
                     else
                     {
@@ -412,7 +410,7 @@ namespace File_Manager
         {
             if (item_viewer.SelectedIndex > -1)
                 try { System.Diagnostics.Process.Start(dublicate_data[item_group_viewer.SelectedIndex].Dublicats[item_viewer.SelectedIndex].FullPath); }
-                catch (Exception ex) { new My_MessageBox("Error", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                catch (Exception ex) { Messages.ShowMessage("Some went wrong.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
         }
 
         private void Item_PreviewKeyUp(object sender, KeyEventArgs e)
@@ -436,18 +434,26 @@ namespace File_Manager
         private void Delete_Click(object sender, RoutedEventArgs e)
         {
             List<FileOperationItem> files = new List<FileOperationItem>();
+            StringBuilder items_name = new StringBuilder();
             foreach (var i in dublicate_data)
                 foreach (var j in i.Dublicats)
                     if (j.IsChecked)
+                    {
                         files.Add(new FileOperationItem(new FileInfo(j.FullPath), false, ""));
+                        items_name.AppendLine(j.FullPath);
+                    }
             if (files.Count > 0)
             {
-                My_MessageBox messagebox;
+                bool delete = false;
                 if (files.Count > 1)
-                    messagebox = new My_MessageBox(files.Count);
-                else
-                    messagebox = new My_MessageBox(files[0].Item);
-                if (messagebox.ShowThisDialog() == MyMessageBoxResult.Yes)
+                {
+                    if (Messages.ShowMessage(string.Format("Are you sure you want to permanently delete these {0} items", files.Count), ModrenMessageButton.YesNo, ModrenMessageImage.Delete, ModrenMessageSound.Question, true, items_name.ToString()) == MyMessageBoxResult.Yes)
+                        delete = true;
+                }
+                else if (files.Count == 1)
+                    if (Messages.ShowMessage("Are you sure you want to permanently delete these item", ModrenMessageButton.YesNo, ModrenMessageImage.Delete, ModrenMessageSound.Question, true, Messages.GetItemInfo(files[0].Item)) == MyMessageBoxResult.Yes)
+                        delete = true;
+                if (delete)
                 {
                     new Operation().CopyDialogShow(files, OperationType.Delete, "", true);
                     for (int i = dublicate_data.Count - 1; i > -1; i--)
@@ -462,11 +468,11 @@ namespace File_Manager
                     }
                     number.Text = dublicate_data.Count + " ";
                     items_label.Text = dublicate_data.Count > 1 ? "items" : "item";
-                    new My_MessageBox("File Manager", "Files deleted done.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-information.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-information.wav")).ShowDialog();
+                    Messages.ShowMessage("Files deleted done.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
                 }
             }
             else
-                new My_MessageBox("File Manager", "You have not selected any file to been deleted!", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-warning.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-warning.wav")).ShowDialog();
+                Messages.ShowMessage("You have not selected any file to delete.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
         }
 
         private void SelectAll_Click(object sender, RoutedEventArgs e)
@@ -596,11 +602,11 @@ namespace File_Manager
                     RestValue(f_grid);
                     f_filepath.Text = "-";
                     s_filepath.Text = "-";
-                    MessageBox.Show(ex.Message);
+                    Messages.ShowMessage("Something went wrong.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message);
                 }
             }
             else
-                MessageBox.Show("Files cant be same.");
+                Messages.ShowMessage("Files cant be same.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
         }
 
         private void FillSecondGrid(string p)
@@ -622,11 +628,11 @@ namespace File_Manager
                     RestValue(s_grid);
                     f_filepath.Text = "-";
                     s_filepath.Text = "-";
-                    MessageBox.Show(ex.Message);
+                    Messages.ShowMessage("Something went wrong.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message);
                 }
             }
             else
-                MessageBox.Show("Files cant be same.");
+                Messages.ShowMessage("Files cant be same.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
         }
 
         string OrginizeDate(int number, int digits)
@@ -758,10 +764,10 @@ namespace File_Manager
                             CalcHash(s);
                             if (f.SHA1.Equals(s.SHA1))
                             {
-                                MessageBox.Show("Equal");
+                                Messages.ShowMessage("Files is equal.", ModrenMessageButton.OK, ModrenMessageImage.Tick, ModrenMessageSound.Information, false, "");
                                 main_grid.IsEnabled = true;
                                 if (!f.file.Extension.ToLower().Equals(s.file.Extension.ToLower()))
-                                    if (MessageBox.Show("Files seem have deferent extention, do you want to run 'Super extention changer' to detemenate what is the corect extention?", "", MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
+                                    if (Messages.ShowMessage("Something wrong.", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, true, "Files seem have deferent extention, do you want to run 'Super extention changer' to detemenate what is the corect extention?") == MyMessageBoxResult.Yes)
                                     {
                                         List<string> files = new List<string>();
                                         files.Add(f.file.FullName);
@@ -773,7 +779,7 @@ namespace File_Manager
                         }
                     }
                     main_grid.IsEnabled = true;
-                    MessageBox.Show("Not Equal");
+                    Messages.ShowMessage("Files is equal.", ModrenMessageButton.OK, ModrenMessageImage.Cross, ModrenMessageSound.Information, false, "");
                 }
             }
         }

@@ -1,0 +1,18 @@
+What is new in this version:
+
+Version 0.2:
+	1) New Directory
+	2) View system information
+	2) Fixed some bugs 
+ 
+Version 0.1:
+	1) Back, Forward and Refresh buttons.
+	2) Details Pane.
+	3) Show hidden files option.
+	4) Ability to run New Window as Admin from the app.
+ 
+First Release 0.01:
+	Basic file manager (open files and browsing directory).
+
+
+mohammad.diab93@outlook.com

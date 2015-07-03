@@ -4,7 +4,6 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
@@ -40,8 +39,8 @@ namespace File_Manager
         internal List<string> SelectedItems = new List<string>();
         internal bool AddExtension = true;
         internal bool CheckFileExists = true;
-
-
+        Boolean use_multiselection_list = false, Initializing = true, ShowHiddenFiles = true;
+        MyMessageBoxResult return_value = MyMessageBoxResult.Cancel;
 
         ObservableCollection<ExplorerItem> explorer_data = new ObservableCollection<ExplorerItem>();
         ObservableCollection<QuickAccessMenuItem> quick_access_data = new ObservableCollection<QuickAccessMenuItem>();
@@ -59,8 +58,6 @@ namespace File_Manager
                 current_path = value;
             }
         }
-        Boolean use_multiselection_list = false, Initializing = true, ShowHiddenFiles = true;
-        MyMessageBoxResult return_value = MyMessageBoxResult.Cancel;
 
         public SelectFileDialog()
         {
@@ -147,9 +144,6 @@ namespace File_Manager
                 RootView();
             else
                 RootItemBrowse("root", CurrentPath, "");//if fult show root
-
-
-
         }
 
         void InitializeData()
@@ -161,27 +155,26 @@ namespace File_Manager
             get_drivers.RunWorkerCompleted += (object sender, RunWorkerCompletedEventArgs e) =>
             {
                 for (int i = drivers.Length - 1; i > -1; i--)
-                    quick_access_data.Insert(0, new QuickAccessMenuItem() { FullPath = drivers[i].IsReady ? ((drivers[i].VolumeLabel.Equals(string.Empty) ? "Local Drive" : drivers[i].VolumeLabel) + " (" + drivers[i].Name + ")") : drivers[i].Name, driveInfo = drivers[i], Image = Functions.GetDriveImage(drivers[i], 24), isDrive = true, FontSize = 14 });
-                quick_access_data.Insert(0, new QuickAccessMenuItem() { FullPath = "Hard Disk Drives", isDrive = false, Directory = null, FontSize = 12, IsEnable = false , TextMargin = new Thickness(5, 0, 0, 0) });
+                    quick_access_data.Insert(0, new QuickAccessMenuItem(drivers[i]));
+                quick_access_data.Insert(0, new QuickAccessMenuItem("Hard Disk Drives"));
             };
             get_drivers.RunWorkerAsync();
             string tmp_path;
-            quick_access_data.Add(new QuickAccessMenuItem() { FullPath = "Your Directories", isDrive = false, Directory = null, FontSize = 12, IsEnable = false, TextMargin = new Thickness(5, 0, 0, 0) });
+            quick_access_data.Add(new QuickAccessMenuItem("Your Directories"));
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)))
-                quick_access_data.Add(new QuickAccessMenuItem() { FullPath = "User Files"/*Path.GetFileName(tmp_path)*/, Directory = new DirectoryInfo(tmp_path), Image = Functions.GetSpecialDirectoryImage("user"), isDrive = false, FontSize = 14 });
+                quick_access_data.Add(new QuickAccessMenuItem(new DirectoryInfo(tmp_path), "user"));
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory)))
-                quick_access_data.Add(new QuickAccessMenuItem() { FullPath = Path.GetFileName(tmp_path), Directory = new DirectoryInfo(tmp_path), Image = Functions.GetSpecialDirectoryImage("desktop"), isDrive = false, FontSize = 14 });
-            if (Directory.Exists(tmp_path = GetDownloadsPath()))
-                quick_access_data.Add(new QuickAccessMenuItem() { FullPath = Path.GetFileName(tmp_path), Directory = new DirectoryInfo(tmp_path), Image = Functions.GetSpecialDirectoryImage("download"), isDrive = false, FontSize = 14 });
+                quick_access_data.Add(new QuickAccessMenuItem(new DirectoryInfo(tmp_path), "desktop"));
+            if (Directory.Exists(tmp_path = Functions.GetDownloadsPath()))
+                quick_access_data.Add(new QuickAccessMenuItem(new DirectoryInfo(tmp_path), "download"));
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)))
-                quick_access_data.Add(new QuickAccessMenuItem() { FullPath = Path.GetFileName(tmp_path), Directory = new DirectoryInfo(tmp_path), Image = Functions.GetSpecialDirectoryImage("document"), isDrive = false, FontSize = 14 });
+                quick_access_data.Add(new QuickAccessMenuItem(new DirectoryInfo(tmp_path), "document"));
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.MyMusic)))
-                quick_access_data.Add(new QuickAccessMenuItem() { FullPath = Path.GetFileName(tmp_path), Directory = new DirectoryInfo(tmp_path), Image = Functions.GetSpecialDirectoryImage("music"), isDrive = false, FontSize = 14 });
+                quick_access_data.Add(new QuickAccessMenuItem(new DirectoryInfo(tmp_path), "music"));
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures)))
-                quick_access_data.Add(new QuickAccessMenuItem() { FullPath = Path.GetFileName(tmp_path), Directory = new DirectoryInfo(tmp_path), Image = Functions.GetSpecialDirectoryImage("picture"), isDrive = false, FontSize = 14 });
+                quick_access_data.Add(new QuickAccessMenuItem(new DirectoryInfo(tmp_path), "picture"));
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.MyVideos)))
-                quick_access_data.Add(new QuickAccessMenuItem() { FullPath = Path.GetFileName(tmp_path), Directory = new DirectoryInfo(tmp_path), Image = Functions.GetSpecialDirectoryImage("video"), isDrive = false, FontSize = 14 });
-
+                quick_access_data.Add(new QuickAccessMenuItem(new DirectoryInfo(tmp_path), "video"));
 
             //if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory)))
             //    quick_access_data.Add(new QuickAccessMenuItem() { FullPath = Path.GetFileName(tmp_path), Directory = new DirectoryInfo(tmp_path), Image = Functions.GetSpecialDirectoryImage("desktop"), isDrive = true });
@@ -194,23 +187,23 @@ namespace File_Manager
             //if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.CommonVideos)))
             //    quick_access_data.Add(new QuickAccessMenuItem() { FullPath = Path.GetFileName(tmp_path), Directory = new DirectoryInfo(tmp_path), Image = Functions.GetSpecialDirectoryImage("video"), isDrive = true });
 
-            quick_access_data.Add(new QuickAccessMenuItem() { FullPath = "System Directories", isDrive = false, Directory = null, FontSize = 12, IsEnable = false, TextMargin = new Thickness(5, 0, 0, 0) });
+            quick_access_data.Add(new QuickAccessMenuItem("System Directories"));
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles)))
-                quick_access_data.Add(new QuickAccessMenuItem() { FullPath = Path.GetFileName(tmp_path), Directory = new DirectoryInfo(tmp_path), Image = Functions.GetSpecialDirectoryImage("programfile"), isDrive = false, FontSize = 14 });
+                quick_access_data.Add(new QuickAccessMenuItem(new DirectoryInfo(tmp_path), "programfile"));
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86)) && !Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86).Equals(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles)))
-                quick_access_data.Add(new QuickAccessMenuItem() { FullPath = Path.GetFileName(tmp_path), Directory = new DirectoryInfo(tmp_path), Image = Functions.GetSpecialDirectoryImage("programfile"), isDrive = false, FontSize = 14 });
+                quick_access_data.Add(new QuickAccessMenuItem(new DirectoryInfo(tmp_path), "programfile"));
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.Fonts)))
-                quick_access_data.Add(new QuickAccessMenuItem() { FullPath = Path.GetFileName(tmp_path), Directory = new DirectoryInfo(tmp_path), Image = Functions.GetSpecialDirectoryImage("font"), isDrive = false, FontSize = 14 });
+                quick_access_data.Add(new QuickAccessMenuItem(new DirectoryInfo(tmp_path), "font"));
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)))
-                quick_access_data.Add(new QuickAccessMenuItem() { FullPath = Path.GetFileName(tmp_path), Directory = new DirectoryInfo(tmp_path), Image = Functions.GetSpecialDirectoryImage("directory"), isDrive = false, FontSize = 14 });
+                quick_access_data.Add(new QuickAccessMenuItem(new DirectoryInfo(tmp_path), "directory"));
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.History)))
-                quick_access_data.Add(new QuickAccessMenuItem() { FullPath = Path.GetFileName(tmp_path), Directory = new DirectoryInfo(tmp_path), Image = Functions.GetSpecialDirectoryImage("history"), isDrive = false, FontSize = 14 });
+                quick_access_data.Add(new QuickAccessMenuItem(new DirectoryInfo(tmp_path), "history"));
         //Network
         }
 
         #region Exploreing
 
-        //cut copy drog and drop preview
+        //cut copy drug and drop preview
 
         private void RootView()
         {
@@ -224,7 +217,7 @@ namespace File_Manager
             get_drivers.RunWorkerCompleted += (object senderw, RunWorkerCompletedEventArgs ew) =>
             {
                 foreach (DriveInfo i in drivers)
-                    items.Add(new RootItem() { FullPath = i.IsReady ? ((i.VolumeLabel.Equals(string.Empty) ? "Local Drive" : i.VolumeLabel) + " (" + i.Name + ")") : i.Name, Header = "Hard Disk Drivers", isDrive = true, driveInfo = i, toolTip = i.Name, Image = Functions.GetDriveImage(i, 64) });
+                    items.Add(new RootItem(i));
                 CollectionView view = (CollectionView)CollectionViewSource.GetDefaultView(RootPage.ItemsSource);
                 PropertyGroupDescription groupDescription = new PropertyGroupDescription("Header");
                 view.GroupDescriptions.Add(groupDescription);
@@ -233,66 +226,43 @@ namespace File_Manager
             RootPage.ItemsSource = items;
             get_drivers.RunWorkerAsync();
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)))
-                items.Add(new RootItem() { FullPath = "User Files"/*Path.GetFileName(tmp_path)*/, Header = "Your Directories", isDrive = false, Directory = new DirectoryInfo(tmp_path), toolTip = tmp_path, Image = Functions.GetSpecialDirectoryImage("user") });
+                items.Add(new RootItem(new DirectoryInfo(tmp_path), "User directories", "user"));
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory)))
-                items.Add(new RootItem() { FullPath = Path.GetFileName(tmp_path), Header = "Your Directories", isDrive = false, Directory = new DirectoryInfo(tmp_path), toolTip = tmp_path, Image = Functions.GetSpecialDirectoryImage("desktop") });
-            if (Directory.Exists(tmp_path = GetDownloadsPath()))
-                items.Add(new RootItem() { FullPath = Path.GetFileName(tmp_path), Header = "Your Directories", isDrive = false, Directory = new DirectoryInfo(tmp_path), toolTip = tmp_path, Image = Functions.GetSpecialDirectoryImage("download") });
+                items.Add(new RootItem(new DirectoryInfo(tmp_path), "User directories", "desktop"));
+            if (Directory.Exists(tmp_path = Functions.GetDownloadsPath()))
+                items.Add(new RootItem(new DirectoryInfo(tmp_path), "User directories", "downloads"));
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)))
-                items.Add(new RootItem() { FullPath = Path.GetFileName(tmp_path), Header = "Your Directories", isDrive = false, Directory = new DirectoryInfo(tmp_path), toolTip = tmp_path, Image = Functions.GetSpecialDirectoryImage("document") });
+                items.Add(new RootItem(new DirectoryInfo(tmp_path), "User directories", "documents"));
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.MyMusic)))
-                items.Add(new RootItem() { FullPath = Path.GetFileName(tmp_path), Header = "Your Directories", isDrive = false, Directory = new DirectoryInfo(tmp_path), toolTip = tmp_path, Image = Functions.GetSpecialDirectoryImage("music") });
+                items.Add(new RootItem(new DirectoryInfo(tmp_path), "User directories", "music"));
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures)))
-                items.Add(new RootItem() { FullPath = Path.GetFileName(tmp_path), Header = "Your Directories", isDrive = false, Directory = new DirectoryInfo(tmp_path), toolTip = tmp_path, Image = Functions.GetSpecialDirectoryImage("picture") });
+                items.Add(new RootItem(new DirectoryInfo(tmp_path), "User directories", "pictures"));
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.MyVideos)))
-                items.Add(new RootItem() { FullPath = Path.GetFileName(tmp_path), Header = "Your Directories", isDrive = false, Directory = new DirectoryInfo(tmp_path), toolTip = tmp_path, Image = Functions.GetSpecialDirectoryImage("video") });
-
+                items.Add(new RootItem(new DirectoryInfo(tmp_path), "User directories", "videos"));
 
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory)))
-                items.Add(new RootItem() { FullPath = Path.GetFileName(tmp_path), Header = "Public Directories", isDrive = false, Directory = new DirectoryInfo(tmp_path), toolTip = tmp_path, Image = Functions.GetSpecialDirectoryImage("desktop") });
+                items.Add(new RootItem(new DirectoryInfo(tmp_path), "Public directories", "desktop"));
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments)))
-                items.Add(new RootItem() { FullPath = Path.GetFileName(tmp_path), Header = "Public Directories", isDrive = false, Directory = new DirectoryInfo(tmp_path), toolTip = tmp_path, Image = Functions.GetSpecialDirectoryImage("document") });
+                items.Add(new RootItem(new DirectoryInfo(tmp_path), "Public directories", "documents"));
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.CommonMusic)))
-                items.Add(new RootItem() { FullPath = Path.GetFileName(tmp_path), Header = "Public Directories", isDrive = false, Directory = new DirectoryInfo(tmp_path), toolTip = tmp_path, Image = Functions.GetSpecialDirectoryImage("music") });
+                items.Add(new RootItem(new DirectoryInfo(tmp_path), "Public directories", "music"));
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.CommonPictures)))
-                items.Add(new RootItem() { FullPath = Path.GetFileName(tmp_path), Header = "Public Directories", isDrive = false, Directory = new DirectoryInfo(tmp_path), toolTip = tmp_path, Image = Functions.GetSpecialDirectoryImage("picture") });
+                items.Add(new RootItem(new DirectoryInfo(tmp_path), "Public directories", "pictures"));
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.CommonVideos)))
-                items.Add(new RootItem() { FullPath = Path.GetFileName(tmp_path), Header = "Public Directories", isDrive = false, Directory = new DirectoryInfo(tmp_path), toolTip = tmp_path, Image = Functions.GetSpecialDirectoryImage("video") });
+                items.Add(new RootItem(new DirectoryInfo(tmp_path), "Public directories", "videos"));
+
 
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles)))
-                items.Add(new RootItem() { FullPath = Path.GetFileName(tmp_path), Header = "System Directories", isDrive = false, Directory = new DirectoryInfo(tmp_path), toolTip = tmp_path, Image = Functions.GetSpecialDirectoryImage("programfile") });
+                items.Add(new RootItem(new DirectoryInfo(tmp_path), "System directories", "programfile"));
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86)) && !Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86).Equals(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles)))
-                items.Add(new RootItem() { FullPath = Path.GetFileName(tmp_path), Header = "System Directories", isDrive = false, Directory = new DirectoryInfo(tmp_path), toolTip = tmp_path, Image = Functions.GetSpecialDirectoryImage("programfile") });
+                items.Add(new RootItem(new DirectoryInfo(tmp_path), "System directories", "programfile"));
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.Fonts)))
-                items.Add(new RootItem() { FullPath = Path.GetFileName(tmp_path), Header = "System Directories", isDrive = false, Directory = new DirectoryInfo(tmp_path), toolTip = tmp_path, Image = Functions.GetSpecialDirectoryImage("font") });
+                items.Add(new RootItem(new DirectoryInfo(tmp_path), "System directories", "fonts"));
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)))
-                items.Add(new RootItem() { FullPath = Path.GetFileName(tmp_path), Header = "System Directories", isDrive = false, Directory = new DirectoryInfo(tmp_path), toolTip = tmp_path, Image = Functions.GetSpecialDirectoryImage("directory") });
+                items.Add(new RootItem(new DirectoryInfo(tmp_path), "System directories", "directory"));
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.History)))
-                items.Add(new RootItem() { FullPath = Path.GetFileName(tmp_path), Header = "System Directories", isDrive = false, Directory = new DirectoryInfo(tmp_path), toolTip = tmp_path, Image = Functions.GetSpecialDirectoryImage("history") });
+                items.Add(new RootItem(new DirectoryInfo(tmp_path), "System directories", "history"));
         }
-
-        public static string GetDownloadsPath()
-        {
-            string path = "";
-            if (Environment.OSVersion.Version.Major >= 6)
-            {
-                IntPtr pathPtr;
-                int hr = SHGetKnownFolderPath(ref FolderDownloads, 0, IntPtr.Zero, out pathPtr);
-                if (hr == 0)
-                {
-                    path = Marshal.PtrToStringUni(pathPtr);
-                    Marshal.FreeCoTaskMem(pathPtr);
-                    return path;
-                }
-            }
-            path = Path.GetDirectoryName(Environment.GetFolderPath(Environment.SpecialFolder.Personal));
-            path = Path.Combine(path, "Downloads");
-            return path;
-        }
-
-        private static Guid FolderDownloads = new Guid("374DE290-123F-4565-9164-39C4925E467B");
-        [DllImport("shell32.dll", CharSet = CharSet.Auto)]
-        private static extern int SHGetKnownFolderPath(ref Guid id, int flags, IntPtr token, out IntPtr path);
 
         private void RootItem_DoubleClick(object sender, MouseButtonEventArgs e)
         {
@@ -311,9 +281,16 @@ namespace File_Manager
                 bool WorkerHasFailed = false;
                 List<DirectoryInfo> sub_directories = new List<DirectoryInfo>();
                 List<FileInfo> files = new List<FileInfo>();
+                string error_message = string.Empty, error_message_info = string.Empty;
                 BackgroundWorker GetFilesAndDirectory = new BackgroundWorker();
                 GetFilesAndDirectory.WorkerReportsProgress = true;
-
+                GetFilesAndDirectory.ProgressChanged += (object sender, ProgressChangedEventArgs e) =>
+                {
+                    if (e.ProgressPercentage < 0)
+                    {
+                        Messages.ShowMessage(error_message, ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, error_message_info != string.Empty  , error_message_info);
+                    }
+                };
                 GetFilesAndDirectory.DoWork += (object sender, DoWorkEventArgs e) =>
                 {
                     if (Directory.Exists(new_path))
@@ -329,13 +306,17 @@ namespace File_Manager
                         }
                         catch (Exception ex)
                         {
-                            string m = "can not get directory content, cancel browsing" + " extra info" + ex.Message;
+                            error_message = "We can not get  '" + new_path + "',  content, browsing has been canceled";
+                            error_message_info = ex.Message;
+                            GetFilesAndDirectory.ReportProgress(-1);
                             WorkerHasFailed = true;
                         }
                     }
                     else
                     {
-                        string m = "can not find directory '" + new_path + "', cancel browsing.";
+                        error_message = "We can not find directory '" + new_path + "', browsing has been canceled.";
+                        error_message_info = string.Empty;
+                        GetFilesAndDirectory.ReportProgress(-1);
                         WorkerHasFailed = true;
                     }
                 };
@@ -367,11 +348,10 @@ namespace File_Manager
                         //    NoFiles_TextBlock.Visibility = Visibility.Hidden;
 
                         FillListWithItems(sub_directories, files, filter_text);
-
                         CurrentPath = new_path;
                     }
-                    else
-                        MessageBox.Show("error while open '" + new_path + "'.");
+                    //else
+                    //    new ModrenMessageBox().ShowMessage("error while open '" + new_path + "'.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
                     Explorer.IsEnabled = true;
                     address.Text = CurrentPath;
                 };
@@ -398,7 +378,7 @@ namespace File_Manager
             foreach (var i in sub_directories)
                 if (ShowHiddenFiles || (!ShowHiddenFiles && !i.Attributes.HasFlag(FileAttributes.Hidden)))
                     if (i.Name.ToLower().Contains(filter_string))
-                        explorer_data.Add(new ExplorerItem() { isDirectory = true, FullPath = i.Name, Directory = i, Image = Functions.GetFileImage24("directory"), Date = string.Format("{0}/{1}/{2}  ", OrginizeDate(i.LastWriteTimeUtc.Day, 2), OrginizeDate(i.LastWriteTimeUtc.Month, 2), OrginizeDate(i.LastWriteTimeUtc.Year, 4)) + string.Format("{0}:{1}", OrginizeDate(i.LastWriteTimeUtc.Hour, 2), OrginizeDate(i.LastWriteTimeUtc.Minute, 2)), IsSelected = false, Size = "", Type = "Directory", ToolTip = i.FullName });
+                        explorer_data.Add(new ExplorerItem() { isDirectory = true, FullPath = i.Name, Directory = i, Image = Functions.GetFileImage24("directory"), Date = Functions.OrginizeDate(i.LastWriteTimeUtc), IsSelected = false, Size = "", Type = "Directory", ToolTip = i.FullName });
 
             string[] filters = (Filter_ComboBox.SelectedItem as ComboBoxItem).Tag as string[];
             bool all_files = (Filter_ComboBox.SelectedItem as ComboBoxItem).Tag is string;
@@ -406,7 +386,7 @@ namespace File_Manager
                 if (all_files || filters.Contains(i.Extension.ToLower()))
                     if (ShowHiddenFiles || (!ShowHiddenFiles && !i.Attributes.HasFlag(FileAttributes.Hidden)))
                         if (i.Name.ToLower().Contains(filter_string))
-                            explorer_data.Add(new ExplorerItem() { isDirectory = false, FullPath = i.Name, File = i, Image = Functions.GetFileImage24(i.Extension), Size = Functions.FileSize(i.Length, 2), Date = string.Format("{0}/{1}/{2}  ", OrginizeDate(i.LastWriteTimeUtc.Day, 2), OrginizeDate(i.LastWriteTimeUtc.Month, 2), OrginizeDate(i.LastWriteTimeUtc.Year, 4)) + string.Format("{0}:{1}", OrginizeDate(i.LastWriteTimeUtc.Hour, 2), OrginizeDate(i.LastWriteTimeUtc.Minute, 2)), Type = Functions.GetFileType(i.Extension), ToolTip = i.FullName });
+                            explorer_data.Add(new ExplorerItem() { isDirectory = false, FullPath = i.Name, File = i, Image = Functions.GetFileImage24(i.Extension), Size = Functions.FileSize(i.Length, 2), Date = Functions.OrginizeDate(i.LastWriteTimeUtc), Type = Functions.GetFileType(i.Extension), ToolTip = i.FullName });
             if (Explorer.Items.Count > 0)
                 Explorer.ScrollIntoView(Explorer.Items[0]);
             if (explorer_data.Count == 0)
@@ -426,7 +406,7 @@ namespace File_Manager
                 case "desktop":
                     return Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
                 case "downloads":
-                    return GetDownloadsPath();
+                    return Functions.GetDownloadsPath();
                 case "music":
                     return Environment.GetFolderPath(Environment.SpecialFolder.MyMusic);
                 case "pictures":
@@ -454,14 +434,6 @@ namespace File_Manager
                 if (i.Equals(new_path))
                     return true;
             return false;
-        }
-
-        string OrginizeDate(int number, int digits)
-        {
-            string N = number.ToString();
-            while (N.Length < digits)
-                N = "0" + N;
-            return N;
         }
 
         int FilesSorter(FileInfo x, FileInfo y)
@@ -553,12 +525,12 @@ namespace File_Manager
             if (CheckFileExists)
                 if (dialogMode == SelectFileDialogMode.OpenFile && !File.Exists(explorerItem.ToolTip))
                 {
-                    MessageBox.Show("File is not exists.");
+                    Messages.ShowMessage("File is not exists.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
                     return;
                 }
                 else if (dialogMode == SelectFileDialogMode.SaveFile && File.Exists(explorerItem.ToolTip))
                 {
-                    if (MessageBox.Show("File is already exists. overwrite?", "", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.No)
+                    if (Messages.ShowMessage("File is already exists. overwrite?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "") == MyMessageBoxResult.No)
                         return;
                 }
             if (dialogMode == SelectFileDialogMode.SaveFile)
@@ -571,7 +543,7 @@ namespace File_Manager
                 }
                 catch(Exception ex)
                 {
-                    MessageBox.Show("Sorry we can not create file" + "extra info:" + ex.Message, "FILE MANAGER");
+                    Messages.ShowMessage("Sorry we can not create file.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message);
                 }
             }
             SelectedItem = explorerItem.ToolTip;
@@ -694,9 +666,9 @@ namespace File_Manager
                                 multiselection_data.Add(new MultiSelectionItem() { isDirectory = true, FullPath = (RootPage.SelectedItem as RootItem).toolTip, Image = Functions.GetFileImage24("directory"), Directory = new DirectoryInfo((RootPage.SelectedItem as RootItem).toolTip) });
                         }
                         else
-                            MessageBox.Show("Select item first.");
+                            Messages.ShowMessage("Please select item first.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
                     else
-                        MessageBox.Show("Can not add directories to list.");
+                        Messages.ShowMessage("We can not add directories to list.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
                 }
                 else
                 {
@@ -770,7 +742,7 @@ namespace File_Manager
                         {
                             int i = 1;
                             while (Directory.Exists(current_path + "\\" + new_name + " (" + i + ")")) i++;
-                            if (new My_MessageBox("New directory", "Do you want to create directory '" + new_name + " (" + i + ")' instat of '" + new_name + "'", "", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/new-folder.png")), null, null).ShowThisDialog() == MyMessageBoxResult.Yes)
+                            if (Messages.ShowMessage("Directory is already exist.", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, true, "We found a directory with same name you have chosen,Do you want to create '" + new_name + " (" + i + ")' instat?") == MyMessageBoxResult.Yes)
                                 dir_name = current_path + "\\" + new_name + " (" + i + ")";
                         }
                         else
@@ -780,14 +752,14 @@ namespace File_Manager
                             if (dir_name != null) Directory.CreateDirectory(dir_name);
                             RefreshButton_Click(null, null);
                         }
-                        catch (Exception ex) { new My_MessageBox("Error", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                        catch (Exception ex) { Messages.ShowMessage("We found some problems while creating directory.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
                     }
                 }
                 else
-                    new My_MessageBox("FILE MANAGER", "You can not create directory from this dialog.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-warning.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-warning.wav")).ShowDialog();
+                    Messages.ShowMessage("You can not create directory from this dialog.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
             }
             else
-                new My_MessageBox("FILE MANAGER", "You can not create directory here!", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-warning.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-warning.wav")).ShowDialog();
+                Messages.ShowMessage("You can not create directory here!", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
         }
 
         private void OKButton_Click(object sender, RoutedEventArgs e)
@@ -861,7 +833,7 @@ namespace File_Manager
                     {
                         return_value = MyMessageBoxResult.OK;
                         SelectedItem = ((ExplorerItem)Explorer.SelectedItems[Explorer.SelectedItems.Count - 1]).ToolTip;
-                        SelectedItems = new List<string>();
+                        Close();
                     }
                     else
                         Functions.ShuckWindow(this, true, "You can not choose selected items.");
@@ -983,10 +955,33 @@ namespace File_Manager
             set { text_foreground = value; }
         }
 
-        public QuickAccessMenuItem()
+        public QuickAccessMenuItem(DirectoryInfo folder, string name)
         {
-            TextMargin = margin;
+            FullPath = folder.Name;
+            Directory = folder;
+            Image = Functions.GetSpecialDirectoryImage(name);
+            isDrive = false;
+            FontSize = 14;
             IsEnable = true;
+        }
+
+        public QuickAccessMenuItem(DriveInfo drive)
+        {
+            FullPath = drive.IsReady ? ((drive.VolumeLabel.Equals(string.Empty) ? "Local Drive" : drive.VolumeLabel) + " (" + drive.Name + ")") : drive.Name;
+            driveInfo = drive;
+            Image = Functions.GetDriveImage(drive, 24);
+            isDrive = true;
+            FontSize = 14;
+            ImageHight = 24;
+        }
+
+        public QuickAccessMenuItem(string title)
+        {
+            FullPath = title;
+            isDrive = false;
+            FontSize = 12;
+            IsEnable = false;
+            ImageHight = 0;
         }
     }
 
@@ -1015,7 +1010,6 @@ namespace File_Manager
     internal class RootItem : GeneralPurpose
     {
         public bool isDrive;
-        public bool isDirectory;
         
         public DriveInfo driveInfo;
 
@@ -1033,9 +1027,24 @@ namespace File_Manager
             set { header = value; }
         }
 
-        public RootItem()
+        public RootItem(DriveInfo i)
         {
+            FullPath = i.IsReady ? ((i.VolumeLabel.Equals(string.Empty) ? "Local Drive" : i.VolumeLabel) + " (" + i.Name + ")") : i.Name;
+            Header = "Disk drivers";
+            isDrive = true;
+            driveInfo = i;
+            toolTip = i.Name;
+            Image = Functions.GetDriveImage(i, 64);
+        }
 
+        public RootItem(DirectoryInfo di, string header, string image)
+        {
+            FullPath = di.Name;
+            Header = header;
+            isDrive = false;
+            Directory = di;
+            toolTip = di.FullName;
+            Image = Functions.GetSpecialDirectoryImage(image);
         }
     }
 

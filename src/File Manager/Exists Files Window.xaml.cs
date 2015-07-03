@@ -152,7 +152,7 @@ namespace File_Manager
                 switch (skip_items.SelectedIndex)
                 {
                     case 1:
-                        if (same != null || new My_MessageBox("File Manager", "This operation maybe take long time according to files size and amount of files, do you want to continue?", "", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/list.png")), null/*buttons*/, null/* button_actions*/).ShowThisDialog() == MyMessageBoxResult.Yes)
+                        if (same != null || Messages.ShowMessage("This operation maybe take long time according to files size and amount of files, do you want to continue?", ModrenMessageButton.YesNo, ModrenMessageImage.Exclamation, ModrenMessageSound.Question, false, "") == MyMessageBoxResult.Yes)
                         {
                             RemoveSame();
                             for (int i = same.Count - 1; i > -1; i--)

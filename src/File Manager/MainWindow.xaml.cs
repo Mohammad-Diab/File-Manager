@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Text;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
@@ -119,7 +120,7 @@ namespace File_Manager
 
         void ShowErrorAndClose(string error)
         {
-            new My_MessageBox("File Manager", error, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+            Messages.ShowMessage("Something wrong, sorry app will close now.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, false, error);
             Close();
         }
 
@@ -135,7 +136,7 @@ namespace File_Manager
             show_progress.DoWork += (object sender, DoWorkEventArgs e) =>
             {
                 int i = 2;
-                Thread.Sleep(250);
+                Thread.Sleep(500);
                 while (!stop_progress)
                 {
                     if (i > 0)
@@ -173,6 +174,7 @@ namespace File_Manager
 
             GetFilesAndDirectory = new BackgroundWorker();
             GetFilesAndDirectory.WorkerReportsProgress = true;
+            string message = "", extra = "";
 
             GetFilesAndDirectory.DoWork += (object sender, DoWorkEventArgs e) =>
             {   //desktop //documents //music .... etc
@@ -182,7 +184,8 @@ namespace File_Manager
                     { drives = DriveInfo.GetDrives(); }
                     catch (Exception ex)
                     {
-                        string m = "can not load drives info, the app will exit now." + " extra info" + ex.Message;
+                        message = "can not load drives info, the app will exit now.";
+                        extra = ex.Message;
                         WorkerAsyncCancel = true;
                         return;
                     }
@@ -204,7 +207,8 @@ namespace File_Manager
                         }
                         catch (Exception ex)
                         {
-                            string m = "can not get directory content, app will exit now." + " extra info" + ex.Message;
+                            message = "can not get directory content, app will exit now.";
+                            extra = ex.Message;
                             WorkerAsyncCancel = true;
                             return;
                         }
@@ -217,6 +221,8 @@ namespace File_Manager
                                 GetFilesAndDirectory.ReportProgress(3, i);
                         GetFilesAndDirectory.ReportProgress(4);
                     }
+                    else
+                        WorkerAsyncCancel = true;
                 }
             };
 
@@ -281,7 +287,11 @@ namespace File_Manager
                 {
                     next_address = Address.Text;
                     ExplorePath(Address.Text, close_if_failed, add_to_back);
-                    new My_MessageBox("File Manager", "Path is unreadable!", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); if (CloseIfFailed) Close();
+                    if (message == "")
+                        Messages.ShowMessage("Path is unreadable!", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, false, "");
+                    else
+                        Messages.ShowMessage(message, ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, extra == "", extra);
+                    if (CloseIfFailed) Close();
                 }
             };
             GetFilesAndDirectory.RunWorkerAsync();
@@ -357,7 +367,8 @@ namespace File_Manager
                     {
                         //next_address = path;
                         ExplorePath(path, false, true);
-                        new My_MessageBox("File Manager", "Drive is not ready!.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); if (CloseIfFailed) Close();
+                        Messages.ShowMessage("Drive is not ready!.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, false, "");
+                        if (CloseIfFailed) Close();
                     }
                 };
                 /*GetFilesAndDirectory_RunWorkerCompleted;*/
@@ -365,11 +376,14 @@ namespace File_Manager
                 GetFilesAndDirectory.RunWorkerAsync(add_to_back);
                 progressbar.Visibility = Visibility.Visible;
             }
-            catch (Exception ex) { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); if (close_if_failed) Close(); }
+            catch (Exception ex)
+            {
+                Messages.ShowMessage("We can not view '"+ next_address+"' content.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message);
+                if (close_if_failed) Close();
+            }
         }
 
         #endregion
-
 
 
         void Item_ContextMenuOpening(object sender, ContextMenuEventArgs e)
@@ -423,7 +437,7 @@ namespace File_Manager
                 file_context_menu.Items.Add(new Separator());
                 menu_item = new MenuItem();
                 menu_item.Header = "Create shortcut";
-                menu_item.Click += CreateShortcut;
+                //menu_item.Click += CreateShortcut;
                 file_context_menu.Items.Add(menu_item);
                 menu_item = new MenuItem();
                 menu_item.Header = "Delete";
@@ -479,7 +493,7 @@ namespace File_Manager
                 directory_context_menu.Items.Add(new Separator());
                 menu_item = new MenuItem();
                 menu_item.Header = "Create shortcut";
-                menu_item.Click += CreateShortcut;
+                //menu_item.Click += CreateShortcut;
                 directory_context_menu.Items.Add(menu_item);
                 menu_item = new MenuItem();
                 menu_item.Header = "Delete";
@@ -612,7 +626,6 @@ namespace File_Manager
 
         void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("--Arabic (العربية)--\n**اخلاء مسؤلية**\nهذا البرنامج لم يصدر بعد وهو في نسخة تجريبية لذلك يجب\nأن تكون حذرا في التعامل معه وخاصة خاصية 'الحذف' التي\nقد تقوم وعن غير قصد بحذف احد ملفاتك الضرورية أو الاضرار\nبجهازك.\nيمكنك الاستمتاع  باستعمال كامل الميزات الآخرى ولكن يجب ان تكون حذرا جدا.\n\nالرجاء عدم استخدام خاصية الحذف.\n\n--English (English)--\n**Disclaimer**\nThis app is in alpha version, so be very careful using it\nespecially delete Function, it may delete some of your\nimportant files or damage your system.\nyou can ingoye using all other features, but you should be very careful.\n\nplease don't use 'delete' function.", "FILE MANAGER", MessageBoxButton.OK, MessageBoxImage.Exclamation, MessageBoxResult.OK);
             Functions.SystemDrive = new DirectoryInfo(Environment.SystemDirectory).Root.FullName;
             //next_address = path;
             ExplorePath(path, true, true);
@@ -650,9 +663,9 @@ namespace File_Manager
             ProcessStartInfo PSI = new ProcessStartInfo(System.Windows.Forms.Application.ExecutablePath);
             PSI.Verb = "runas";
             try
-            { System.Diagnostics.Process.Start(PSI); }
+            { Process.Start(PSI); }
             catch (Exception ex)
-            { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+            { Messages.ShowMessage("Error while openning the app.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
         }
 
         private void NewDirectory_Click(object sender, RoutedEventArgs e)
@@ -665,7 +678,7 @@ namespace File_Manager
                 Refresh();
             }
             else
-                new My_MessageBox("Create new directory", "You can not create directory here!", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-warning.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-warning.wav")).ShowDialog();
+                Messages.ShowMessage("You can not create directory here!", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
         }
 
         private void Quit(object sender, RoutedEventArgs e)
@@ -675,7 +688,7 @@ namespace File_Manager
 
         private void Close(object sender, RoutedEventArgs e)
         {
-            this.Close();
+            Close();
         }
 
         private void ShowHiddenFiles_Click(object sender, RoutedEventArgs e)
@@ -707,7 +720,7 @@ namespace File_Manager
 
         private void SystemMonitor_Click(object sender, RoutedEventArgs e)
         {
-            new System_Monitor().ShowDialog();
+            new System_Monitor().Show();
         }
 
         private void EmptyDirectoriesRemover_Click(object sender, RoutedEventArgs e)
@@ -787,11 +800,6 @@ namespace File_Manager
             new File_Compresser().Show();
         }
 
-        private void CreateShortcut(object sender, RoutedEventArgs e)
-        {
-            //throw new NotImplementedException();
-        }
-
         private void Properties_Click(object sender, RoutedEventArgs e)
         {
             //new Properties_Window(((ListViewItem)Explorer.SelectedItem).ContentStringFormat).Show();
@@ -807,7 +815,7 @@ namespace File_Manager
             if (Explorer.SelectedItems.Count == 1)
                 PreviewItem();
             else
-                new My_MessageBox("Viewer", "You can not preview more than one item in same time.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                Messages.ShowMessage("You can not preview more than one item in same 'Preview' window.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
         }
 
         private void Cut_Click(object sender, RoutedEventArgs e)
@@ -820,7 +828,7 @@ namespace File_Manager
                 {
                     if (!IsPaste)
                     {
-                        if (new My_MessageBox("Append file to list", "Do you want to append files to the list?", "", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/list.png")), null/*buttons*/, null/* button_actions*/).ShowThisDialog() == MyMessageBoxResult.No)
+                        if (Messages.ShowMessage("Do you want to append files to the list?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, true, "In clipboard there is items have not been paste yet, if you click 'NO' thies items will be removed from clipboard.") == MyMessageBoxResult.No)
                             ToCopyList.Clear();
                     }
                     else
@@ -833,7 +841,7 @@ namespace File_Manager
                         ToCopyList.Add(new FileOperationItem((DirectoryInfo)i.File, true, i.File.FullName.Substring(path.Length)));
             }
             else
-                new My_MessageBox("Cut", "You can not move any item from here!", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-warning.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-warning.wav")).ShowDialog();
+                Messages.ShowMessage("You can not move any item from here.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
         }
 
         private void Copy_Click(object sender, RoutedEventArgs e)
@@ -846,7 +854,7 @@ namespace File_Manager
                 {
                     if (!IsPaste)
                     {
-                        if (new My_MessageBox("Append file to list", "Do you want to append files to the list?", "", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/list.png")), null, null).ShowThisDialog() == MyMessageBoxResult.No)
+                        if (Messages.ShowMessage("Do you want to append files to the list?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, true, "In clipboard there is items have not been paste yet, if you click 'NO' thies items will be removed from clipboard.") == MyMessageBoxResult.No)
                             ToCopyList.Clear();
                     }
                     else
@@ -870,9 +878,9 @@ namespace File_Manager
                 if (path != "Computer")
                     new Operation().CopyDialogShow(ToCopyList, OperationType.Copy, path, false);
                 else
-                    new My_MessageBox("Paste", "You can not paste any item here!", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-warning.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-warning.wav")).ShowDialog();
+                    Messages.ShowMessage("You can not paste any item here.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
             else
-                new My_MessageBox("Paste", "There is not any item to paste it!", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-warning.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-warning.wav")).ShowDialog();
+                Messages.ShowMessage("Clipboard is empty.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "There is not any item to paste it!");
         }
 
         private void Delete_Click(object sender, RoutedEventArgs e)
@@ -887,7 +895,10 @@ namespace File_Manager
                 foreach (var i in Explorer.SelectedItems)
                     Functions.OpenWith(((ListViewItem)i).ContentStringFormat, Functions.GetItemType(((ListViewItem)i).ContentStringFormat));
             }
-            catch (Exception ex) { new My_MessageBox("Error", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+            catch (Exception ex)
+            {
+                Messages.ShowMessage("Something went wrong.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message);
+            }
         }
 
         private void RenameDrive_Click(object sender, RoutedEventArgs e)
@@ -898,7 +909,10 @@ namespace File_Manager
                 if (new_name != null)
                     ((MainListView)Explorer.SelectedItem).Drive.VolumeLabel = new_name;
             }
-            catch (Exception ex) { new My_MessageBox("Error", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+            catch (Exception ex)
+            {
+                Messages.ShowMessage("Something went wrong.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message);
+            }
         }
 
         private void Open_Click(object sender, RoutedEventArgs e)
@@ -913,7 +927,7 @@ namespace File_Manager
 
         private void Eject_Click(object sender, RoutedEventArgs e)
         {
-            throw new NotImplementedException();
+            //throw new NotImplementedException();
         }
 
         #endregion
@@ -934,18 +948,19 @@ namespace File_Manager
                     {
                         int i = 1;
                         while (File.Exists(path + "\\" + new_name + " (" + i + ")" + extension)) i++;
-                        if (new My_MessageBox("New File", "Do you want to create file '" + new_name + " (" + i + ")" + extension + "' instat of '" + new_name + extension + "'", "", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/new-file.png")), null, null).ShowThisDialog() == MyMessageBoxResult.Yes)
+                        if (Messages.ShowMessage("File with name '" + new_name + extension + "' is already exist.", ModrenMessageButton.YesNo, ModrenMessageImage.Rename, ModrenMessageSound.Question, true, string.Format("New File", "Do you want to create file '{0} ({1}){2}' " + new_name, i, extension) + string.Format("instat of '{0}'", new_name + extension)) == MyMessageBoxResult.Yes)
                             file_name = path + "\\" + new_name + " (" + i + ")" + extension;
                     }
                     else
                         file_name = path + "\\" + new_name + extension;
                     try { if (file_name != null) File.Create(file_name); }
-                    catch (Exception ex) { new My_MessageBox("Error", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                    catch (Exception ex)
+                    { Messages.ShowMessage("Something went wrong.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
                     Refresh();
                 }
             }
             else
-                new My_MessageBox("Create new file", "You can not create any file here!", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-warning.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-warning.wav")).ShowDialog();
+                Messages.ShowMessage("You can not create any files here.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
         }
 
         private void NewDirectory(string new_name)
@@ -957,13 +972,13 @@ namespace File_Manager
                 {
                     int i = 1;
                     while (Directory.Exists(path + "\\" + new_name + " (" + i + ")")) i++;
-                    if (new My_MessageBox("New directory", "Do you want to create directory '" + new_name + " (" + i + ")' instat of '" + new_name + "'", "", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/new-folder.png")), null, null).ShowThisDialog() == MyMessageBoxResult.Yes)
+                    if (Messages.ShowMessage("Directory with same name is exist.", ModrenMessageButton.YesNo, ModrenMessageImage.Rename, ModrenMessageSound.Question, true, "Do you want to create directory '" + new_name + " (" + i + ")' instat of '" + new_name + "'") == MyMessageBoxResult.Yes)
                         dir_name = path + "\\" + new_name + " (" + i + ")";
                 }
                 else
                     dir_name = path + "\\" + new_name;
                 try { if (dir_name != null) Directory.CreateDirectory(dir_name); }
-                catch (Exception ex) { new My_MessageBox("Error", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                catch (Exception ex) { Messages.ShowMessage("Something went wrong.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
             }
         }
 
@@ -986,12 +1001,18 @@ namespace File_Manager
         {
             if (path != "Computer" && Explorer.SelectedItems.Count > 0)
             {
-                My_MessageBox messagebox;
+                bool delete = false;
                 if (Explorer.SelectedItems.Count > 1)
-                    messagebox = new My_MessageBox(Explorer.SelectedItems.Count);
-                else
-                    messagebox = new My_MessageBox(((MainListView)Explorer.SelectedItem).File);
-                if (messagebox.ShowThisDialog() == MyMessageBoxResult.Yes)
+                {
+                    StringBuilder items_name = new StringBuilder();
+                    foreach (var i in Explorer.SelectedItems)
+                        items_name.AppendLine((i as MainListView).FullPath);
+                    if (Messages.ShowMessage(string.Format("Are you sure you want to permanently delete these {0} items", Explorer.SelectedItems.Count), ModrenMessageButton.YesNo, ModrenMessageImage.Delete, ModrenMessageSound.Question, true, items_name.ToString()) == MyMessageBoxResult.Yes)
+                        delete = true;
+                }
+                else if (Messages.ShowMessage("Are you sure you want to permanently delete these item", ModrenMessageButton.YesNo, ModrenMessageImage.Delete, ModrenMessageSound.Question, true, Messages.GetItemInfo((Explorer.SelectedItem as MainListView).File)) == MyMessageBoxResult.Yes)
+                    delete = true;
+                if (delete)
                 {
                     List<FileOperationItem> to_delete_list = new List<FileOperationItem>();
                     foreach (MainListView i in Explorer.SelectedItems)
@@ -1002,6 +1023,8 @@ namespace File_Manager
                     new Operation().CopyDialogShow(to_delete_list, OperationType.Delete, "", false);
                 }
             }
+            else
+                Messages.ShowMessage("You can not delete any items from here.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
         }
 
         private void OpenFileOrDirectory()
@@ -1029,7 +1052,7 @@ namespace File_Manager
                                 new_window = true;
                             }
                         }
-                        catch (Exception ex) { new My_MessageBox("Error", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                        catch (Exception ex) { Messages.ShowMessage("Something went wrong.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
                 }
                 else
                 {
@@ -1037,7 +1060,7 @@ namespace File_Manager
                         try
                         {
                             if (i.File is FileInfo)
-                                System.Diagnostics.Process.Start(new ProcessStartInfo(i.FullPath));
+                                Process.Start(new ProcessStartInfo(i.FullPath));
                             else if (i.File is DirectoryInfo)
                             {
                                 if (new_window)
@@ -1053,7 +1076,7 @@ namespace File_Manager
                                 }
                             }
                         }
-                        catch (Exception ex) { new My_MessageBox("Error", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                        catch (Exception ex) { Messages.ShowMessage("Something went wrong.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
                 }
             }
         }
@@ -1083,13 +1106,13 @@ namespace File_Manager
                     ExplorePath(Address.Text, false, true);
                 }
                 else if (File.Exists(Address.Text))
-                    try { System.Diagnostics.Process.Start(new ProcessStartInfo(Address.Text)); }
+                    try { Process.Start(new ProcessStartInfo(Address.Text)); }
                     catch (Exception ex)
-                    { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                    { Messages.ShowMessage("Something went wrong.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
                 else
                 {
                     Address.Text = path;
-                    new My_MessageBox("File Manager", "Path is not Exists!.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                    Messages.ShowMessage("Path is not exist.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
                 }
             }
             else if (e.Key == Key.Oem5)
@@ -1143,7 +1166,11 @@ namespace File_Manager
                 else
                     try
                     { new_path = new DirectoryInfo(path).Parent.FullName; }
-                    catch (Exception ex) { string m = "can not go up." + " extra info" + ex.Message; return; }
+                    catch (Exception ex)
+                    {
+                        Messages.ShowMessage("Sorry we can not go up.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message);
+                        return;
+                    }
                 if (GetFilesAndDirectory.WorkerSupportsCancellation && GetFilesAndDirectory.IsBusy)
                     GetFilesAndDirectory.CancelAsync();
                 //next_address = new_path;
@@ -1256,7 +1283,11 @@ namespace File_Manager
             //        Functions.AddAllFiles(j, i.ContentStringFormat, false, to_copy);
             //    try
             //    { Directory.CreateDirectory(paste_in); }
-            //    catch (Exception ex) { new My_MessageBox("Error", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); return; }
+            //    catch (Exception ex) 
+            //    { 
+            //      Messages.ShowMessage("Something went wrong.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message);
+            //       return; 
+            //    }
             //    File_Operation window = new File_Operation(to_copy);
             //    window.Show(paste_in);
             //}

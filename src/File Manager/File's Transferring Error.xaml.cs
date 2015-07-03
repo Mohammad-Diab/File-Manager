@@ -48,7 +48,8 @@ namespace File_Manager
                         OperationErrorList.Add(new OperationErrorListView(i));
                     AddSuns(i, i.operation == OperationType.Delete);
                 }
-                i.error_message = "";
+                if (i.error_message == null)
+                    i.error_message = "";
             }
         }
 

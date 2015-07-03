@@ -191,7 +191,8 @@ namespace File_Manager
                     else
                         dir_name = ((TreeViewItem)FolderExplorer.SelectedItem).HeaderStringFormat + "\\" + new_name;
                     try { if (dir_name != null) Directory.CreateDirectory(dir_name); }
-                    catch (Exception ex) { new My_MessageBox("Error", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                    catch (Exception ex)
+                    { Messages.ShowMessage("Something went wrong.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
                     Add_Folders(null, null);
                 }
             }

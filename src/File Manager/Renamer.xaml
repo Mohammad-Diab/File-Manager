@@ -22,7 +22,7 @@
                             </DataTemplate>
                         </ListView.ItemTemplate>
                     </ListView>
-                    <TextBox x:Name="extension" Height="23" Margin="10,0,150,30" TextWrapping="Wrap" VerticalAlignment="Bottom" TextChanged="Extension_TextChanged" FontSize="16" Background="#BFFFFFFF"/>
+                    <TextBox x:Name="extension" Height="23" Margin="10,0,150,30" TextWrapping="Wrap" VerticalAlignment="Bottom" TextChanged="Extension_TextChanged" FontSize="16" Background="#BFFFFFFF" MaxLines="1" MaxLength="30"/>
                     <TextBlock FontSize="14" HorizontalAlignment="Left" Margin="10,0,0,55" Text="Type new extension here (without any dots):" VerticalAlignment="Bottom" Foreground="Blue" TextTrimming="CharacterEllipsis"/>
                     <CheckBox x:Name="remove_extension" Content="Remove old extension" HorizontalAlignment="Left" Margin="10,0,0,5" VerticalAlignment="Bottom" FontSize="14" Foreground="Blue" BorderBrush="Blue" IsChecked="True"/>
                     <Button ToolTip="Add files" VerticalAlignment="Top" Click="AddFile_Click" HorizontalAlignment="Left" Background="{x:Null}" Margin="10,5,0,0">

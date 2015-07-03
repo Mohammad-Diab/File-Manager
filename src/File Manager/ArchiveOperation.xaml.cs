@@ -124,7 +124,7 @@ namespace File_Manager
 
             }
             else
-                MessageBox.Show("Fatal Error", "We can not find 7-Zip library file.");
+                Messages.ShowMessage("'7-Zip' library file is missing.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, "We can not find some components, please reinstall the app.");
         }
         void ChangeRemain(double size, bool is_items)
         {

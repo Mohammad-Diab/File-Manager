@@ -84,10 +84,13 @@ namespace File_Manager
                 if (disk_location.Text != "")
                 {
                     if (File.Exists(disk_location.Text))
-                        if (MessageBox.Show("File is already exist,Delete the existing file?", "", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                        if (Messages.ShowMessage("File is already exist, overwrite?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "") == MyMessageBoxResult.Yes)
                             try { File.Delete(disk_location.Text); }
-                            catch (Exception)
-                            { MessageBox.Show("We can not delete the file, please select other location."); return; }
+                            catch (Exception ex)
+                            {
+                                Messages.ShowMessage("Error while overwrite file, operation will cancel now.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message);
+                                return;
+                            }
 
                     //check if there is enough space
                     try
@@ -108,7 +111,7 @@ namespace File_Manager
                     catch (Exception) { }
                 }
                 else
-                    MessageBox.Show("Please select disk location.");
+                    Messages.ShowMessage("Some field is missing.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "Please select disk location.");
             }
 
         }

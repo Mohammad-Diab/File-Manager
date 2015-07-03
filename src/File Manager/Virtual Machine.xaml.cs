@@ -120,7 +120,7 @@ namespace File_Manager
             if (Functions.IsRunningAsAdmin())
                 new Create_Virtual_Hard_Disk().ShowDialog();
             else
-                System.Windows.MessageBox.Show("You must run this app as administrator.");
+                Messages.ShowMessage("You must run this app as administrator.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
         }
     }
 }

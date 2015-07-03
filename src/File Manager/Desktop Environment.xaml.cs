@@ -388,9 +388,9 @@ namespace File_Manager
                         new MainWindow(home_list_data[home_list_view.SelectedIndex].drive.Name).Show();
                     else
                         try
-                        { System.Diagnostics.Process.Start(new ProcessStartInfo(home_list_data[home_list_view.SelectedIndex].file.FullName)); }
+                        { Process.Start(new ProcessStartInfo(home_list_data[home_list_view.SelectedIndex].file.FullName)); }
                         catch (Exception ex)
-                        { new My_MessageBox("Error", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                        { Messages.ShowMessage("Error while openning the file.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
                 }
             }
         }
@@ -543,9 +543,9 @@ namespace File_Manager
                 {
                     if (app_list_data[app_list_view.SelectedIndex].file_info.Exists)
                         try
-                        { System.Diagnostics.Process.Start(new ProcessStartInfo(app_list_data[app_list_view.SelectedIndex].file_info.FullName)); }
+                        { Process.Start(new ProcessStartInfo(app_list_data[app_list_view.SelectedIndex].file_info.FullName)); }
                         catch (Exception ex)
-                        { new My_MessageBox("Error", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                        { Messages.ShowMessage("Error while openning application.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
                 }
             }
         }
@@ -728,9 +728,9 @@ namespace File_Manager
                 {
                     if (game_list_data[game_list_view.SelectedIndex].file_info.Exists)
                         try
-                        { System.Diagnostics.Process.Start(new ProcessStartInfo(game_list_data[game_list_view.SelectedIndex].file_info.FullName)); }
+                        { Process.Start(new ProcessStartInfo(game_list_data[game_list_view.SelectedIndex].file_info.FullName)); }
                         catch (Exception ex)
-                        { new My_MessageBox("Error", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                        { Messages.ShowMessage("Error while openning the game.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
                 }
             }
         }
@@ -825,9 +825,9 @@ namespace File_Manager
                 {
                     if (document_list_data[doc_list_view.SelectedIndex].file_info.Exists)
                         try
-                        { System.Diagnostics.Process.Start(new ProcessStartInfo(document_list_data[doc_list_view.SelectedIndex].file_info.FullName)); }
+                        { Process.Start(new ProcessStartInfo(document_list_data[doc_list_view.SelectedIndex].file_info.FullName)); }
                         catch (Exception ex)
-                        { new My_MessageBox("Error", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                        { Messages.ShowMessage("Error while openning the file.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
                 }
             }
         }

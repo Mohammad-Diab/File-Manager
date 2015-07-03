@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Threading;
 using System.Windows;
@@ -27,6 +28,29 @@ namespace File_Manager
         static double left;
         public static string[] spliter = { "\\" };
 
+        public static string GetDownloadsPath()
+        {
+            string path = "";
+            if (Environment.OSVersion.Version.Major >= 6)
+            {
+                IntPtr pathPtr;
+                int hr = SHGetKnownFolderPath(ref FolderDownloads, 0, IntPtr.Zero, out pathPtr);
+                if (hr == 0)
+                {
+                    path = Marshal.PtrToStringUni(pathPtr);
+                    Marshal.FreeCoTaskMem(pathPtr);
+                    return path;
+                }
+            }
+            path = Path.GetDirectoryName(Environment.GetFolderPath(Environment.SpecialFolder.Personal));
+            path = Path.Combine(path, "Downloads");
+            return path;
+        }
+
+        private static Guid FolderDownloads = new Guid("374DE290-123F-4565-9164-39C4925E467B");
+        [DllImport("shell32.dll", CharSet = CharSet.Auto)]
+        private static extern int SHGetKnownFolderPath(ref Guid id, int flags, IntPtr token, out IntPtr path);
+
         public static void MarkAs(OperationTree root, OperationOption option, bool over_curent_option)
         {
             foreach (var i in root.children)
@@ -41,6 +65,19 @@ namespace File_Manager
                         i.user_option = option;
                     MarkAs(i, option, over_curent_option);
                 }
+        }
+
+        public static string OrginizeDate(DateTime date)
+        {
+            return string.Format("{0}/{1}/{2}  ", OrginizeNumber(date.Day, 2), OrginizeNumber(date.Month, 2), OrginizeNumber(date.Year, 4)) + string.Format("{0}:{1}", OrginizeNumber(date.Hour, 2), OrginizeNumber(date.Minute, 2));
+        }
+
+        static string OrginizeNumber(int number, int digits)
+        {
+            string N = number.ToString();
+            while (N.Length < digits)
+                N = "0" + N;
+            return N;
         }
 
         public static void Rename(FileSystemInfo Item, string new_name, List<UnCompleatedRename> un_done)
@@ -406,7 +443,7 @@ namespace File_Manager
         private static void bw_ProgressChanged5(object sender, ProgressChangedEventArgs e)
         {
             if (cond)
-                new My_MessageBox("File Fanager", message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                Messages.ShowMessage(message, ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, false, "");
             window.Left = left;
             //button.IsEnabled = true;
         }
@@ -1013,7 +1050,17 @@ namespace File_Manager
         Cancel = 4,
         Skip = 5,
         Rety = 6,
-        Abort = 7
+        Abort = 7,
+        Button1 = 101,
+        Button2 = 102,
+        Button3 = 103,
+        Button4 = 104,
+        Button5 = 105,
+        Button6 = 106,
+        Button7 = 107,
+        Button8 = 108,
+        Button9 = 109,
+        Button10 = 110,
     }
 
     #endregion

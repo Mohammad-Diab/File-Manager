@@ -469,14 +469,14 @@ namespace File_Manager
 
         private void SliderMoverElement_MouseLeave(object sender, MouseEventArgs e)
         {
-            ((Ellipse)((Grid)sender).Children[1]).Opacity = 1;
-            ((Ellipse)((Grid)sender).Children[2]).Opacity = 1;
+            ((Grid)sender).Children[1].Opacity = 1;
+            ((Grid)sender).Children[2].Opacity = 1;
         }
 
         private void SliderMoverElement_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            ((Ellipse)((Grid)sender).Children[1]).Opacity = 0.8;
-            ((Ellipse)((Grid)sender).Children[2]).Opacity = 0.8;
+            ((Grid)sender).Children[1].Opacity = 0.8;
+            ((Grid)sender).Children[2].Opacity = 0.8;
             slider_old_point = e.GetPosition(null);
             allow_move_slider = true;
         }
@@ -485,8 +485,8 @@ namespace File_Manager
         {
             allow_move_slider = false;
             Grid g = ((Grid)((Grid)sender).Children[2]);
-            ((Ellipse)g.Children[2]).Opacity = 1;
-            ((Ellipse)g.Children[2]).Opacity = 1;
+            g.Children[2].Opacity = 1;
+            g.Children[2].Opacity = 1;
             if (is_play && (audio_file == null ? video_player_element.NaturalDuration.HasTimeSpan : audio_player_element.NaturalDuration.HasTimeSpan))
                 if (audio_file != null)
                     audio_player_element.Position = new TimeSpan((long)(audio_player_element.NaturalDuration.TimeSpan.TotalSeconds * 10000000.0 * (slider_forground.ActualWidth / slider_background.ActualWidth)));
@@ -836,7 +836,7 @@ namespace File_Manager
                 TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.None;
             }
             catch (Exception ex)
-            { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+            { Messages.ShowMessage("We can not view this file.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
         }
 
         private void MakeRTFViewer(FileInfo file)
@@ -856,7 +856,7 @@ namespace File_Manager
                 TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.None;
             }
             catch (Exception ex)
-            { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+            { Messages.ShowMessage("We can not view this file.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
         }
 
         private void MakeTextViewer(FileInfo file)
@@ -871,7 +871,7 @@ namespace File_Manager
                 SR.Close();
             }
             catch (Exception ex)
-            { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+            { Messages.ShowMessage("We can not view this file.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
             rich.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
             preview_grid.Children.Insert(0, rich);
         }
@@ -1016,7 +1016,7 @@ namespace File_Manager
             m.Start();
             //try
             { GetSubFilesAndDirectories((DirectoryInfo)e.Argument); }
-            //catch (Exception ex) {/* new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();*/ }
+            //catch (Exception ex) {/* Messages.ShowMessage("ex.Message", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message);*/ }
             bw.ReportProgress(0);
         }
 
@@ -1139,44 +1139,73 @@ namespace File_Manager
         private void EditButton_Click(object sender, RoutedEventArgs e)
         {
             try
-            { Process.Start(new ProcessStartInfo("Tools\\notepad++.exe", fi.FullName)); }
-            catch (Exception ex) { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+            {
+                if (File.Exists(Environment.CurrentDirectory + "\\Tools\\notepad++\\notepad++.exe"))
+                    Process.Start(new ProcessStartInfo("Tools\\notepad++\\notepad++.exe", fi.FullName));
+                else
+                    Messages.ShowMessage("'Notepad++' is missing.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "We can not find some components, please reinstall the app.");
+            }
+            catch (Exception ex) { Messages.ShowMessage("We found error while starting the editor 'Notepad++'.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
         }
 
         private void ConvertToISOButton_Click(object sender, RoutedEventArgs e)
         {
-            try
+            if (File.Exists(Environment.CurrentDirectory + "\\Tools\\compress\\iso\\unisz.exe"))
             {
-                //password and exit code message box (event 'exited')
-                System.Windows.Forms.SaveFileDialog SFD = new System.Windows.Forms.SaveFileDialog();
-                SFD.Filter = "ISO File (*.iso)|*.iso";
-                if (SFD.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                if (File.Exists(fi.FullName))
                 {
-                    Process.Start(new ProcessStartInfo("Tools\\unisz.exe", " \"" + fi.FullName + "\""));
-                    File.Move(fi.FullName.Remove(fi.FullName.Length - 1) + "o", SFD.FileName);
+                    bool go = true;
+                    if (File.Exists(fi.FullName.Remove(fi.FullName.Length - 1) + "o"))
+                        if (Messages.ShowMessage("File is already exist overwrite?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "A file with name '" + fi.FullName.Remove(fi.FullName.Length - 1) + "o' is already in '" + fi.DirectoryName + " ' please move it or select other location.") == MyMessageBoxResult.No)
+                            go = false;
+                    if (go)
+                        new Operation().ConvertToIso(fi, "", true);
                 }
+                else
+                    Messages.ShowMessage("We can not find the file.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "This file '" + fi.FullName + "' is not exist.");
             }
-            catch (Exception ex) { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+            else
+                Messages.ShowMessage("'UnISZ' is missing.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "We can not find some components, please reinstall the app.");
+
+            //password is needed.
+            //File open error.
+            //Error filename.
+            //Not an .ISZ file.
+            //File create error.
+            //Read error.Error uncompressing ISZ file. wrong password
+            //password and exit code message box (event 'exited')
+            //System.Windows.Forms.SaveFileDialog SFD = new System.Windows.Forms.SaveFileDialog();
+            //SFD.Filter = "ISO File (*.iso)|*.iso";
+            //if (SFD.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            //{
+            //    Process.Start(new ProcessStartInfo(Environment.CurrentDirectory + "\\Tools\\compress\\iso\\unisz.exe", " \"" + fi.FullName + "\""));
+            //    File.Move(fi.FullName.Remove(fi.FullName.Length - 1) + "o", SFD.FileName);
+            //}
         }
 
         private void InstallFontButton_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                ProcessStartInfo PSI = new ProcessStartInfo("Tools\\InstallFonts.exe", "\"" + fi.FullName + "\"");
-                PSI.Verb = "runas";
-                var P = Process.Start(PSI);
-                P.WaitForExit(int.MaxValue);
-                if (P.ExitCode == 1)
-                    new My_MessageBox("Install font", "Font has been installed successfully", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-information.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-information.wav")).ShowDialog();
+                if (File.Exists(Environment.CurrentDirectory + "\\Tools\\InstallFonts.exe"))
+                {
+                    ProcessStartInfo PSI = new ProcessStartInfo("Tools\\InstallFonts.exe", "\"" + fi.FullName + "\"");
+                    PSI.Verb = "runas";
+                    var Pr = Process.Start(PSI);
+                    if (Pr.ExitCode == 1)
+                        Messages.ShowMessage("Font has been installed successfully.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
+                    else
+                        Messages.ShowMessage("We find error while installing font.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, false, "");
+                }
                 else
-                    new My_MessageBox("Install Fonts", "Something wrong while installing font.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                    Messages.ShowMessage("'InstallFonts' tool is missing.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "We can not find some components, please reinstall the app.");
             }
-            catch (Exception ex) { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+            catch (Exception ex) { Messages.ShowMessage("We found error while trying to install the font.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
         }
 
         private void ExtractArchiveButton_Click(object sender, RoutedEventArgs e)
         {
+            //Move to operation
             string path = new Folder_Picker().ShowThisDialog();
             if (path != null)
             {
@@ -1211,14 +1240,15 @@ namespace File_Manager
                 }
                 try
                 {
-                    Process process = System.Diagnostics.Process.Start(PSI);
+
+                    Process process =Process.Start(PSI);
                     process.WaitForExit(int.MaxValue);
                     exit_code = new Dictionary<int, string>(6);
-                    new My_MessageBox("Extract archive", exit_code[process.ExitCode], new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-warning.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-warning.wav")).ShowDialog();
+                    Messages.ShowMessage(exit_code[process.ExitCode], ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, false, "");
                 }
                 catch (Exception ex)
                 {
-                    new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                    Messages.ShowMessage("Something went wrong.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message);
                     Close();
                 }
             }
@@ -1226,6 +1256,7 @@ namespace File_Manager
 
         private void ExplorerArchiveButton_Click(object sender, RoutedEventArgs e)
         {
+            //move to Compress File Manager
             //catch Error massages
             try
             {
@@ -1237,7 +1268,7 @@ namespace File_Manager
                     Process.Start(new ProcessStartInfo("Tools\\7zFM.exe", "\"" + fi.FullName + "\""));
             }
             catch (Exception ex)
-            { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+            { Messages.ShowMessage("Something went wrong.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
         }
 
 
@@ -1415,12 +1446,12 @@ namespace File_Manager
                 MainWindow.to_go_path = dri == null ? di.FullName : dri.Name;
             }
             else if (type == ItemType.Drive && !dri.IsReady)
-                new My_MessageBox("File Manager", "Drive is not ready!", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                Messages.ShowMessage("Drive is not ready.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
             else if (type == ItemType.File)
                 try
-                { System.Diagnostics.Process.Start(new ProcessStartInfo(fi.FullName)); }
+                { Process.Start(new ProcessStartInfo(fi.FullName)); }
                 catch (Exception ex)
-                { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                { Messages.ShowMessage("Sorry, we can not open the file.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
         }
 
         private void MainMenuOpenWith_Click(object sender, RoutedEventArgs e)
@@ -1433,9 +1464,9 @@ namespace File_Manager
             ProcessStartInfo PSI = new ProcessStartInfo(fi.FullName);
             PSI.Verb = "runas";
             try
-            { System.Diagnostics.Process.Start(PSI); }
+            { Process.Start(PSI); }
             catch (Exception ex)
-            { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+            { Messages.ShowMessage("Sorry, we can not open the file.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
         }
 
         private void MainMenuMoveTo_Click(object sender, RoutedEventArgs e)
@@ -1477,17 +1508,18 @@ namespace File_Manager
 
         private void MainMenuDelete_Click(object sender, RoutedEventArgs e)
         {
-            if (new My_MessageBox((type == ItemType.Directory) ? (FileSystemInfo)di : (FileSystemInfo)fi).ShowThisDialog() == MyMessageBoxResult.Yes)
+            //Move to operation
+            if (Messages.ShowMessage("Do you want to delete '" + ((type == ItemType.Directory) ? di.Name : fi.Name) + "'?", ModrenMessageButton.YesNo, ModrenMessageImage.Delete, ModrenMessageSound.Question, true, Messages.GetItemInfo((type == ItemType.Directory) ? di : (FileSystemInfo)fi)) == MyMessageBoxResult.Yes)
                 try
                 {
                     if (type == ItemType.Directory)
                         di.Delete(true);
                     else
                         if (!fi.IsReadOnly && fi.Exists)
-                            fi.Delete();
+                        fi.Delete();
                 }
                 catch (Exception ex)
-                { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                { Messages.ShowMessage("Something went wrong.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
         }
 
         #endregion
@@ -1634,7 +1666,7 @@ namespace File_Manager
         {
             if (calc_directory_size != null)
                 if (calc_directory_size.IsBusy)
-                    new My_MessageBox("Apply attributes", "App is busy now please try again later.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                    Messages.ShowMessage("Sorry, the app is busy now, please try again later.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
                 else
                 {
                     bool?[] attributes = { read_only.IsChecked, hidden.IsChecked, system.IsChecked, archive.IsChecked, compressed.IsChecked, encrypted.IsChecked, not_content_indexed.IsChecked, normal.IsChecked };
@@ -1699,7 +1731,7 @@ namespace File_Manager
                             creation_time.Text = "Creation: " + di.CreationTimeUtc.ToString();
                         }
                         catch (Exception ex)
-                        { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                        { Messages.ShowMessage("Sorry, we can not change creation time for this file.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
                 }
                 else
                 {
@@ -1711,7 +1743,7 @@ namespace File_Manager
                             creation_time.Text = "Creation: " + fi.CreationTimeUtc.ToString();
                         }
                         catch (Exception ex)
-                        { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                        { Messages.ShowMessage("Sorry, we can not change creation time for this directory.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
                 }
         }
 
@@ -1728,7 +1760,7 @@ namespace File_Manager
                             modified_time.Text = "Modified: " + di.LastWriteTimeUtc.ToString();
                         }
                         catch (Exception ex)
-                        { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                        { Messages.ShowMessage("Sorry, we can not change last write time for this file.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
                 }
                 else
                 {
@@ -1740,7 +1772,7 @@ namespace File_Manager
                             modified_time.Text = "Modified: " + fi.LastWriteTimeUtc.ToString();
                         }
                         catch (Exception ex)
-                        { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                        { Messages.ShowMessage("Sorry, we can not change last write time for this directory.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
                 }
         }
 
@@ -1757,7 +1789,7 @@ namespace File_Manager
                             last_accessed_time.Text = "Last accessed: " + di.LastAccessTimeUtc.ToString();
                         }
                         catch (Exception ex)
-                        { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                        { Messages.ShowMessage("Sorry, we can not change last access time for this file.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
                 }
                 else
                 {
@@ -1769,7 +1801,7 @@ namespace File_Manager
                             last_accessed_time.Text = "Last accessed: " + fi.LastAccessTimeUtc.ToString();
                         }
                         catch (Exception ex)
-                        { new My_MessageBox("File Manager", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                        { Messages.ShowMessage("Sorry, we can not change last access time for this directory.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
                 }
         }
 
@@ -1889,8 +1921,6 @@ namespace File_Manager
             return x.start.CompareTo(y.start);
         }
 
-        #endregion
-
         double subtitle_sync = 0;
         Encoding subtitle_encode = Encoding.UTF8;
         private void SubtitleOption_Click(object sender, RoutedEventArgs e)
@@ -1901,11 +1931,12 @@ namespace File_Manager
                 video_paly_button_image.ToolTip = "Play";
                 video_player_element.Pause();
             }
-            FontWithColor current_font = new FontWithColor(subtitle_text.FontFamily, subtitle_text.Foreground, subtitle_text.FontSize, subtitle_text.FontStyle.Equals(FontStyles.Italic), subtitle_text.FontWeight.Equals(FontWeights.Bold), Encoding.UTF8, subtitle_sync, subtitle_text.Margin.Left, subtitle_text.Margin.Bottom);
-            var val = new Subtitle_Option().ShowWindow(current_font);
+            FontWithColor current_font = new FontWithColor(subtitle_text.FontFamily, text_foreground, subtitle_text.FontSize, subtitle_text.FontStyle.Equals(FontStyles.Italic), subtitle_text.FontWeight.Equals(FontWeights.Bold), Encoding.UTF8, subtitle_sync, subtitle_text.Margin.Left, subtitle_text.Margin.Bottom, text_background);
+            var val = new SubtitleSetting().ShowWindow(current_font);
             subtitle_text.FontFamily = subtitle_shadow.FontFamily = new FontFamily(val.font_name.Name);
             subtitle_text.FontSize = subtitle_shadow.FontSize = val.font_size;
-            subtitle_text.Foreground = val.font_color;
+            text_foreground.Color = val.font_color.Color;
+            text_background.Color = val.background_color.Color;
             subtitle_text.FontStyle = subtitle_shadow.FontStyle = val.italic ? FontStyles.Italic : FontStyles.Normal;
             subtitle_text.FontWeight = subtitle_shadow.FontWeight = val.bold ? FontWeights.Bold : FontWeights.Normal;
             VideoPlayPause_Click(sender, null);
@@ -1913,6 +1944,10 @@ namespace File_Manager
             subtitle_text.Margin = new Thickness(val.position.X, 0, val.position.X, val.position.Y);
             subtitle_shadow.Margin = new Thickness(val.position.X - 1.5, 0, val.position.X + 1.5, val.position.Y + 1.5);
         }
+
+        #endregion
+
+
 
         private void MuteVolume_Click(object sender, RoutedEventArgs e)
         {

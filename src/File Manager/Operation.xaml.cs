@@ -55,10 +55,14 @@ namespace File_Manager
                     case OperationType.Encrypt:
                         ProgressBrush = Brushes.OliveDrab;
                         break;
+                    case OperationType.ConvertISZ_ToISO:
+                        ProgressBrush = Brushes.DarkCyan;
+                        break;
                     default:
                         ProgressBrush = Brushes.DodgerBlue;
                         break;
                 }
+                operation_type = value;
             }
         }
 
@@ -1596,7 +1600,7 @@ namespace File_Manager
                 else if (e.ProgressPercentage == -2)
                     new File_s_Transferring_Error(undeleted, "We destroy these files but they can not been deleted, what do you want to do with them?").ShowThisDialog();
                 else if (e.ProgressPercentage == -3)
-                    new My_MessageBox("FILE MANAGER", e.UserState.ToString(), e.UserState is StringBuilder ? new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-warning.png")) : new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), e.UserState is StringBuilder ? new Uri(Environment.CurrentDirectory + @"\Media\dialog-warning.wav") : new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                    Messages.ShowMessage(e.UserState.ToString(), ModrenMessageButton.OK, e.UserState is StringBuilder ? ModrenMessageImage.Exclamation : ModrenMessageImage.Stop, e.UserState is StringBuilder ? ModrenMessageSound.Exclamation : ModrenMessageSound.Stop, false, "");
                 progress_bar.Foreground = ProgressBrush;
                 TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.Normal;
                 sleep_thread = false;
@@ -2340,6 +2344,174 @@ namespace File_Manager
 
         #endregion Encrypt Files
 
+        #region ConvertToIso
+
+        internal void ConvertToIso(FileInfo File, string save_in, bool show_dialog)
+        {
+            OperationType = OperationType.ConvertISZ_ToISO;
+            paste_in = save_in;
+            operation.Text = Title = "Converting to ISO";
+            pause_button.IsEnabled = false;
+            operation.Margin = new Thickness(5, 4, 0, 0);
+            name_textblock.Margin = new Thickness(10, 30, 10, 0);
+            progress_bar.Margin = new Thickness(10, 54, 50, 0);
+            Height = 120;
+            speed_textblock.Visibility = complete_textblock.Visibility = remain.Visibility = remain_unit.Visibility = remain_title.Visibility = Visibility.Collapsed;
+            name_textblock.Text = File.FullName;
+            progress_bar.IsIndeterminate = false;
+            ConvertToISO(File, "");
+            if (show_dialog)
+                ShowDialog();
+            else
+                Show();
+        }
+
+        private void ConvertToISO(FileInfo file, string password)
+        {
+            bool first_output = true, password_nedded = false;
+            BackgroundWorker convert_to_iso = new BackgroundWorker();
+            progress_bar.Foreground = Brushes.DarkCyan;
+            convert_to_iso.WorkerReportsProgress = true;
+            Process pr = new Process();
+            convert_to_iso.DoWork += (object sender2, DoWorkEventArgs e2) =>
+            {
+                Thread progress = new Thread(() =>
+                {
+                    while (convert_to_iso.IsBusy)
+                    {
+                        if (CloseWindow)
+                        {
+                            try
+                            {
+                                pr.Kill();
+                            }
+                            catch (Exception) { }
+                            break;
+                        }
+                        Thread.Sleep(200);
+                        if (convert_to_iso.IsBusy)
+                        {
+                            FileInfo output = new FileInfo(file.FullName.Remove(file.FullName.Length - 1) + "o");
+                            if (output.Exists)
+                                try
+                                { convert_to_iso.ReportProgress(Convert.ToInt32((output.Length / file.Length) * 100)); }
+                                catch (Exception) { }
+                        };
+                    }
+                });
+                progress.Start();
+
+                ProcessStartInfo psi = new ProcessStartInfo(Environment.CurrentDirectory + "\\Tools\\compress\\iso\\unisz.exe", " \"" + file.FullName + "\" " + password);
+                psi.CreateNoWindow = true;
+                psi.RedirectStandardOutput = true;
+                psi.UseShellExecute = false;
+                pr.StartInfo = psi;
+
+                pr.OutputDataReceived += (object sender3, DataReceivedEventArgs e3) =>
+                {
+                    string error = e3.Data;
+                    if (error != null)
+                        error = error.ToLower();
+                    switch (error)
+                    {
+                        case null:
+                            convert_to_iso.ReportProgress(-1);
+                            break;
+                        case "password is needed.":
+                            password_nedded = true;
+                            convert_to_iso.ReportProgress(-2);
+                            break;
+                        case "file open error.":
+                            convert_to_iso.ReportProgress(-3);
+                            break;
+                        case "error filename.":
+                        case "not an .isz file.":
+                            convert_to_iso.ReportProgress(-4);
+                            break;
+                        case "file create error":
+                            convert_to_iso.ReportProgress(-5);
+                            break;
+                        case "read error.error uncompressing isz file.":
+                            convert_to_iso.ReportProgress(-6);
+                            break;
+                    }
+                };
+
+                try
+                {
+                    pr.Start();
+                    pr.BeginOutputReadLine();
+                    pr.WaitForExit();
+                }
+                catch (Exception ex)
+                { convert_to_iso.ReportProgress(-7, ex.Message); }
+            };
+
+            convert_to_iso.ProgressChanged += (object sender2, ProgressChangedEventArgs e2) =>
+            {
+                if (e2.ProgressPercentage < -1)
+                {
+                    progress_bar.Foreground = Brushes.Tomato;
+                    first_output = false;
+                }
+                switch (e2.ProgressPercentage)
+                {
+                    case -1:
+                        if (first_output)
+                            Messages.ShowMessage("Converting operation done.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, true, "Converting has completed.\noutput file saved to same source's directory.");
+                        break;
+                    case -2:
+                        if (Messages.ShowMessageWithPassword("Password is needed.", ModrenMessageButton.OKCancel, ModrenMessageImage.Password, ModrenMessageSound.Exclamation, true, "Please enter password for encrepted file.","",out password) == MyMessageBoxResult.OK)
+                        {
+                            if (!pr.HasExited)
+                                try
+                                { pr.Kill(); }
+                                catch (Exception) { }
+                            ConvertToISO(file, password);
+                        }
+                        break;
+                    case -3:
+                        Messages.ShowMessage("The file is damaged or unsuported.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, false, "");
+                        break;
+                    case -4:
+                        Messages.ShowMessage("The file is not an .ISZ file.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, false, "");
+                        break;
+                    case -5:
+                        Messages.ShowMessage("We can't create output file.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "if the '.isz' fle is in write protected media copy it to other location.");
+                        break;
+                    case -6:
+                        Messages.ShowMessage("Wrong password or the file is damaged.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, false, "");
+                        break;
+                    case -7:
+                        Messages.ShowMessage("We found error while converting the file.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, e2.UserState.ToString());
+                        break;
+                    default:
+                        if (e2.ProgressPercentage > 90)
+                            progress_bar.Value = 90;
+                        else
+                            progress_bar.Value = e2.ProgressPercentage;
+                        percent.Text = progress_bar.Value + "%";
+                        TaskbarItemInfo.ProgressValue = progress_bar.Value / 100;
+                        break;
+                }
+            };
+
+            convert_to_iso.RunWorkerCompleted += (object sender2, RunWorkerCompletedEventArgs e2) =>
+            {
+                if (password_nedded)
+                    password_nedded = false;
+                else
+                {
+                    progress_bar.Value = 100;
+                    Close();
+                }
+            };
+            convert_to_iso.RunWorkerAsync();
+        }
+
+
+        #endregion
+
         #region Controls
 
         private void PlayPause_Click(object sender, RoutedEventArgs e)
@@ -2547,6 +2719,7 @@ namespace File_Manager
         Decrypt = 7,
         Compress = 8,
         Extract = 9,
-        CreateShortcut = 10
+        CreateShortcut = 10,
+        ConvertISZ_ToISO = 11
     }
 }

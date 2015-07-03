@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
+using System.Text;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
@@ -131,7 +132,7 @@ namespace File_Manager
                 {
                     if (CloseWindow) return;
                     if (e.ProgressPercentage == 0)
-                        new My_MessageBox("FILE MANAGER", e.UserState.ToString(), new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                        Messages.ShowMessage("Something went wrong", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, e.UserState.ToString());
                     //{
                     //    //ClearList_Click(null, null);
                     //}
@@ -151,7 +152,7 @@ namespace File_Manager
                     if (browse_data.Count > 0)
                         select_all.IsEnabled = delete_files.IsEnabled = clear_list.IsEnabled = true;
                     else
-                        new My_MessageBox("FILE MANAGER", "This directory is empty.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-information.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-information.wav")).ShowDialog();
+                        Messages.ShowMessage("This directory is empty.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
                     Thread.Sleep(5);
                     progressbar.Visibility = Visibility.Hidden;
                     //MessageBox.Show((DateTime.UtcNow.Ticks - first).ToString());
@@ -160,8 +161,7 @@ namespace File_Manager
                 analyze_disk_BackgroundWorker.RunWorkerAsync();
             }
             else
-                MessageBox.Show("We can not find directory '" + path + "'");
-            
+                Messages.ShowMessage("We can not find directory '" + path + "'", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
         }
 
         private void BigFileFinder_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -180,7 +180,7 @@ namespace File_Manager
             }
             else if (item_list.SelectedIndex > -1)
                 try { System.Diagnostics.Process.Start(browse_data[item_list.SelectedIndex].FullPath); }
-                catch (Exception ex) { new My_MessageBox("FILE MANAGER", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                catch (Exception ex) { Messages.ShowMessage("We can not open '" + browse_data[item_list.SelectedIndex].FullPath + "'.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
         }
 
         private void ItemsList_PreviewKeyUp(object sender, KeyEventArgs e)
@@ -239,22 +239,30 @@ namespace File_Manager
         private void DeleteItems_Click(object sender, RoutedEventArgs e)
         {
             List<FileOperationItem> files = new List<FileOperationItem>();
+            StringBuilder items_name = new StringBuilder();
             foreach (BigFileListView i in item_list.SelectedItems)
+            {
                 if (i.isDirectory)
                     files.Add(new FileOperationItem(new DirectoryInfo(i.FullPath), false, ""));
                 else
                     files.Add(new FileOperationItem(new FileInfo(i.FullPath), false, ""));
+                items_name.AppendLine(i.FullPath);
+            }
             if (files.Count > 0)
             {
-                My_MessageBox messagebox;
+                bool delete = false;
                 if (files.Count > 1)
-                    messagebox = new My_MessageBox(files.Count);
-                else
-                    messagebox = new My_MessageBox(files[0].Item);
-                if (messagebox.ShowThisDialog() == MyMessageBoxResult.Yes)
+                {
+                    if (Messages.ShowMessage(string.Format("Are you sure you want to permanently delete these {0} items", files.Count), ModrenMessageButton.YesNo, ModrenMessageImage.Delete, ModrenMessageSound.Question, true, items_name.ToString()) == MyMessageBoxResult.Yes)
+                        delete = true;
+                }
+                else if (Messages.ShowMessage("Are you sure you want to permanently delete these item", ModrenMessageButton.YesNo, ModrenMessageImage.Delete, ModrenMessageSound.Question, true, Messages.GetItemInfo(files[0].Item)) == MyMessageBoxResult.Yes)
+                    delete = true;
+                if (delete)
                 {
                     //bool reload = false;
                     new Operation().CopyDialogShow(files, OperationType.Delete, "", true);
+
                     //if (MessageBox.Show("deleted done.\nReload List", "FILE MANAGER", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
                     //    reload = true;
                     //if (reload)
@@ -273,14 +281,15 @@ namespace File_Manager
                     //        ChangePercentOfAll(item.Root.Children, item.SizeDouble);
                     //    }
                     //}
-                    
 
-                    
+
+                    Messages.ShowMessage("Files deleted done.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
+
                     //new My_MessageBox("FILE MANAGER", "Files deleted done,\n Reload list?", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-information.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-information.wav")).ShowDialog();
                 }
             }
             else
-                new My_MessageBox("FILE MANAGER", "You have not selected any file to been deleted!", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-warning.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-warning.wav")).ShowDialog();
+                Messages.ShowMessage("You have not selected any file to delete.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
             item_list.Items.Refresh();
         }
 

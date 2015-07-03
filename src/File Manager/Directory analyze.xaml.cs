@@ -90,11 +90,11 @@ namespace File_Manager
                 {
                     RestValue(fd_grid);
                     fd_filepath.Text = "-";
-                    MessageBox.Show(ex.Message);
+                    { Messages.ShowMessage("We can not load directory info.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
                 }
             }
             else
-                MessageBox.Show("Directories can not be same.");
+                Messages.ShowMessage("Directories can not be same.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, false, "");
         }
 
         private void FillFirstDirectoryGrid(string p)
@@ -115,11 +115,11 @@ namespace File_Manager
                 {
                     RestValue(fd_grid);
                     sd_filepath.Text = "-";
-                    MessageBox.Show(ex.Message);
+                    { Messages.ShowMessage("We can not load directory info.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
                 }
             }
             else
-                MessageBox.Show("Directories can not be same.");
+                Messages.ShowMessage("Directories can not be same.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, false, "");
         }
 
         private void FirstDirectoryPath_TextChanged(object sender, TextChangedEventArgs e)

@@ -67,7 +67,7 @@ namespace File_Manager
             if (Directory.Exists(path))
             {
                 if (worker_list.Count > 0)
-                    if (MessageBox.Show("Clear list", "FILE MANAGER", MessageBoxButton.YesNoCancel, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                    if (Messages.ShowMessage("Clear list?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "") == MyMessageBoxResult.Yes)
                         ClearList_Click(clear_list, null);
                 progressbar.Visibility = Visibility.Visible;
                 BackgroundWorker find_emptey_BackgroundWorker = new BackgroundWorker();
@@ -100,11 +100,11 @@ namespace File_Manager
                     if (e.ProgressPercentage == 0)
                         //{
                         //ClearList_Click(clear_list, null);
-                        new My_MessageBox("FILE MANAGER", e.UserState.ToString(), new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                        Messages.ShowMessage("Something went wrong", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, e.UserState.ToString());
                     //}
                     else if (progressbar.Value < 5100)
                         progressbar.Value = progress_value = e.ProgressPercentage;
-                    
+
                 };
                 find_emptey_BackgroundWorker.RunWorkerCompleted += (object sender, RunWorkerCompletedEventArgs e) =>
                 {
@@ -119,7 +119,7 @@ namespace File_Manager
                         if (items_list.Items.Count > 0)
                             delete_items.IsEnabled = select_all.IsEnabled = clear_list.IsEnabled = true;
                         else
-                            new My_MessageBox("File Manager", "No empty files or directories here.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-information.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-information.wav")).ShowDialog();
+                            Messages.ShowMessage("No empty files or directories here.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
                         Thread.Sleep(5);
                         progressbar.Visibility = Visibility.Hidden;
                     }
@@ -127,25 +127,32 @@ namespace File_Manager
                 find_emptey_BackgroundWorker.RunWorkerAsync();
             }
             else
-                MessageBox.Show("We can not find directory '" + path + "'");
+                Messages.ShowMessage("We can not find directory '" + path + "'", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
         }
 
         private void DeleteItems_Click(object sender, RoutedEventArgs e)
         {
             List<FileOperationItem> files = new List<FileOperationItem>();
+            StringBuilder items_name = new StringBuilder();
             foreach (EmptyDirectoriesFilesListView i in items_list.SelectedItems)
+            {
                 if (i.isDirectory)
                     files.Add(new FileOperationItem(new DirectoryInfo(i.FullPath), false, ""));
                 else
                     files.Add(new FileOperationItem(new FileInfo(i.FullPath), false, ""));
+                items_name.AppendLine(i.FullPath);
+            }
             if (files.Count > 0)
             {
-                My_MessageBox messagebox;
+                bool delete = false;
                 if (files.Count > 1)
-                    messagebox = new My_MessageBox(files.Count);
-                else
-                    messagebox = new My_MessageBox(files[0].Item);
-                if (messagebox.ShowThisDialog() == MyMessageBoxResult.Yes)
+                {
+                    if (Messages.ShowMessage(string.Format("Are you sure you want to permanently delete these {0} items", files.Count), ModrenMessageButton.YesNo, ModrenMessageImage.Delete, ModrenMessageSound.Question, true, items_name.ToString()) == MyMessageBoxResult.Yes)
+                        delete = true;
+                }
+                else if (Messages.ShowMessage("Are you sure you want to permanently delete these item", ModrenMessageButton.YesNo, ModrenMessageImage.Delete, ModrenMessageSound.Question, true, Messages.GetItemInfo(files[0].Item)) == MyMessageBoxResult.Yes)
+                    delete = true;
+                if (delete)
                 {
                     new Operation().CopyDialogShow(files, OperationType.Delete, "", true);
                     for (int i = items_list.SelectedItems.Count - 1; i > 0; i--)
@@ -155,11 +162,11 @@ namespace File_Manager
                             worker_list.Remove(current_item);
                     }
                     items_list.Items.Refresh();
-                    new My_MessageBox("File Manager", "Files deleted done.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-information.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-information.wav")).ShowDialog();
+                    Messages.ShowMessage("Files deleted done.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
                 }
             }
             else
-                new My_MessageBox("File Manager", "You have not selected any file to been deleted!", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-warning.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-warning.wav")).ShowDialog();
+                Messages.ShowMessage("You have not selected any file to delete.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
         }
 
         private void ClearList_Click(object sender, RoutedEventArgs e)
@@ -179,8 +186,52 @@ namespace File_Manager
         {
             CloseWindow = true;
         }
-    }
 
+        private void AboutTool_Click(object sender, RoutedEventArgs e)
+        {
+            //  version : 1.02
+            //  find empty directory and empty file
+            //  find empty dirctory which contains just empty directoies or files
+            //  improve speed
+            //  new interface
+        }
+
+        private void Item_PreviewKeyUp(object sender, KeyEventArgs e)
+        {
+            if (items_list.SelectedItems.Count == 1)
+            {
+                if (e.Key == Key.Space)
+                {
+                    if (File.Exists(worker_list[items_list.SelectedIndex].FullPath))
+                        new Preview().ShowDialog(new FileInfo(worker_list[items_list.SelectedIndex].FullPath), ItemType.File);
+                    else if (Directory.Exists(worker_list[items_list.SelectedIndex].FullPath))
+                        new Preview().ShowDialog(new DirectoryInfo(worker_list[items_list.SelectedIndex].FullPath), ItemType.Directory);
+                    if (MainWindow.GoToPath)
+                    {
+                        MainWindow.GoToPath = false;
+                        new MainWindow(MainWindow.to_go_path).ShowDialog();
+                    }
+                }
+                else if (e.Key == Key.Enter)
+                    Item_MouseDoubleClick(null, null);
+            }
+            if (items_list.SelectedItems.Count > 0)
+                if (e.Key == Key.Delete)
+                    DeleteItems_Click(delete_items, null);
+        }
+
+        private void Item_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (File.Exists(worker_list[items_list.SelectedIndex].FullPath))
+            {
+                try { System.Diagnostics.Process.Start(worker_list[items_list.SelectedIndex].FullPath); }
+                catch (Exception ex)
+                { Messages.ShowMessage("We can not open '"+ worker_list[items_list.SelectedIndex].FullPath + "'.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
+            }
+            else if (Directory.Exists(worker_list[items_list.SelectedIndex].FullPath))
+                new MainWindow(worker_list[items_list.SelectedIndex].FullPath).Show();
+        }
+    }
     class EmptyDirectoriesFilesListView : GeneralPurpose
     {
         public EmptyDirectoriesFilesListView parent;

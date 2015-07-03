@@ -224,21 +224,21 @@ namespace File_Manager
             bool encrypt = false;
             string password = enc_password.Visibility == Visibility.Hidden ? enc_password_text.Text : enc_password.Password;
             if (encrypt_data.Count < 1)
-                new My_MessageBox("FILE MANAGER", "List is empty!!!", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                Messages.ShowMessage("Some field is missing.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "List is empty.");
             else if (password.Length < 8)
-                new My_MessageBox("FILE MANAGER", "Password must be at least 8 charectars.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                Messages.ShowMessage("Some field has wrong values.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "Password must be at least 8 charectars.");
             else if (enc_output.Text == string.Empty)
-                new My_MessageBox("FILE MANAGER", "Please select output directory.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                Messages.ShowMessage("Some field has wrong values.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "Please select output directory.");
             else if (enc_output.Text.Any(x => Path.GetInvalidPathChars().Any(y => y.Equals(x))))
-                new My_MessageBox("FILE MANAGER", "We have found invalid charectars in your selected path.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                Messages.ShowMessage("Some field has wrong values.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "We have found invalid charectars in your selected path.");
             else if (!Directory.Exists(enc_output.Text))
             {
-                if (new My_MessageBox("FILE MANAGER", "We can not find directory '" + enc_output.Text + "', try to create it?", "", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-Warning.png")), null, null).ShowThisDialog() == MyMessageBoxResult.Yes)
+                if (Messages.ShowMessage("We can not find directory '" + enc_output.Text + "', try to create it?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "") == MyMessageBoxResult.Yes)
                     encrypt = true;
             }
             else
                 encrypt = true;
-            if (encrypt && new My_MessageBox("FILE MANAGER", "Start Encription?", "Caution: all files in list will encrypt with same password, be sure you do not miss your password.", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-Warning.png")), null, null).ShowThisDialog() == MyMessageBoxResult.Yes)
+            if (encrypt && Messages.ShowMessage("We have got all information we needed, start encription?",ModrenMessageButton.YesNo,ModrenMessageImage.Question,ModrenMessageSound.Question,false,"", "all files in list will encrypt with same password, make sure to keep it in safe place.") == MyMessageBoxResult.Yes)
             {
                 bool delete;
                 string save_in = enc_output.Text;
@@ -247,7 +247,7 @@ namespace File_Manager
                     try { Directory.CreateDirectory(save_in); }
                     catch (Exception ex)
                     {
-                        new My_MessageBox("FILE MANAGER", "Some thing error while creating directory +  extra info ." + ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                        Messages.ShowMessage("We can not create directory '" + save_in + "'", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message);
                         return;
                     }
                 }
@@ -261,7 +261,7 @@ namespace File_Manager
                 new Operation().StartEncrept(files_list, bytes, delete, save_in, true);
                 
                 ClearList_Click(encrypt_clear_button, null);
-                new My_MessageBox("FILE MANAGER", "Operation done.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-information.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-information.wav")).ShowDialog();
+                Messages.ShowMessage("Eencription done.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
             }
         }
 
@@ -294,21 +294,21 @@ namespace File_Manager
             bool decrypt = false;
             string password = dec_password.Visibility == Visibility.Hidden ? dec_password_text.Text : dec_password.Password;
             if (decrypt_data.Count < 1)
-                new My_MessageBox("FILE MANAGER", "List is empty!!!", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                Messages.ShowMessage("Some field is missing.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "List is empty.");
             else if (password.Length < 8)
-                new My_MessageBox("FILE MANAGER", "Password must be at least 8 charectars.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                Messages.ShowMessage("Some field has wrong values.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "Password must be at least 8 charectars.");
             else if (dec_output.Text == string.Empty)
-                new My_MessageBox("FILE MANAGER", "Please select output directory.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                Messages.ShowMessage("Some field has wrong values.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "Please select output directory.");
             else if (dec_output.Text.Any(x => Path.GetInvalidPathChars().Any(y => y.Equals(x))))
-                new My_MessageBox("FILE MANAGER", "We have found invalid charectars in your selected path.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                Messages.ShowMessage("Some field has wrong values.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "We have found invalid charectars in your selected path.");
             else if (!Directory.Exists(dec_output.Text))
             {
-                if (new My_MessageBox("FILE MANAGER", "We can not find directory '" + dec_output.Text + "', try to create it?", "", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-Warning.png")), null, null).ShowThisDialog() == MyMessageBoxResult.Yes)
+                if (Messages.ShowMessage("We can not find directory '" + dec_output.Text + "', try to create it?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "") == MyMessageBoxResult.Yes)
                     decrypt = true;
             }
             else
                 decrypt = true;
-            if (decrypt && new My_MessageBox("FILE MANAGER", "Start De-Encription?", "Caution: be sure that all files in the list has same password.", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-Warning.png")), null, null).ShowThisDialog() == MyMessageBoxResult.Yes)
+            if (decrypt && Messages.ShowMessage("We have got all information we needed, start de-encription?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "", "make sure that all files in the list has same password.") == MyMessageBoxResult.Yes)
             {
                 string save_in = dec_output.Text;
                 if (!Directory.Exists(save_in))
@@ -316,7 +316,7 @@ namespace File_Manager
                     try { Directory.CreateDirectory(save_in); }
                     catch (Exception ex)
                     {
-                        new My_MessageBox("FILE MANAGER", "Some thing error while creating directory +  extra info ." + ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                        Messages.ShowMessage("We can not create directory '" + save_in + "'", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message);
                         return;
                     }
                 }
@@ -328,7 +328,7 @@ namespace File_Manager
                 bytes = new MD5Cng().ComputeHash(bytes);
                 new Operation().StartDecrept(files_list, bytes, save_in, true);
                 ClearList_Click(null, null);
-                new My_MessageBox("FILE MANAGER", "Operation done.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-information.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-information.wav")).ShowDialog();
+                Messages.ShowMessage("De-encription done.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
             }
         }
 

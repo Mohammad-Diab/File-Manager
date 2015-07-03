@@ -1,0 +1,16 @@
+                <Grid Height="32">
+                    <StackPanel Orientation="Horizontal">
+                        <Image Width="20" Height="20" Margin="5,0,0,0" Stretch="Fill" Source="Images/Explorer Interface/new.png"/>
+                        <TextBlock Text="NEW" VerticalAlignment="Top" Foreground="White" Margin="5,6,0,0" FontSize="14"/>
+                    </StackPanel>
+                </Grid>
+                <Button VerticalAlignment="Top" Height="36" Margin="1" Background="{x:Null}" HorizontalContentAlignment="Left" VerticalContentAlignment="Center">
+                    <Button.Content>
+                        <Grid>
+                            <StackPanel Orientation="Horizontal">
+                                <Image Width="20" Height="20" Margin="5,0,0,0" Stretch="Fill" Source="Images/Explorer Interface/edit.png"/>
+                                <TextBlock Text="EDIT" VerticalAlignment="Top" Foreground="White" Margin="5,1,0,0" FontSize="14"/>
+                            </StackPanel>
+                        </Grid>
+                    </Button.Content>
+                </Button>

@@ -74,7 +74,7 @@ namespace File_Manager
         {
             if (!project_saved && root.AllFiles.Count > 0)
             {
-                MyMessageBoxResult result = new My_MessageBox("FILE MANAGER", "Do you want to save your project?", "", ""/*To cancel just close this window.*/, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/save-48.png")), null, null).ShowThisDialog();
+                MyMessageBoxResult result = Messages.ShowMessage("Do you want to save your project?",ModrenMessageButton.YesNo,ModrenMessageImage.Question,ModrenMessageSound.Question,false,"");
                 if (result == MyMessageBoxResult.Yes)
                 {
                     if (SaveProject())
@@ -91,7 +91,7 @@ namespace File_Manager
         {
             if (!project_saved && root.AllFiles.Count > 0)
             {
-                MyMessageBoxResult result = new My_MessageBox("FILE MANAGER", "Do you want to save your project?", "", ""/*To cancel just close this window.*/, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/save-48.png")), null, null).ShowThisDialog();
+                MyMessageBoxResult result = Messages.ShowMessage("Do you want to save your project?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "");
                 if (result == MyMessageBoxResult.Yes)
                 {
                     if (SaveProject())
@@ -131,8 +131,8 @@ namespace File_Manager
                     root = (CompressItem)bf.Deserialize(new FileInfo(sfd.SelectedItem).Open(FileMode.Open));
                     RefreshView(root, "root");
                 }
-                catch (Exception)
-                { new My_MessageBox("FILE MANAGER", "Error while opening file.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                catch (Exception ex)
+                { Messages.ShowMessage("Error while opening file.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
             }
         }
 
@@ -172,7 +172,7 @@ namespace File_Manager
                     done = true;
                 }
                 catch (Exception ex)
-                { new My_MessageBox("FILE MANAGER", string.Format("Sory, we can not save file '{0}'.{1}Extra info: {2}", ex.Message, Environment.NewLine, path), new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                { Messages.ShowMessage(string.Format("Sory, we can not save file '{0}'.", path), ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
             }
             return done;
         }
@@ -194,7 +194,7 @@ namespace File_Manager
                         new ArchiveOperation().StartExtracting(/****/ArchiveType.SevenZip, "", sfd.SelectedItem, false, current_view, (int)ThreadPriorityLevel.Highest);
                 }
                 else
-                    MessageBox.Show("Please select items to extract first.","FILE MANAGER");
+                    Messages.ShowMessage("Please select items to extract first.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
             }
         }
 
@@ -228,7 +228,7 @@ namespace File_Manager
                 }
             }
             else
-                new My_MessageBox("FILE MANAGER", "You can only add items on 'root' directory.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                Messages.ShowMessage("You can only add items on 'root' directory.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
         }
 
         private void AddDirectory_Click(object sender, RoutedEventArgs e)
@@ -244,7 +244,7 @@ namespace File_Manager
                     AddDirectory(sfd.SelectedItem);
             }
             else
-                new My_MessageBox("FILE MANAGER", "You can only add items on 'root' directory.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                Messages.ShowMessage("You can only add items on 'root' directory.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
         }
 
         private void RefreshView(CompressItem current, string address)
@@ -286,7 +286,6 @@ namespace File_Manager
             current_view = root;
             list_items.Clear();
             poject_has_saved = project_saved = false;
-            
         }
 
         private void RemoveSelectedItem_Click(object sender, RoutedEventArgs e)
@@ -307,10 +306,10 @@ namespace File_Manager
                     project_saved = false;
                 }
                 else
-                    new My_MessageBox("FILE MANAGER", "Please select item to remove.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                    Messages.ShowMessage("Please select at least one item remove.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
             }
             else
-                new My_MessageBox("FILE MANAGER", "You can only remove items from 'root' directory.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                Messages.ShowMessage("You can only remove items from 'root' directory.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
         }
 
         private void Item_DoubleClick(object sender, MouseButtonEventArgs e)
@@ -320,7 +319,8 @@ namespace File_Manager
             else if (WindowMode == CompressWindowMode.Compress && e.ChangedButton == MouseButton.Left && list.SelectedIndex > -1)
             {
                 try { Process.Start((list.SelectedItem as CompresserListView).Referance.Item.FullName); }
-                catch (Exception ex) { new My_MessageBox("FILE MANAGER", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                catch (Exception ex)
+                { Messages.ShowMessage("Somerhing went wrong.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
             }
             else if (e.ChangedButton == MouseButton.Left && list.SelectedIndex > -1)
             {
@@ -333,7 +333,8 @@ namespace File_Manager
                 //pr.WaitForExit();
                 //string j = Environment.GetEnvironmentVariable("tmp");
                 //try { Process.Start(Environment.GetEnvironmentVariable("tmp") + "\\" + list_items[list.SelectedIndex].FileFullName); }
-                //catch (Exception ex) { new My_MessageBox("FILE MANAGER", ex.Message, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog(); }
+                //catch (Exception ex) 
+                //{ Messages.ShowMessage("Somerhing went wrong.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
             }
         }
 
@@ -347,7 +348,7 @@ namespace File_Manager
             bool open = false;
             if (WindowMode == CompressWindowMode.Compress && !project_saved && root.AllFiles.Count > 0)
             {
-                MyMessageBoxResult result = new My_MessageBox("FILE MANAGER", "Do you want to save your project?", "", ""/*To cancel just close this window.*/, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/save-48.png")), null, null).ShowThisDialog();
+                MyMessageBoxResult result = Messages.ShowMessage("Do you want to save your project?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "");
                 if (result == MyMessageBoxResult.Yes)
                 {
                     if (SaveProject())
@@ -389,7 +390,7 @@ namespace File_Manager
                         {
                             Thread th = new Thread(() =>
                             {
-                                while(bw.IsBusy)
+                                while (bw.IsBusy)
                                 {
                                     try { bw.ReportProgress(current); }
                                     catch (Exception) { }
@@ -422,9 +423,9 @@ namespace File_Manager
                                     //Password messagebox
                                 }
                                 SortList(root, out root.RealSize, out root.CompressedSize);
-                        }
+                            }
                             catch (Exception)
-                        { /*new My_MessageBox("FILE MANAGER", "Invalid file or wronge password.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav"));*/ }
+                            { /*new My_MessageBox("FILE MANAGER", "Invalid file or wronge password.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav"));*/ }
                         };
 
                         bw.ProgressChanged += (object bw_sender, ProgressChangedEventArgs bw_e) =>
@@ -442,7 +443,7 @@ namespace File_Manager
                         bw.RunWorkerAsync();
                     }
                     else
-                        MessageBox.Show("Fatal Error" + "We can not find 7-Zip library file.", "FILE MANAGER");
+                        Messages.ShowMessage("'7-Zip' library file is missing.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, "We can not find some components, please reinstall the app.");
                 }
             }
         }
@@ -510,9 +511,9 @@ namespace File_Manager
         private void AddDirectory(string i)
         {
             if (root.AllFiles.Any(x => x.Item.FullName.ToLower().Equals(i.ToLower()) || x.Item.FullName.ToLower().Contains(i.ToLower()) || i.ToLower().Contains(x.Item.FullName.ToLower())))
-                new My_MessageBox("FILE MANAGER", "Sory this directory (or one of his sons) is already in the list.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                Messages.ShowMessage("Sory this directory (or one of his sons) is already in the list.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
             else if (root.Children.ContainsKey(Path.GetFileName(i).ToLower()))
-                new My_MessageBox("FILE MANAGER", "Sorry other item with same name is already exist in the list.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                Messages.ShowMessage("Sorry other item with same name is already exist in the list.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
             else
             {
                 main_grid.IsEnabled = false;
@@ -543,9 +544,9 @@ namespace File_Manager
         private void AddFile(string i)
         {
             if (root.AllFiles.Any(x => x.Item.FullName.ToLower().Equals(i.ToLower())))
-                new My_MessageBox("FILE MANAGER", "Sorry you can not add this file because it is alrady in the list.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                Messages.ShowMessage("Sorry you can not add this file because it is alrady in the list.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
             else if (root.Children.ContainsKey(Path.GetFileName(i).ToLower()))
-                new My_MessageBox("FILE MANAGER", "Sory other item with same name is already exist in the list.", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                Messages.ShowMessage("Sorry other item with same name is already exist in the list.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
             else
             {
                 FileInfo file = new FileInfo(i);
@@ -562,7 +563,7 @@ namespace File_Manager
         {
             if (window_mode == CompressWindowMode.Compress && !project_saved && list.Items.Count > 0)
             {
-                MyMessageBoxResult result = new My_MessageBox("FILE MANAGER", "Do you want to save your project?", "", ""/*To cancel just close this window.*/, new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/save-48.png")), null, null).ShowThisDialog();
+                MyMessageBoxResult result = Messages.ShowMessage("Do you want to save your project?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "");
                 if (result == MyMessageBoxResult.Yes)
                 {
                     if (!SaveProject())

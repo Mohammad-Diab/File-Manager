@@ -3,12 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="About" Height="417.671" Width="617.481" ResizeMode="NoResize" FlowDirection="LeftToRight" WindowStartupLocation="CenterScreen" Background="White" Icon="App Icon.ico" FontSize="14">
     <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition/>
-        </Grid.ColumnDefinitions>
         <Image Margin="177,10,0,0" Height="256" VerticalAlignment="Top" Source="Images/App Icon.png" HorizontalAlignment="Left" Width="256"/>
         <TextBlock Text="mohammad.diab93@outlook.com " Margin="95,0,95,28" VerticalAlignment="Bottom" FontSize="18" FontFamily="Segoe Print" Height="35" Foreground="BlueViolet" TextAlignment="Center"/>
-        <TextBlock Margin="50,271,50,0" VerticalAlignment="Top" FontSize="26" TextAlignment="Center" Text="FILE MANAGER 0.8.0-alpha.2">
+        <TextBlock Margin="50,271,50,0" VerticalAlignment="Top" FontSize="26" TextAlignment="Center" Text="FILE MANAGER 0.8.0-alpha.3">
             <TextBlock.Foreground>
                 <LinearGradientBrush EndPoint="0.5,1" MappingMode="RelativeToBoundingBox" StartPoint="0.5,0">
                     <GradientStop Color="#FF00B9FF" Offset="1"/>

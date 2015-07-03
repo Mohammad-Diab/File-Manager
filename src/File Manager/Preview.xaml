@@ -28,7 +28,7 @@
             </Grid>
         </ControlTemplate>
     </Window.Resources>
-    <Grid>
+    <Grid x:Name="container">
         <Grid x:Name="mother_of_all_grid" Margin="0,0,0,0" HorizontalAlignment="Left" Width="4800">
             <Grid x:Name="preview_grid" HorizontalAlignment="Left" Width="800" Margin="0,44,0,0">
                 <Grid x:Name="image_viewer_grid" MouseMove="Control_MouseMove" KeyDown="ImageViewer_KeyDown" Width="790" Margin="0,0,10,0" Visibility="Collapsed">
@@ -99,8 +99,15 @@
                 </Grid>
                 <Grid x:Name="video_player" Visibility="Collapsed" MouseMove="VedioPlayerGrid_MouseMove" MouseWheel="VedioPlayerGrid_MouseWheel" Background="#FF404040">
                     <MediaElement x:Name="video_player_element" MediaOpened="VideoPlayer_MediaOpened" MediaFailed="VideoPlayer_MediaFailed" MediaEnded="VideoPlayer_MediaEnded" Margin="0,0,0,1"/>
-                    <TextBlock x:Name="subtitle_text" Margin="8.5,0,11.5,31.5" VerticalAlignment="Bottom" FontSize="26" TextAlignment="Center" Foreground="Black"/>
-                    <TextBlock x:Name="subtitle_shadow" Margin="10,0,10,30" VerticalAlignment="Bottom" FontSize="26" TextAlignment="Center" Foreground="White"/>
+                    <TextBlock x:Name="subtitle_shadow" Visibility="Visible" Margin="8.5,0,11.5,31.5" VerticalAlignment="Bottom" FontSize="26" Foreground="Black" TextAlignment="Center"/>
+                    <TextBlock x:Name="subtitle_text" Margin="10,0,10,30" VerticalAlignment="Bottom" FontSize="26" TextAlignment="Center">       
+                        <TextBlock.Background>
+                            <SolidColorBrush x:Name="text_background" Color="Transparent"/>
+                        </TextBlock.Background>
+                        <TextBlock.Foreground>
+                            <SolidColorBrush x:Name="text_foreground" Color="White"/>
+                        </TextBlock.Foreground>
+                    </TextBlock>
                     <Grid x:Name="video_control_grid" VerticalAlignment="Top" Margin="164,10,20,0" Opacity="0.75" MouseEnter="VideoControlGrid_MouseEnter" MouseLeave="VideoControlGrid_MouseLeave">
                         <TextBlock x:Name="video_total_time" HorizontalAlignment="Left" Margin="441,0,0,1" TextWrapping="Wrap" Text="--:--" VerticalAlignment="Bottom" Foreground="White"/>
                         <TextBlock x:Name="video_volume_value" HorizontalAlignment="Right" Margin="0,0,-1,0" TextWrapping="Wrap" Text="Volume: 75%" VerticalAlignment="Top" Foreground="LightSkyBlue" FontSize="12"/>

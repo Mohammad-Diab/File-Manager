@@ -279,19 +279,23 @@ namespace File_Manager
         private void Compress_Click(object sender, RoutedEventArgs e)
         {
             if (file_name.Text.Equals(string.Empty))
-                MessageBox.Show("Enter path name.");
+                Messages.ShowMessage("Some field is missing.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "Please enter file path.");
             else
             {
                 if (!file_name.Text.Any(x => Path.GetInvalidPathChars().Any(y => y == x)))
                 {
                     if (File.Exists(file_name.Text) && new FileInfo(file_name.Text).Length > 0)
-                        if (new My_MessageBox("FILE MANAGER", "File already exist, Overwrite?", "", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-warning.png")), null, null).ShowThisDialog() == MyMessageBoxResult.Yes)
+                        if (Messages.ShowMessage("File is already exist, overwrite?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "") == MyMessageBoxResult.Yes)
                             try
                             {
                                 File.Delete(file_name.Text);
                                 File.Create(file_name.Text);
                             }
-                            catch (Exception) { return; }
+                            catch (Exception ex)
+                            {
+                                Messages.ShowMessage("Error while overwrite file, operation will cancel now.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message);
+                                return;
+                            }
                         else
                             return;
                     ArchiveOperation op_window = new ArchiveOperation();
@@ -302,7 +306,7 @@ namespace File_Manager
                         {
                             if (password_textbox.Text.Equals(string.Empty))
                             {
-                                MessageBox.Show("Please Enter Password.");
+                                Messages.ShowMessage("Some field is missing.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "Please enter a password.");
                                 return;
                             }
                             else
@@ -312,7 +316,7 @@ namespace File_Manager
                         {
                             if (password_enc.Password.Equals(string.Empty))
                             {
-                                MessageBox.Show("Please Enter Password.");
+                                Messages.ShowMessage("Some field is missing.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "Please enter a password.");
                                 return;
                             }
                             else
@@ -328,7 +332,7 @@ namespace File_Manager
                     }
                 }
                 else
-                    MessageBox.Show("Path contains unlegal charectars.");
+                    Messages.ShowMessage("Some field has wrong values.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "Path contains unlegal charectars.");
             }
         }
 

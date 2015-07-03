@@ -24,6 +24,7 @@ namespace File_Manager
     /// </summary>
     public partial class Renamer : Window
     {
+        //// sort extention in suggester
         bool starting_window = true, CloseWindow = false;
 
         ExtentionChanger current_page = ExtentionChanger.ChangeExtention;
@@ -184,14 +185,29 @@ namespace File_Manager
 
         private void Rename_Click(object sender, RoutedEventArgs e)
         {
-            if (new My_MessageBox("Confirmation", "Are you sure you want to rename all files in list?", "Caution: you can not reverse this operation!", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-Warning.png")), null, null).ShowThisDialog() == MyMessageBoxResult.Yes)
+            if (renamer_data.Count > 0)
             {
-                List<FileOperationItem> to_rename = new List<FileOperationItem>();
-                foreach (var i in renamer_data)
-                    to_rename.Add(new FileOperationItem(i.File, false, (remove_extension.IsChecked.Value ? i.File.Name.Substring(0, i.File.Name.Length - i.File.Extension.Length) : i.File.Name) + (extension.Text.Length > 0 ? ('.' + extension.Text) : "")));
-                new Operation().CopyDialogShow(to_rename, OperationType.Rename, "", true);
-                ClearList(list1, renamer_data, items_count.Text);
+                bool accept = false;
+                if (extension.Text.Length == 0 && remove_extension.IsChecked.Value)
+                    accept = Messages.ShowMessage("Are you sure you want to rename all files in list?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, extension.Text.Length == 0, "You have not enter any extention so we will anly remove old extention.", "Caution: you can not reverse this operation!") == MyMessageBoxResult.Yes;
+                else if (extension.Text.Length == 0 && !remove_extension.IsChecked.Value)
+                {
+                    Messages.ShowMessage("Extension field seems empty.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "Please enter extention first or check 'Remove old extention'.");
+                    accept = false;
+                }
+                else
+                    accept = Messages.ShowMessage("Are you sure you want to rename all files in list?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "", "Caution: you can not reverse this operation!") == MyMessageBoxResult.Yes;
+                if (accept)
+                {
+                    List<FileOperationItem> to_rename = new List<FileOperationItem>();
+                    foreach (var i in renamer_data)
+                        to_rename.Add(new FileOperationItem(i.File, false, (remove_extension.IsChecked.Value ? i.File.Name.Substring(0, i.File.Name.Length - i.File.Extension.Length) : i.File.Name) + (extension.Text.Length > 0 ? ('.' + extension.Text) : "")));
+                    new Operation().CopyDialogShow(to_rename, OperationType.Rename, "", true);
+                    ClearList(list1, renamer_data, items_count.Text);
+                }
             }
+            else
+                Messages.ShowMessage("List is empty!", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "First you have to add files then click 'Rename'");
         }
 
         private void Extension_TextChanged(object sender, TextChangedEventArgs e)
@@ -200,13 +216,13 @@ namespace File_Manager
             if (extension.Text.Any(x => InvalidChars.Any(y => y == x)))
             {
                 foreach (char i in InvalidChars)
-                    extension.Text.Replace(i.ToString(), "");
-                new My_MessageBox("FILE MANAGER", string.Format("File extension can't contain any of these characters:\n{0} {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11} {12} {13} {14} {15} {16} {17} {18} {19} {20} {21} {22} {32} {24} {25} {26} {27} {28} {29} {30} {31} {32} {33} {34} {35} {36} {37} {38} {39} {40} {41}", InvalidChars), new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                    extension.Text = extension.Text.Replace(i.ToString(), "");
+                Messages.ShowMessage("File extension has some invalid characters.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, string.Format("File extension can't contain any of these characters:\n" + "'\"' ' < ' ' > ' ' | ' ':' ' * ' ' ? ' '\\' ' / '.\nAnd some other special chars:\n'\\t (tab)' '\\n (enter)' '\\r' '\\0' '\\a' '\\b' '\\v' '\\f'."));
             }
             else if(extension.Text.Contains('.'))
                 {
                 extension.Text.Replace(".", "");
-                new My_MessageBox("FILE MANAGER", "File extension can't contain dots [.]!", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png")), new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav")).ShowDialog();
+                Messages.ShowMessage("File extension has some invalid characters.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "File extension can't contain dots '.'.");
             }
         }
 
@@ -242,8 +258,13 @@ namespace File_Manager
 
         private void Rename2_Click(object sender, RoutedEventArgs e)
         {
-            if (new My_MessageBox("Confirmation", "Are you sure you want to rename all files in list?", "Caution: you can not reverse this operation!", "", new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-Warning.png")), null, null).ShowThisDialog() == MyMessageBoxResult.Yes)
-                Suggest_Click(null, null);
+            if (suggester_data.Count > 0)
+            {
+                if (Messages.ShowMessage("Are you sure you want to rename all files in list?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "", "Caution: you can not reverse this operation!") == MyMessageBoxResult.Yes)
+                    Suggest_Click(null, null);
+            }
+            else
+                Messages.ShowMessage("List is empty!", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "First you have to add files then click 'Rename'");
         }
 
         private void Suggest_Click(object sender, RoutedEventArgs e)

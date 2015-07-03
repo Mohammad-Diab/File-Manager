@@ -1,0 +1,6 @@
+ 
+First Release 0.01:
+	Basic file manager (open files and browsing directory).
+
+
+mohammad.diab93@outlook.com

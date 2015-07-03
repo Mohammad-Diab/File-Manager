@@ -1,0 +1,30 @@
+What is new in this version:
+
+Version 0.3:
+	1) Viewer Window (press space on item) can view
+		a. Directory
+		b. Image files
+		c. Audio files
+		d. Video files
+		e. Plant Text files
+		f. Html files
+		g. XPS and PDF Document 
+		h. Archive (extract and explore -[using 7zip File Manager])
+	2)  Improve interface appearance
+ 
+Version 0.2:
+	1) New Directory
+	2) View system information
+	2) Fixed some bugs 
+ 
+Version 0.1:
+	1) Back, Forward and Refresh buttons.
+	2) Details Pane.
+	3) Show hidden files option.
+	4) Ability to run New Window as Admin from the app.
+ 
+First Release 0.01:
+	Basic file manager (open files and browsing directory).
+
+
+mohammad.diab93@outlook.com

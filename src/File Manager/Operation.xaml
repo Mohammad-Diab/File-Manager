@@ -30,7 +30,7 @@
         </Button>
         <TextBlock x:Name="percent" FontSize="14" HorizontalAlignment="Right" Width="40" Margin="0,49,5,0" TextWrapping="Wrap" Text="0%" VerticalAlignment="Top" TextAlignment="Center"/>
         <Image x:Name="cut_sign_image" HorizontalAlignment="Right" Height="24" Margin="0,67,10,0" VerticalAlignment="Top" ToolTip="This file is being moved." Width="24" Source="Images/Appearance/operation-cut-sign.png" Visibility="Collapsed"/>
-        <TextBlock HorizontalAlignment="Left" Margin="287,75,0,0" FontSize="14" TextWrapping="Wrap" VerticalAlignment="Top"><Run Text="Speed: "/><Run x:Name="speed" Foreground="#FF1E90FF" FontWeight="Bold" FontSize="16" Text="0 byte/s"/></TextBlock>
-        <TextBlock HorizontalAlignment="Left" Margin="10,75,0,0" FontSize="14" TextWrapping="Wrap" VerticalAlignment="Top"><Run Text="Completed: "/><Run x:Name="completed" Foreground="DodgerBlue" FontWeight="Bold" FontSize="16" Text="0"/><Run Foreground="DodgerBlue" x:Name="complete_item_run" FontWeight="Bold" FontSize="16" Text=" item"/><Run  Foreground="DodgerBlue" FontWeight="Bold" FontSize="16" x:Name="more_than_one" Text="s"/></TextBlock>
+        <TextBlock x:Name="speed_textblock" HorizontalAlignment="Left" Margin="287,75,0,0" FontSize="14" TextWrapping="Wrap" VerticalAlignment="Top"><Run Text="Speed: "/><Run x:Name="speed" Foreground="#FF1E90FF" FontWeight="Bold" FontSize="16" Text="0 byte/s"/></TextBlock>
+        <TextBlock x:Name="complete_textblock" HorizontalAlignment="Left" Margin="10,75,0,0" FontSize="14" TextWrapping="Wrap" VerticalAlignment="Top"><Run Text="Completed: "/><Run x:Name="completed" Foreground="DodgerBlue" FontWeight="Bold" FontSize="16" Text="0"/><Run Foreground="DodgerBlue" x:Name="complete_item_run" FontWeight="Bold" FontSize="16" Text=" item"/><Run  Foreground="DodgerBlue" FontWeight="Bold" FontSize="16" x:Name="more_than_one" Text="s"/></TextBlock>
     </Grid>
 </Window>

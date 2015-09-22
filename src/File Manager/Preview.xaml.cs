@@ -543,7 +543,7 @@ namespace File_Manager
         {
             while (is_on)
             {
-                System.Threading.Thread.Sleep(100);
+                Thread.Sleep(100);
                 ((BackgroundWorker)sender).ReportProgress(0);
             }
         }
@@ -608,6 +608,7 @@ namespace File_Manager
 
         private void VideoPlayer_MediaOpened(object sender, RoutedEventArgs e)
         {
+            app_bar_background.Visibility = app_bar_dots.Visibility = app_bar_grid.Visibility = app_bar_stack.Visibility = Visibility.Visible;
             video_paly_button_image.Source = new BitmapImage(new Uri(@"pack://application:,,,/File Manager;component/Images/Menu/media-pause.png"));
             video_paly_button_image.ToolTip = "Pause";
             is_play = true;
@@ -1473,7 +1474,6 @@ namespace File_Manager
         {
             string copy_to = new Folder_Picker("Select directory to move to", true).ShowThisDialog();
             if (copy_to != null)
-
                 CollectFiles(true, copy_to);
         }
 
@@ -1819,7 +1819,8 @@ namespace File_Manager
 
         private void Window_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
         {
-            OpenCloseAPPBar();
+            if (app_bar_stack.Visibility == Visibility.Visible)
+                OpenCloseAPPBar();
         }
 
         private void OpenCloseAPPBar()

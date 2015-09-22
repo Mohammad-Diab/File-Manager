@@ -352,7 +352,7 @@ namespace File_Manager
             //v 2.0
             //redesign dialog and improve speed
             //background color and opacity
-            //fonts and color filter
+            //fonts and color filters
             //you can resize dialog now
         }
 

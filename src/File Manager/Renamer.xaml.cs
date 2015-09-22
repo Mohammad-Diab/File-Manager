@@ -49,17 +49,17 @@ namespace File_Manager
             }
         }
 
-        Dictionary<string, bool> list1 = new Dictionary<string, bool>();
-        Dictionary<string, bool> list2 = new Dictionary<string, bool>();
-        ObservableCollection<RenamerListView> renamer_data = new ObservableCollection<RenamerListView>();
-        ObservableCollection<RenamerListView> suggester_data = new ObservableCollection<RenamerListView>();
+        Dictionary<string, bool> renamer_dictionary = new Dictionary<string, bool>();
+        Dictionary<string, bool> suggest_dictionary = new Dictionary<string, bool>();
+        List<RenamerListView> renamer_data = new List<RenamerListView>();
+        List<RenamerListView> suggest_data = new List<RenamerListView>();
 
         public Renamer()
         {
             InitializeComponent();
         }
 
-        void BrowseForFiles(string title, ObservableCollection<RenamerListView> add_in, string items_count, Dictionary<string, bool> add_in_dictionary)
+        void BrowseForFiles(string title, List<RenamerListView> add_in, string items_count, Dictionary<string, bool> add_in_dictionary)
         {
             SelectFileDialog sfd = new SelectFileDialog();
             sfd.dialogMode = SelectFileDialogMode.OpenFile;
@@ -71,7 +71,7 @@ namespace File_Manager
                 AddFiles(add_in, items_count, add_in_dictionary,sfd.SelectedItems);
         }
 
-        void AddFiles(ObservableCollection<RenamerListView> add_in, string items_count, Dictionary<string, bool> add_in_dictionary, List<string> list)
+        void AddFiles(List<RenamerListView> add_in, string items_count, Dictionary<string, bool> add_in_dictionary, List<string> list)
         {
             foreach (string i in list)
             {
@@ -81,45 +81,43 @@ namespace File_Manager
                     add_in_dictionary.Add(i, true);
                 }
             }
+            if (add_in == renamer_data)
+                renamer_list.Items.Refresh();
+            else
+                sugester_list.Items.Refresh();
             if (add_in_dictionary.Count > 0)
                 items_count = add_in_dictionary.Count + (add_in_dictionary.Count > 1 ? " Items" : " Item");
             else
                 items_count = "";
         }
 
-        void AddDirectory(ObservableCollection<RenamerListView> add_in, string items_count, Dictionary<string, bool> add_in_dictionary)
+        void AddDirectory(string path, List<RenamerListView> add_in, string items_count, Dictionary<string, bool> add_in_dictionary)
         {
-            SelectFileDialog sfd = new SelectFileDialog();
-            sfd.dialogMode = SelectFileDialogMode.SelectDirectory;
-            sfd.CreateFolderEnable = false;
-            sfd.DialogTitle = "Add all files in this directory.";
-            sfd.AddExtension = false;
-
-            if (sfd.ShowWindow() == MyMessageBoxResult.OK)
+            main_grid.IsEnabled = false;
+            BackgroundWorker add_all_files_in_dir_bw = new BackgroundWorker();
+            add_all_files_in_dir_bw.WorkerSupportsCancellation = true;
+            add_all_files_in_dir_bw.WorkerReportsProgress = true;
+            add_all_files_in_dir_bw.DoWork += (object sender, DoWorkEventArgs e) => { GetAllFiles(new DirectoryInfo(path), add_in_dictionary, (BackgroundWorker)sender); };
+            add_all_files_in_dir_bw.ProgressChanged += (object sender, ProgressChangedEventArgs e) =>
             {
-                string path = sfd.SelectedItem;
-                main_grid.IsEnabled = false;
-                BackgroundWorker add_all_files_in_dir_bw = new BackgroundWorker();
-                add_all_files_in_dir_bw.WorkerSupportsCancellation = true;
-                add_all_files_in_dir_bw.WorkerReportsProgress = true;
-                add_all_files_in_dir_bw.DoWork += (object sender, DoWorkEventArgs e) => { GetAllFiles(new DirectoryInfo(path), add_in_dictionary, (BackgroundWorker)sender); };
-                add_all_files_in_dir_bw.ProgressChanged += (object sender, ProgressChangedEventArgs e) =>
-                {
-                    FileInfo i = (FileInfo)e.UserState;
-                    try
-                    { add_in.Add(new RenamerListView(i)); }
-                    catch (Exception) { }
-                };
-                add_all_files_in_dir_bw.RunWorkerCompleted += (object sender, RunWorkerCompletedEventArgs e) =>
-                {
-                    main_grid.IsEnabled = true;
-                    if (add_in_dictionary.Count > 0)
-                        items_count = add_in_dictionary.Count + (add_in_dictionary.Count > 1 ? " Items" : " Item");
-                    else
-                        items_count = "";
-                };
-                add_all_files_in_dir_bw.RunWorkerAsync();
-            }
+                FileInfo i = (FileInfo)e.UserState;
+                try
+                { add_in.Add(new RenamerListView(i)); }
+                catch (Exception) { }
+            };
+            add_all_files_in_dir_bw.RunWorkerCompleted += (object sender, RunWorkerCompletedEventArgs e) =>
+            {
+                main_grid.IsEnabled = true;
+                if (add_in == renamer_data)
+                    renamer_list.Items.Refresh();
+                else
+                    sugester_list.Items.Refresh();
+                if (add_in_dictionary.Count > 0)
+                    items_count = add_in_dictionary.Count + (add_in_dictionary.Count > 1 ? " Items" : " Item");
+                else
+                    items_count = "";
+            };
+            add_all_files_in_dir_bw.RunWorkerAsync();
         }
 
         private void GetAllFiles(DirectoryInfo dir, Dictionary<string, bool> list, BackgroundWorker bw)
@@ -145,24 +143,52 @@ namespace File_Manager
                     GetAllFiles(i, list, bw);
         }
 
-        void ClearList(Dictionary<string, bool> l1, ObservableCollection<RenamerListView> l2, string t)
+        void ClearList(Dictionary<string, bool> l1, List<RenamerListView> l2, string t)
         {
             l1.Clear();
-            l2.Clear(); 
+            l2.Clear();
+            if (l2 == renamer_data)
+                renamer_list.Items.Refresh();
+            else
+                sugester_list.Items.Refresh();
             t = "";
         }
 
-        private void RemoveItems(IList selected_list, ObservableCollection<RenamerListView> remove_from, Dictionary<string, bool> list1, string p)
+        private void RemoveItems(IList selected_list, List<RenamerListView> remove_from, Dictionary<string, bool> list1, string p)
         {
             for (int i = selected_list.Count - 1; i >= 0; i--)
             {
                 list1.Remove((selected_list[i] as RenamerListView).FullPath);
                 remove_from.Remove(selected_list[i] as RenamerListView);
             }
+            if (remove_from == renamer_data)
+                renamer_list.Items.Refresh();
+            else
+                sugester_list.Items.Refresh();
             if (list1.Count > 0)
                 p = list1.Count + (list1.Count == 1 ? " Item" : " Items");
             else
                 p = string.Empty;
+        }
+
+        private void FilesList_Drop(object sender, DragEventArgs e)
+        {
+            string[] data;
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+                if ((data = (string[])e.Data.GetData(DataFormats.FileDrop)).Length == 1 && Directory.Exists(data[0]))
+                {
+                    if (sender == renamer_list)
+                        AddDirectory(data[0], renamer_data, items_count.Text, renamer_dictionary);
+                    else
+                        AddDirectory(data[0], suggest_data, items_count2.Text, suggest_dictionary);
+                }
+                else if (data.Length > 0)
+                {
+                    if (sender == renamer_list)
+                        AddFiles(renamer_data, items_count.Text, renamer_dictionary, data.ToList());
+                    else
+                        AddFiles(suggest_data, items_count2.Text, suggest_dictionary, data.ToList());
+                }
         }
 
 
@@ -170,17 +196,25 @@ namespace File_Manager
 
         private void AddFile_Click(object sender, RoutedEventArgs e)
         {
-            BrowseForFiles("Select files to change thier extentions...", renamer_data, items_count.Text, list1);
+            BrowseForFiles("Select files to change thier extentions...", renamer_data, items_count.Text, renamer_dictionary);
         }
 
         private void AddFolder_Click(object sender, RoutedEventArgs e)//cheack if item is in list or not
         {
-            AddDirectory(renamer_data, items_count.Text, list1);
+            SelectFileDialog sfd = new SelectFileDialog();
+            sfd.dialogMode = SelectFileDialogMode.SelectDirectory;
+            sfd.CreateFolderEnable = false;
+            sfd.DialogTitle = "Add all files in this directory.";
+            sfd.AddExtension = false;
+            if (sfd.ShowWindow() == MyMessageBoxResult.OK)
+            {
+                AddDirectory(sfd.SelectedItem, renamer_data, items_count.Text, renamer_dictionary);
+            }
         }
 
         private void ClearList_Click(object sender, RoutedEventArgs e)
         {
-            ClearList(list1, renamer_data, items_count.Text);
+            ClearList(renamer_dictionary, renamer_data, items_count.Text);
         }
 
         private void Rename_Click(object sender, RoutedEventArgs e)
@@ -203,7 +237,7 @@ namespace File_Manager
                     foreach (var i in renamer_data)
                         to_rename.Add(new FileOperationItem(i.File, false, (remove_extension.IsChecked.Value ? i.File.Name.Substring(0, i.File.Name.Length - i.File.Extension.Length) : i.File.Name) + (extension.Text.Length > 0 ? ('.' + extension.Text) : "")));
                     new Operation().CopyDialogShow(to_rename, OperationType.Rename, "", true);
-                    ClearList(list1, renamer_data, items_count.Text);
+                    ClearList(renamer_dictionary, renamer_data, items_count.Text);
                 }
             }
             else
@@ -228,7 +262,7 @@ namespace File_Manager
 
         private void RemoveSelected_Click(object sender, RoutedEventArgs e)
         {
-            RemoveItems(FilesList.SelectedItems, renamer_data, list1, items_count.Text);
+            RemoveItems(renamer_list.SelectedItems, renamer_data, renamer_dictionary, items_count.Text);
         }
 
         #endregion
@@ -236,29 +270,37 @@ namespace File_Manager
 
         #region Suggest best possible extension
 
-        private void AddFile2_Click(object sender, RoutedEventArgs e)
+        private void SuggesterAddFile_Click(object sender, RoutedEventArgs e)
         {
-            BrowseForFiles("Select files...", suggester_data, items_count2.Text, list2);
+            BrowseForFiles("Select files...", suggest_data, items_count2.Text, suggest_dictionary);
         }
 
-        private void AddFolder2_Click(object sender, RoutedEventArgs e)
+        private void SuggesterAddFolder_Click(object sender, RoutedEventArgs e)
         {
-            AddDirectory(suggester_data, items_count2.Text, list2);
+            SelectFileDialog sfd = new SelectFileDialog();
+            sfd.dialogMode = SelectFileDialogMode.SelectDirectory;
+            sfd.CreateFolderEnable = false;
+            sfd.DialogTitle = "Add all files in this directory.";
+            sfd.AddExtension = false;
+            if (sfd.ShowWindow() == MyMessageBoxResult.OK)
+            {
+                AddDirectory(sfd.SelectedItem, suggest_data, items_count2.Text, suggest_dictionary);
+            }
         }
 
-        private void RemoveSelected2_Click(object sender, RoutedEventArgs e)
+        private void SuggesterRemoveSelected_Click(object sender, RoutedEventArgs e)
         {
-            RemoveItems(FilesList2.SelectedItems, suggester_data, list2, items_count2.Text);
+            RemoveItems(sugester_list.SelectedItems, suggest_data, suggest_dictionary, items_count2.Text);
         }
 
-        private void ClearList2_Click(object sender, RoutedEventArgs e)
+        private void SuggesterClearList_Click(object sender, RoutedEventArgs e)
         {
-            ClearList(list2, suggester_data, items_count2.Text);
+            ClearList(suggest_dictionary, suggest_data, items_count2.Text);
         }
 
-        private void Rename2_Click(object sender, RoutedEventArgs e)
+        private void SuggesterRename_Click(object sender, RoutedEventArgs e)
         {
-            if (suggester_data.Count > 0)
+            if (suggest_data.Count > 0)
             {
                 if (Messages.ShowMessage("Are you sure you want to rename all files in list?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "", "Caution: you can not reverse this operation!") == MyMessageBoxResult.Yes)
                     Suggest_Click(null, null);
@@ -286,38 +328,38 @@ namespace File_Manager
         private void SuggestBW_DoWork(object sender, DoWorkEventArgs e)
         {
             BackgroundWorker this_bw = ((BackgroundWorker)sender);
-            Parallel.For(0, suggester_data.Count, (i) =>//for (int i = 0; i < list_to_rename2.Count; i++)
+            Parallel.For(0, suggest_data.Count, (i) =>//for (int i = 0; i < list_to_rename2.Count; i++)
             {
-                if (!suggester_data[i].Done && suggester_data[i].PossibleExt.Count == 0 && suggester_data[i].File.Exists)
+                if (!suggest_data[i].Done && suggest_data[i].PossibleExt.Count == 0 && suggest_data[i].File.Exists)
                 {
                     try
                     {
-                        BinaryReader BR = new BinaryReader(suggester_data[i].File.OpenRead());
+                        BinaryReader BR = new BinaryReader(suggest_data[i].File.OpenRead());
                         List<byte> file_bytes = new List<byte>();
-                        if (suggester_data[i].File.Length > 12)
+                        if (suggest_data[i].File.Length > 12)
                         {
                             file_bytes = BR.ReadBytes(12).ToList<byte>();
-                            if (IsISO(suggester_data[i], this_bw))
+                            if (IsISO(suggest_data[i], this_bw))
                                 this_bw.ReportProgress(i, "iso");
-                            else if (IsWave(suggester_data[i], this_bw, file_bytes))
+                            else if (IsWave(suggest_data[i], this_bw, file_bytes))
                                 this_bw.ReportProgress(i, "wav");
-                            else if (IsAVI(suggester_data[i], this_bw, file_bytes))
+                            else if (IsAVI(suggest_data[i], this_bw, file_bytes))
                                 this_bw.ReportProgress(i, "avi");
-                            else if (Is3GP(suggester_data[i], this_bw, file_bytes))
+                            else if (Is3GP(suggest_data[i], this_bw, file_bytes))
                                 this_bw.ReportProgress(i, "3gp");
-                            else if (IsMP4(suggester_data[i], this_bw, file_bytes))
+                            else if (IsMP4(suggest_data[i], this_bw, file_bytes))
                                 this_bw.ReportProgress(i, "mp4");
-                            else if (IsWebM(suggester_data[i], this_bw, file_bytes))
+                            else if (IsWebM(suggest_data[i], this_bw, file_bytes))
                                 this_bw.ReportProgress(i, "webm");
-                            else if (IsDOC(suggester_data[i], this_bw))
+                            else if (IsDOC(suggest_data[i], this_bw))
                                 this_bw.ReportProgress(i, "doc");
-                            else if (IsXLS(suggester_data[i], this_bw))
+                            else if (IsXLS(suggest_data[i], this_bw))
                                 this_bw.ReportProgress(i, "xls");
                             else
                             {
                                 foreach (var j in FileInfoCombonents.FilesInformation)
                                     foreach (var l in j.Value.IDs)
-                                        if (suggester_data[i].File.Length >= l.Length + j.Value.Offset)
+                                        if (suggest_data[i].File.Length >= l.Length + j.Value.Offset)
                                         {
                                             try
                                             {
@@ -335,8 +377,8 @@ namespace File_Manager
                                             }
                                             catch (Exception) { }
                                         }
-                                if (!suggester_data[i].PossibleExt.Contains("doc"))
-                                    if (IsPPT(suggester_data[i], this_bw))
+                                if (!suggest_data[i].PossibleExt.Contains("doc"))
+                                    if (IsPPT(suggest_data[i], this_bw))
                                     {
                                         this_bw.ReportProgress(i, "ppt");
                                         this_bw.ReportProgress(i, "pps");
@@ -353,14 +395,14 @@ namespace File_Manager
         private void SuggestBW_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
             if (e.ProgressPercentage > -1)
-                suggester_data[e.ProgressPercentage].PossibleExt.Add(e.UserState.ToString());
+                suggest_data[e.ProgressPercentage].PossibleExt.Add(e.UserState.ToString());
             else
-                rename2_progressbar.Value += 1000.0 / suggester_data.Count;
+                rename2_progressbar.Value += 1000.0 / suggest_data.Count;
         }
 
         private void SuggestBW_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
-            foreach (var i in suggester_data)
+            foreach (var i in suggest_data)
             {
                 if (i.PossibleExt.Count == 0)
                     i.PossibleExt.Add("none");
@@ -370,18 +412,18 @@ namespace File_Manager
             }
             rename2_progressbar.Visibility = Visibility.Hidden;
             main_grid.IsEnabled = true;
-            FilesList2.Items.Refresh();
+            sugester_list.Items.Refresh();
         }
 
         private void SuggestAndRename_bw_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
             SuggestBW_RunWorkerCompleted(null, null);
             List<FileOperationItem> to_rename = new List<FileOperationItem>();
-            foreach (var i in suggester_data)
+            foreach (var i in suggest_data)
                 if (i.PossibleExt.Count > i.SelectedExt && i.Done && i.PossibleExt[i.SelectedExt] != "none" && i.File.Exists && ("." + i.PossibleExt[i.SelectedExt]) != i.File.Extension)
                     to_rename.Add(new FileOperationItem(i.File, false, (remove_extension2.IsChecked.Value ? i.File.Name.Substring(0, i.File.Name.Length - i.File.Extension.Length) : i.File.Name) + (i.PossibleExt[i.SelectedExt].Length > 0 ? (i.PossibleExt[i.SelectedExt]) : "")));
             new Operation().CopyDialogShow(to_rename, OperationType.Rename, "", true);
-            ClearList(list2, suggester_data, items_count2.Text);
+            ClearList(suggest_dictionary, suggest_data, items_count2.Text);
         }
 
         private bool IsXLS(RenamerListView i, BackgroundWorker this_bw)
@@ -529,8 +571,8 @@ namespace File_Manager
             rec.BeginAnimation(MarginProperty, ta2);
             ThicknessAnimation ta = new ThicknessAnimation(new Thickness(CurrentPage == ExtentionChanger.ChangeExtention ? 0 : -1 * ActualWidth, 0, 0, 0), new Duration(new TimeSpan(2000000)));
             mother.BeginAnimation(MarginProperty, ta);
-            FilesList.DataContext = renamer_data;
-            FilesList2.DataContext = suggester_data;
+            renamer_list.DataContext = renamer_data;
+            sugester_list.DataContext = suggest_data;
         }
 
         private void Window_Closing(object sender, CancelEventArgs e)
@@ -538,17 +580,37 @@ namespace File_Manager
             CloseWindow = true;
         }
 
+        private void AboutTool_Click(object sender, RoutedEventArgs e)
+        {
+            //viresion 1:
+            //base tool to change files extension
+            //
+            //1.1:
+            //impove speed
+            //fix bug
+            //
+            //1.2:
+            //add extension sugester
+            //
+            //2:
+            //new interface
+            //impove speed
+            //
+            //2.1:
+            //drug and drop files
+        }
+
         internal bool ShowWindow(List<string> files,string Extention, ExtentionChanger type, bool showDialog)
         {
             CurrentPage = type;
             if (type == ExtentionChanger.ChangeExtention)
             {
-                AddFiles(renamer_data, items_count.Text, list1, files);
+                AddFiles(renamer_data, items_count.Text, renamer_dictionary, files);
                 extension.Text = Extention;
             }
             else
             {
-                AddFiles(suggester_data, items_count2.Text, list2, files);
+                AddFiles(suggest_data, items_count2.Text, suggest_dictionary, files);
                 Suggest_Click(suggest_button, null);
             }
             

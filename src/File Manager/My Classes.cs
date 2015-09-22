@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Management;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Threading;
@@ -137,15 +138,15 @@ namespace File_Manager
                 SizeInByte = SizeInByte / 1024;
                 i++;
             }
-            return Math.Round(SizeInByte, round) + " " + FileSizeUnit(i);
+            return Math.Round(SizeInByte, round) + " " + FileSizeUnit(i, SizeInByte);
         }
 
-        private static string FileSizeUnit(byte num)
+        private static string FileSizeUnit(byte num, double size)
         {
             switch (num)
             {
                 case 0:
-                    return "byte";
+                    return "byte" + (size == 1 ? "" : "s");
                 case 1:
                     return "KiB";
                 case 2:
@@ -215,9 +216,64 @@ namespace File_Manager
             }
         }
 
-        internal static string GetDriveDescription(DriveType driveType)
+        internal static long CalcFileSizeOnDisk(FileInfo info)
         {
-            return "";
+            if (clusterSize == 0)
+                GetClusterSize(info.Directory.Root.FullName);
+            uint hosize;
+            uint losize = GetCompressedFileSizeW(info.FullName, out hosize);
+            long size;
+            size = (long)hosize << 32 | losize;
+            if (clusterSize > 0)
+                return ((size + (clusterSize) - 1) / (clusterSize)) * clusterSize;
+            else
+                return info.Length;
+        }
+
+        #region Get Size on Disk
+
+        static int clusterSize = 0;
+
+        static void GetClusterSize(string drive)
+        {
+            clusterSize = 0;
+            using (var searcher = new ManagementObjectSearcher("select BlockSize,NumberOfBlocks from Win32_Volume WHERE DriveLetter = '" + drive.TrimEnd('\\') + "'"))
+            {
+                foreach (ManagementObject i in searcher.Get())
+                {
+                    string bb = (i["BlockSize"]).ToString();
+                    int.TryParse(bb, out clusterSize);
+                    if (clusterSize == 0)
+                        clusterSize = 4096;
+                    break;
+                }
+            }
+        }
+
+        [DllImport("kernel32.dll")]
+        static extern uint GetCompressedFileSizeW([In, MarshalAs(UnmanagedType.LPWStr)] string lpFileName, [Out, MarshalAs(UnmanagedType.U4)] out uint lpFileSizeHigh);
+
+        #endregion Get Size on Disk
+
+        internal static string GetDriveDescription(DriveInfo drive)
+        {
+            if (!drive.IsReady)
+                return drive.Name;
+            switch (drive.DriveType)
+            {
+                case DriveType.CDRom:
+                    return ((drive.VolumeLabel.Equals(string.Empty) ? "Optical disk" : drive.VolumeLabel) + " (" + drive.Name + ")");
+                case DriveType.Fixed:
+                    return ((drive.VolumeLabel.Equals(string.Empty) ? "Local drive" : drive.VolumeLabel) + " (" + drive.Name + ")");
+                case DriveType.Network:
+                    return ((drive.VolumeLabel.Equals(string.Empty) ? "Network drive" : drive.VolumeLabel) + " (" + drive.Name + ")");
+                case DriveType.Ram:
+                    return ((drive.VolumeLabel.Equals(string.Empty) ? "Ram disk" : drive.VolumeLabel) + " (" + drive.Name + ")");
+                case DriveType.Removable:
+                    return ((drive.VolumeLabel.Equals(string.Empty) ? "Removable media" : drive.VolumeLabel) + " (" + drive.Name + ")");
+                default:
+                    return ((drive.VolumeLabel.Equals(string.Empty) ? "Drive" : drive.VolumeLabel) + " (" + drive.Name + ")");
+            }
         }
 
         static public bool IsRunningAsAdmin()
@@ -260,7 +316,7 @@ namespace File_Manager
                 return FileInfoCombonents.FilesInformation["."].Bitmap24;
         }
 
-        internal static BitmapImage GetSpecialDirectoryImage(string p)
+        internal static BitmapImage GetDirectoryImage(string path)
         {
             return GetFileImage64("directory");
         }
@@ -579,11 +635,20 @@ namespace File_Manager
         Random = 0,
         Name = 1,
         Size = 2,
-        type = 3,
+        Type = 3,
         DateCreation = 4,
         DateModified = 5,
-        DateLastAccess = 6
+        DateLastAccess = 6,
+
         //and More
+        RandomDescending =100,
+        NameDescending = 101,
+        SizeDescending = 102,
+        TypeDescending = 103,
+        DateCreationDescending = 104,
+        DateModifiedDescending = 105,
+        DateLastAccessDescending = 106
+
     }
 
 
@@ -1061,6 +1126,7 @@ namespace File_Manager
         Button8 = 108,
         Button9 = 109,
         Button10 = 110,
+        Button11 = 111,
     }
 
     #endregion

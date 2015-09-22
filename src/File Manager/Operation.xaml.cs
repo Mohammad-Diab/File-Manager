@@ -66,6 +66,9 @@ namespace File_Manager
             }
         }
 
+        List<long> old = new List<long>();
+        List<long> newnew = new List<long>();
+
         OperationTree root, already_exist, unsucsess, undeleted;
         long progress_value, completed_count, old_progress_value;
         int progress_rount = 1;
@@ -180,17 +183,17 @@ namespace File_Manager
                 switch (operation_type)
                 {
                     case OperationType.Copy:
-                        val = progress_bar.Value * 100 / (root.size + 0.000000001);
+                        val = progress_bar.Value * 100 / (root.size + double.Epsilon);
                         cut_sign_image.Visibility = file_is_moved ? Visibility.Visible : Visibility.Collapsed;
                         ChangeRemain(root.size - progress_value, false);
                         break;
                     case OperationType.Delete:
                     case OperationType.Attributes:
-                        val = progress_bar.Value * 100.0 / (root.files_count + root.directory_count + 0.000000001);
+                        val = progress_bar.Value * 100.0 / (root.files_count + root.directory_count + double.Epsilon);
                         ChangeRemain(root.files_count + root.directory_count - progress_value, true);
                         break;
                     case OperationType.Rename:
-                        val = progress_bar.Value * 100.0 / (root.children.Count + 0.000000001);
+                        val = progress_bar.Value * 100.0 / (root.children.Count + double.Epsilon);
                         ChangeRemain(root.children.Count - progress_value, true);
                         break;
                     case OperationType.Extract:
@@ -201,15 +204,18 @@ namespace File_Manager
                 percent.Text = Math.Round(val, 0) + "%";
                 TaskbarItemInfo.ProgressValue = val / 100;
                 completed.Text = completed_count.ToString();
+
                 if (progress_rount % 20 == 0)
                 {
+                    old.Add(old_progress_value);
+                    newnew.Add(progress_value);
                     progress_rount = 1;
                     if (operation_type == OperationType.Copy)
-                        speed.Text = Functions.FileSize((progress_value - old_progress_value) / 2, 1) + " per second";
-                    else if (operation_type == OperationType.Delete)
+                        speed.Text = Functions.FileSize((progress_value - old_progress_value) / 4, 1) + " per second";
+                    else if (operation_type == OperationType.Delete || operation_type == OperationType.Attributes)
                     {
-                        double x = Math.Round(progress_value - old_progress_value / 2.0, 1);
-                        speed.Text = (x > 2 ? x : 60 * x) + " item" + (x > 2 ? "s" : x * 60 > 2 ? "s" : "") + " per " + (x > 2 ? "second" : "minute");
+                        double x = Math.Round((progress_value - old_progress_value) / 4.0, 1);
+                        speed.Text = string.Format("{0} item{1} per {2}", x > 2 ? x : 60 * x, x > 2 ? "s" : x * 60 > 2 ? "s" : "", x > 2 ? "second" : "minute");
                     }
                     else if (operation_type == OperationType.Extract)
                         speed.Text = Functions.FileSize((progress_value - old_progress_value) * root.size / 100.0, 1) + " per second";
@@ -235,7 +241,7 @@ namespace File_Manager
             remain_unit.Text = (is_items ? "item" : "byte") + (size > 1 ? "s" : "");
 
             //remain_title.Width = str[0].Length > 2 ? ((str[0].Length - 3) * 26 + 78) : 65;
-            remain_unit.Margin = new Thickness(100 - (10 * (4 - remain.Text.Length)), 40, 0, 0);
+            //remain_unit.Margin = new Thickness(100 - (10 * (4 - remain.Text.Length)), 40, 0, 0);
         }
 
         private void AddError(OperationTree item, OperationTree add_in)
@@ -289,7 +295,9 @@ namespace File_Manager
                 {
                     if (!OpBW.IsBusy)
                         break;
-                    OpBW.ReportProgress(0);
+                    try
+                    { OpBW.ReportProgress(0); }
+                    catch (Exception) { }
                     while (sleep_thread)
                         Thread.Sleep(100);
                     while (pause_copy)
@@ -471,9 +479,17 @@ namespace File_Manager
             {
                 if (i.item.FullName[0] == paste_in[0] && i.is_cut)
                 {
-                    File.Move(i.item.FullName, new_path);
-                    progress_value += i.size;
-                    completed_count++;
+                    try
+                    {
+                        File.Move(i.item.FullName, new_path);
+                        progress_value += i.size;
+                        completed_count++;
+                    }
+                    catch(Exception ex)
+                    {
+                        i.error_message = ex.Message;
+                        unsucsess.children.Add(i);
+                    }
                 }
                 else
                 {
@@ -836,10 +852,12 @@ namespace File_Manager
                 {
                     if (!OpBW.IsBusy)
                         break;
-                    OpBW.ReportProgress(0);
+                    try
+                    { OpBW.ReportProgress(0); }
+                    catch (Exception) { }
                     while (sleep_thread || pause_copy)
                         Thread.Sleep(100);
-                    System.Threading.Thread.Sleep(200);
+                    Thread.Sleep(200);
                 }
             });
             progress_thread.Start();
@@ -1327,7 +1345,9 @@ namespace File_Manager
                 {
                     while (bw.IsBusy)
                     {
-                        bw.ReportProgress(1);
+                        try
+                        { bw.ReportProgress(1); }
+                        catch (Exception) { }
                         Thread.Sleep(100);
                         while (pause_copy)
                         {
@@ -1642,7 +1662,7 @@ namespace File_Manager
                 return;
             }
             int dones = 0;
-            if (method == DestroyMethod.FastOne || method == DestroyMethod.FastZero)
+            if (method == DestroyMethod.FastOne || method == DestroyMethod.FastZero || method == DestroyMethod.FastRandom)
             {
                 for (int i = 0; i < repeat; i++)
                 {
@@ -1695,17 +1715,7 @@ namespace File_Manager
         byte[] GetBuffer(DestroyMethod method, int case_number)
         {
             byte[] buffer = new byte[Functions.buffer];
-            if (method != DestroyMethod.Secure)
-            {
-                byte values;
-                if (method == DestroyMethod.FastOne)
-                    values = 0xFF;
-                else
-                    values = 0x00;
-                for (int j = 0; j < Functions.buffer; j++)
-                    buffer[j] = values;
-            }
-            else
+            if (method == DestroyMethod.Secure)
             {
                 switch (case_number)
                 {
@@ -1776,6 +1786,27 @@ namespace File_Manager
                         break;
                 }
             }
+            else if (method == DestroyMethod.FastRandom)
+            {
+                Random rand = new Random((int)(DateTime.Now.Ticks / 34553786873));
+                rand.NextBytes(buffer);
+            }
+            else
+            {
+                byte values;
+                switch (method)
+                {
+                    case DestroyMethod.FastOne:
+                        values = 0xFF;
+                        break;
+                    default:
+                        values = 0x00;
+                        break;
+                }
+                for (int j = 0; j < Functions.buffer; j++)
+                    buffer[j] = values;
+            }
+
             return buffer;
         }
 
@@ -1843,16 +1874,16 @@ namespace File_Manager
                     case "fat32":
                     case "exfat":
                         if (parent.Length > 15)
-                            max_file_name = 254 - parent.Length;
+                            max_file_name = 253 - parent.Length;
                         else
-                            max_file_name = 239;
+                            max_file_name = 238;
                         break;
                     case "fat":
                     case "fat12":
                         if (parent.Length > 15)
-                            max_file_name = 249 - parent.Length;
+                            max_file_name = 248 - parent.Length;
                         else
-                            max_file_name = 239;
+                            max_file_name = 238;
                         break;
                 }
                 for (int i = 0; i < max_file_name - 1; i++)
@@ -2012,7 +2043,7 @@ namespace File_Manager
             encrypt_files_BackgroundWorker.RunWorkerCompleted += (object sender, RunWorkerCompletedEventArgs e) =>
             {
                 if (delete_files)
-                    new File_Destroyer(files_list).Show();
+                    new File_Destroyer(files_list, true).Show();
                 Close();
             };
             progress_bar.IsIndeterminate = false;
@@ -2628,8 +2659,9 @@ namespace File_Manager
             item = file;
             completed = 0;
             done = false;
-            if (file.Exists)
-                size = file.Length;
+            if (file != null)
+                if (file.Exists)
+                    size = file.Length;
             this.operation = operation;
             this.short_path = short_path;
             this.is_cut = is_cut;
@@ -2720,6 +2752,7 @@ namespace File_Manager
         Compress = 8,
         Extract = 9,
         CreateShortcut = 10,
-        ConvertISZ_ToISO = 11
+        ConvertISZ_ToISO = 11,
+        ChangeFileDate = 12
     }
 }

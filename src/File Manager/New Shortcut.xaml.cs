@@ -22,7 +22,7 @@ namespace File_Manager
     /// </summary>
     public partial class New_Shortcut : Window
     {
-        public New_Shortcut()
+        private New_Shortcut()
         {
             InitializeComponent();
         }
@@ -57,7 +57,7 @@ namespace File_Manager
                                     }
                                     catch (Exception)
                                     {
-                                        switch (Messages.ShowMessage("We can not create shortcut.", new ButtonContent("Retry creating shortcut", ModrenMessageBitmapImage.Retry, 1), new ButtonContent("Skip creating shortcut for this item.", ModrenMessageBitmapImage.Skip, 2), new ButtonContent("Cancel operation", ModrenMessageBitmapImage.Cancel, 3)))
+                                        switch (Messages.ShowMessage("We can not create shortcut.", "What do you want to do?", new ButtonContent("Retry creating shortcut", ModrenMessageBitmapImage.Retry, 1), new ButtonContent("Skip creating shortcut for this item.", ModrenMessageBitmapImage.Skip, 2), new ButtonContent("Cancel operation", ModrenMessageBitmapImage.Cancel, 3)))
                                         {
                                             case MyMessageBoxResult.Button1:
                                                 replay = true;
@@ -130,7 +130,6 @@ namespace File_Manager
 
         #endregion
 
-
         #region Junction Section
 
         private void CreateJunction_Click(object sender, RoutedEventArgs e)
@@ -167,7 +166,7 @@ namespace File_Manager
                                     }
                                     catch (Exception)
                                     {
-                                        switch (Messages.ShowMessage("We can not create junction point.", new ButtonContent("Retry creating shortcut", ModrenMessageBitmapImage.Retry, 1), new ButtonContent("Skip creating shortcut for this item.", ModrenMessageBitmapImage.Skip, 2), new ButtonContent("Cancel operation", ModrenMessageBitmapImage.Cancel, 3)))
+                                        switch (Messages.ShowMessage("We can not create junction point.", "What do you want to do?", new ButtonContent("Retry creating shortcut", ModrenMessageBitmapImage.Retry, 1), new ButtonContent("Skip creating shortcut for this item.", ModrenMessageBitmapImage.Skip, 2), new ButtonContent("Cancel operation", ModrenMessageBitmapImage.Cancel, 3)))
                                         {
                                             case MyMessageBoxResult.Button1:
                                                 replay = true;
@@ -326,7 +325,6 @@ namespace File_Manager
 
         #endregion
 
-
         #region Apperance
 
         private void Label1_MouseUp(object sender, MouseButtonEventArgs e)
@@ -360,6 +358,20 @@ namespace File_Manager
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             rec.Width = label1.ActualWidth;
+        }
+
+        static internal void CreateShortcut(string path, bool show_dialog)
+        {
+            New_Shortcut window = new New_Shortcut();
+            if (path != null && path != "")
+            {
+                window.o_path.Text = path;
+                window.s_name.Text = System.IO.Path.GetFileNameWithoutExtension(path) + ".lnk";
+            }
+            if (show_dialog)
+                window.ShowDialog();
+            else
+                window.Show();
         }
     }
 

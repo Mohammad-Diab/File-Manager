@@ -24,11 +24,11 @@
                 <Button ToolTip="Setting" Margin="5,261,0,0" VerticalAlignment="Top" HorizontalAlignment="Left" Background="{x:Null}">
                     <Image Source="Images/Appearance/setting.png" Height="28" Width="28" Stretch="UniformToFill"/>
                 </Button>
-                <ListView x:Name="item_list" Margin="45,68,15,10" ItemsSource="{Binding}" PreviewKeyUp="ItemsList_PreviewKeyUp">
+                <ListView x:Name="item_list" Margin="45,68,25,10" ItemsSource="{Binding}" PreviewKeyUp="ItemsList_PreviewKeyUp">
                     <ListView.Resources>
                         <Style TargetType="{x:Type ListViewItem}">
                             <EventSetter Event='MouseDoubleClick' Handler='BigFileFinder_MouseDoubleClick'/>
-                            <EventSetter Event='PreviewKeyUp'  Handler='BrowseList_PreviewKeyUp'/>
+                            <EventSetter Event='PreviewKeyUp' Handler='BrowseList_PreviewKeyUp'/>
                         </Style>
                     </ListView.Resources>
                     <ListView.View>
@@ -52,20 +52,39 @@
                         </GridView>
                     </ListView.View>
                 </ListView>
-                <TextBox x:Name="current_path" Margin="95,42,10,0" Text="root" VerticalAlignment="Top" FontSize="14" IsReadOnly="True"/>
+                <TextBox x:Name="current_path" Margin="95,42,20,0" Text="root" VerticalAlignment="Top" FontSize="14" IsReadOnly="True"/>
                 <Button IsEnabled="False" x:Name="go_up" ToolTip="Select a Directory" Margin="70,42,0,0" VerticalAlignment="Top" Click="GoUp_Click" HorizontalAlignment="Left" Background="{x:Null}">
                     <Image Source="Images/Appearance/go-up.png" Width="16" Height="16" Stretch="UniformToFill"/>
                 </Button>
                 <Button x:Name="go_home" IsEnabled="False" ToolTip="Go to home" Margin="45,42,0,0" VerticalAlignment="Top" Click="GoHome_Click" HorizontalAlignment="Left" Background="{x:Null}">
                     <Image Source="Images/Appearance/go-home.png" Width="16" Height="16" Stretch="UniformToFill"/>
                 </Button>
+                <Grid x:Name="caution" Height="22" VerticalAlignment="Bottom" Visibility="Collapsed">
+                    <Rectangle Fill="Black" Height="22" Stroke="Black" VerticalAlignment="Bottom" Opacity="0.5"/>
+                    <Rectangle Height="21" VerticalAlignment="Bottom" Opacity="0.9" RenderTransformOrigin="0.5,0.5">
+                        <Rectangle.Stroke>
+                            <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                <GradientStop Color="#FFB48B00" Offset="0"/>
+                                <GradientStop Color="#FFF7C6FF" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Rectangle.Stroke>
+                        <Rectangle.Fill>
+                            <LinearGradientBrush EndPoint="0.5,1" MappingMode="RelativeToBoundingBox" StartPoint="0.5,0">
+                                <GradientStop Color="#FFB46A00" Offset="1"/>
+                                <GradientStop Color="#FFDCA000"/>
+                            </LinearGradientBrush>
+                        </Rectangle.Fill>
+                    </Rectangle>
+                    <TextBlock Text="Warning: this directory contains directory junction so be careful while deleting files" TextTrimming="CharacterEllipsis" Foreground="White" FontSize="14" TextAlignment="Center" Height="20" VerticalAlignment="Top" FontWeight="SemiBold" Margin="0,1,0,0"/>
+                    <Ellipse Width="16" Height="16"  Fill="#FFFF2700" ToolTip="Close" HorizontalAlignment="Right" Margin="0,3,25,3"/>
+                </Grid>
             </Grid>
 
             <Grid Margin="650,0,0,0" HorizontalAlignment="Left" Width="650">
-                <ListView x:Name="all_files_list" Margin="10,45,15,10" ItemsSource="{Binding}" PreviewKeyUp="ItemsList_PreviewKeyUp">
+                <ListView x:Name="all_files_list" Margin="10,45,20,10" ItemsSource="{Binding}" PreviewKeyUp="ItemsList_PreviewKeyUp">
                     <ListView.Resources>
                         <Style TargetType="{x:Type ListViewItem}">
-                            <EventSetter Event='PreviewKeyUp'  Handler='BrowseList_PreviewKeyUp'/>
+                            <EventSetter Event='PreviewKeyUp' Handler='AllFilesList_PreviewKeyUp'/>
                         </Style>
                     </ListView.Resources>
                     <ListView.View>
@@ -89,39 +108,90 @@
             </Grid>
 
             <Grid Margin="1300,0,0,0" HorizontalAlignment="Left" Width="650">
-                <ListView x:Name="statistical_list" Margin="10,45,15,10" ItemsSource="{Binding}" PreviewKeyUp="ItemsList_PreviewKeyUp">
-                    <ListView.Resources>
-                        <Style TargetType="{x:Type ListViewItem}">
-                            <EventSetter Event='PreviewKeyUp'  Handler='BrowseList_PreviewKeyUp'/>
-                        </Style>
-                    </ListView.Resources>
-                    <ListView.View>
-                        <GridView>
-                            <GridViewColumn Header="Name" Width="200">
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <Grid Margin="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                                            <!--Background="{Binding Path=Background}"-->
-                                            <TextBlock Margin="28,0,0,0" Text="{Binding Path=FileName}" HorizontalAlignment="Left" FontSize="14" TextTrimming="CharacterEllipsis"/>
-                                            <Image Margin="0" Source="{Binding Path=Image}" Height="24" Width="24" VerticalAlignment="Top" HorizontalAlignment="Left"/>
-                                        </Grid>
-                                    </DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-                            <GridViewColumn Header="Type" Width="100" DisplayMemberBinding="{Binding Path=FileType}"/>
-                            <GridViewColumn Header="Size" Width="100" DisplayMemberBinding="{Binding Path=FileSize}"/>
-                            <GridViewColumn Header="Size / All" Width="100" DisplayMemberBinding="{Binding Path=SizeFromAll}"/>
-                        </GridView>
-                    </ListView.View>
-                </ListView>
+                <StackPanel x:Name="statical_stack" Margin="10,45,10,0" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <Grid Height="24" Margin="0,0,0,0" VerticalAlignment="Top" MinWidth="450">
+                        <TextBlock HorizontalAlignment="Left" Margin="10,4,0,0" TextWrapping="Wrap" Text="type" VerticalAlignment="Top" FontSize="12" Foreground="RoyalBlue"/>
+                        <TextBlock HorizontalAlignment="Left" Margin="140,4,0,0" TextWrapping="Wrap" Text="count" VerticalAlignment="Top" FontSize="12" Foreground="RoyalBlue"/>
+                        <TextBlock HorizontalAlignment="Left" Margin="310,4,0,0" TextWrapping="Wrap" Text="size" VerticalAlignment="Top" FontSize="12" Foreground="RoyalBlue"/>
+                        <TextBlock HorizontalAlignment="Left" Margin="390,4,0,0" TextWrapping="Wrap" Text="percent" VerticalAlignment="Top" FontSize="12" Foreground="RoyalBlue"/>
+                    </Grid>
+                    <Grid Height="24" Margin="0,10,0,0" VerticalAlignment="Top" MinWidth="450">
+                        <TextBlock x:Name="image_name" HorizontalAlignment="Left" Margin="30,2,0,0" TextWrapping="Wrap" Text="Image" VerticalAlignment="Top" FontSize="14"/>
+                        <Image x:Name="image" HorizontalAlignment="Left" Height="24" VerticalAlignment="Top" Width="24" Source="Images/Explorer Interface/front.png"/>
+                        <TextBlock x:Name="image_count" HorizontalAlignment="Left" Margin="130,2,0,0" TextWrapping="Wrap" Text="0 images" VerticalAlignment="Top" FontSize="14"/>
+                        <TextBlock x:Name="image_size" HorizontalAlignment="Left" Margin="300,2,0,0" TextWrapping="Wrap" Text="0 byte" VerticalAlignment="Top" FontSize="14"/>
+                        <TextBlock x:Name="image_percent" HorizontalAlignment="Left" Margin="390,2,0,0" TextWrapping="Wrap" Text="0%" VerticalAlignment="Top" FontSize="14"/>
+                    </Grid>
+                    <Grid Height="24" Margin="0,10,0,0" VerticalAlignment="Top" MinWidth="450">
+                        <TextBlock x:Name="music_name" HorizontalAlignment="Left" Margin="30,2,0,0" TextWrapping="Wrap" Text="Music" VerticalAlignment="Top" FontSize="14"/>
+                        <Image x:Name="image1" HorizontalAlignment="Left" Height="24" VerticalAlignment="Top" Width="24" Source="Images/Explorer Interface/front.png"/>
+                        <TextBlock x:Name="music_cont" HorizontalAlignment="Left" Margin="130,2,0,0" TextWrapping="Wrap" Text="0 songs" VerticalAlignment="Top" FontSize="14"/>
+                        <TextBlock x:Name="music_size" HorizontalAlignment="Left" Margin="300,2,0,0" TextWrapping="Wrap" Text="0 byte" VerticalAlignment="Top" FontSize="14"/>
+                        <TextBlock x:Name="music_percent" HorizontalAlignment="Left" Margin="390,2,0,0" TextWrapping="Wrap" Text="0%" VerticalAlignment="Top" FontSize="14"/>
+                    </Grid>
+                    <Grid Height="24" Margin="0,10,0,0" VerticalAlignment="Top" MinWidth="450">
+                        <TextBlock x:Name="document_name" HorizontalAlignment="Left" Margin="30,2,0,0" TextWrapping="Wrap" Text="Document" VerticalAlignment="Top" FontSize="14"/>
+                        <Image x:Name="image2" HorizontalAlignment="Left" Height="24" VerticalAlignment="Top" Width="24" Source="Images/Explorer Interface/front.png"/>
+                        <TextBlock x:Name="document_count" HorizontalAlignment="Left" Margin="130,2,0,0" TextWrapping="Wrap" Text="0 documents" VerticalAlignment="Top" FontSize="14"/>
+                        <TextBlock x:Name="document_size" HorizontalAlignment="Left" Margin="300,2,0,0" TextWrapping="Wrap" Text="0 byte" VerticalAlignment="Top" FontSize="14"/>
+                        <TextBlock x:Name="document_percent" HorizontalAlignment="Left" Margin="390,2,0,0" TextWrapping="Wrap" Text="0%" VerticalAlignment="Top" FontSize="14"/>
+                    </Grid>
+                    <Grid Height="24" Margin="0,10,0,0" VerticalAlignment="Top" MinWidth="450">
+                        <TextBlock x:Name="video_name" HorizontalAlignment="Left" Margin="30,2,0,0" TextWrapping="Wrap" Text="Video" VerticalAlignment="Top" FontSize="14"/>
+                        <Image x:Name="image3" HorizontalAlignment="Left" Height="24" VerticalAlignment="Top" Width="24" Source="Images/Explorer Interface/front.png"/>
+                        <TextBlock x:Name="video_count" HorizontalAlignment="Left" Margin="130,2,0,0" TextWrapping="Wrap" Text="0 clips" VerticalAlignment="Top" FontSize="14"/>
+                        <TextBlock x:Name="video_size" HorizontalAlignment="Left" Margin="300,2,0,0" TextWrapping="Wrap" Text="0 byte" VerticalAlignment="Top" FontSize="14"/>
+                        <TextBlock x:Name="video_percent" HorizontalAlignment="Left" Margin="390,2,0,0" TextWrapping="Wrap" Text="0%" VerticalAlignment="Top" FontSize="14"/>
+                    </Grid>
+                    <Grid Height="24" Margin="0,10,0,0" VerticalAlignment="Top" MinWidth="450">
+                        <TextBlock x:Name="font_name" HorizontalAlignment="Left" Margin="30,2,0,0" TextWrapping="Wrap" Text="Font" VerticalAlignment="Top" FontSize="14"/>
+                        <Image x:Name="image4" HorizontalAlignment="Left" Height="24" VerticalAlignment="Top" Width="24" Source="Images/Explorer Interface/front.png"/>
+                        <TextBlock x:Name="fonr_count" HorizontalAlignment="Left" Margin="130,2,0,0" TextWrapping="Wrap" Text="0 fonts" VerticalAlignment="Top" FontSize="14"/>
+                        <TextBlock x:Name="font_size" HorizontalAlignment="Left" Margin="300,2,0,0" TextWrapping="Wrap" Text="0 byte" VerticalAlignment="Top" FontSize="14"/>
+                        <TextBlock x:Name="font_percent" HorizontalAlignment="Left" Margin="390,2,0,0" TextWrapping="Wrap" Text="0%" VerticalAlignment="Top" FontSize="14"/>
+                    </Grid>
+                    <Grid Height="24" Margin="0,10,0,0" VerticalAlignment="Top" MinWidth="450">
+                        <TextBlock x:Name="other_name" HorizontalAlignment="Left" Margin="30,2,0,0" TextWrapping="Wrap" Text="Other" VerticalAlignment="Top" FontSize="14"/>
+                        <Image x:Name="image5" HorizontalAlignment="Left" Height="24" VerticalAlignment="Top" Width="24" Source="Images/Explorer Interface/front.png"/>
+                        <TextBlock x:Name="other_count" HorizontalAlignment="Left" Margin="130,2,0,0" TextWrapping="Wrap" Text="0 files" VerticalAlignment="Top" FontSize="14"/>
+                        <TextBlock x:Name="other_size" HorizontalAlignment="Left" Margin="300,2,0,0" TextWrapping="Wrap" Text="0 byte" VerticalAlignment="Top" FontSize="14"/>
+                        <TextBlock x:Name="other_percent" HorizontalAlignment="Left" Margin="390,2,0,0" TextWrapping="Wrap" Text="0%" VerticalAlignment="Top" FontSize="14"/>
+                    </Grid>
+                    <Grid Height="24" Margin="0,10,0,0" VerticalAlignment="Top" MinWidth="450">
+                        <TextBlock x:Name="archive_name" HorizontalAlignment="Left" Margin="30,2,0,0" TextWrapping="Wrap" Text="Archive" VerticalAlignment="Top" FontSize="14"/>
+                        <Image x:Name="image6" HorizontalAlignment="Left" Height="24" VerticalAlignment="Top" Width="24" Source="Images/Explorer Interface/front.png"/>
+                        <TextBlock x:Name="archive_count" HorizontalAlignment="Left" Margin="130,2,0,0" TextWrapping="Wrap" Text="0 files" VerticalAlignment="Top" FontSize="14"/>
+                        <TextBlock x:Name="archive_size" HorizontalAlignment="Left" Margin="300,2,0,0" TextWrapping="Wrap" VerticalAlignment="Top" FontSize="14" Text="0 byte"/>
+                        <TextBlock x:Name="archive_percent" HorizontalAlignment="Left" Margin="390,2,0,0" TextWrapping="Wrap" Text="0%" VerticalAlignment="Top" FontSize="14"/>
+                    </Grid>
+                    <Grid Height="24" Margin="0,10,0,0" VerticalAlignment="Top" MinWidth="450">
+                        <TextBlock x:Name="application_name" HorizontalAlignment="Left" Margin="30,2,0,0" TextWrapping="Wrap" Text="Application" VerticalAlignment="Top" FontSize="14"/>
+                        <Image x:Name="image7" HorizontalAlignment="Left" Height="24" VerticalAlignment="Top" Width="24" Source="Images/Explorer Interface/front.png"/>
+                        <TextBlock x:Name="application_cont" HorizontalAlignment="Left" Margin="130,2,0,0" TextWrapping="Wrap" Text="0 apps" VerticalAlignment="Top" FontSize="14"/>
+                        <TextBlock x:Name="application_size" HorizontalAlignment="Left" Margin="300,2,0,0" TextWrapping="Wrap" Text="0 byte" VerticalAlignment="Top" FontSize="14"/>
+                        <TextBlock x:Name="application_percent" HorizontalAlignment="Left" Margin="390,2,0,0" TextWrapping="Wrap" Text="0%" VerticalAlignment="Top" FontSize="14"/>
+                    </Grid>
+                    <Grid Height="30" Margin="0,10,0,0" VerticalAlignment="Top" MinWidth="450">
+                        <TextBlock x:Name="application_name1" HorizontalAlignment="Left" Margin="30,8,0,0" TextWrapping="Wrap" Text="Total" VerticalAlignment="Top" FontSize="14"/>
+                        <Image x:Name="image8" HorizontalAlignment="Left" Height="24" VerticalAlignment="Top" Width="24" Source="Images/Explorer Interface/front.png" Margin="0,6,0,0"/>
+                        <TextBlock x:Name="application_cont1" HorizontalAlignment="Left" Margin="130,8,0,0" TextWrapping="Wrap" Text="0 files" VerticalAlignment="Top" FontSize="14"/>
+                        <TextBlock x:Name="application_size1" HorizontalAlignment="Left" Margin="300,8,0,0" TextWrapping="Wrap" Text="0 byte" VerticalAlignment="Top" FontSize="14"/>
+                        <Rectangle Height="2" Margin="30,0,100,0" VerticalAlignment="Top" Fill="RoyalBlue"/>
+                    </Grid>
+                </StackPanel>
             </Grid>
         </Grid>
         <StackPanel x:Name="tab_panal" Height="36" VerticalAlignment="Top" Orientation="Horizontal" Background="Black">
             <Label x:Name="label1" Content="BROWSING" FontSize="18" Background="White" Cursor="Hand" PreviewMouseLeftButtonUp="TabChange_MouseButtonUp"/>
             <Label x:Name="label2" Content="ALL FILES" FontSize="18" Foreground="White" Background="Black" Cursor="Hand" PreviewMouseLeftButtonUp="TabChange_MouseButtonUp"/>
             <Label x:Name="label3" Content="STATISTICAL" FontSize="18" Foreground="White" Background="Black" Cursor="Hand" PreviewMouseLeftButtonUp="TabChange_MouseButtonUp"/>
-            <ProgressBar x:Name="progressbar" Width="300" Margin="20,8,0,8" Maximum="5100" Visibility="Hidden"/>
         </StackPanel>
+        <Button ToolTip="About Directory analizer" HorizontalAlignment="Right" VerticalAlignment="Top" Width="36" Height="36" Background="{x:Null}" BorderBrush="{x:Null}" Click="AboutTool_Click">
+            <Button.Content>
+                <Image Stretch="Fill" Source="Images/Menu/about-tool.png"/>
+            </Button.Content>
+        </Button>
+        <ProgressBar x:Name="progressbar" Margin="320,8,50,0" Maximum="5100" Visibility="Hidden" Height="20" VerticalAlignment="Top"/>
         <Rectangle x:Name="rec" Fill="Red" HorizontalAlignment="Left" Height="4" Margin="0,32,0,0" VerticalAlignment="Top" Width="102"/>
     </Grid>
 </Window>

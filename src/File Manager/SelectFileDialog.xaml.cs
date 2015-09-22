@@ -42,8 +42,7 @@ namespace File_Manager
         Boolean use_multiselection_list = false, Initializing = true, ShowHiddenFiles = true;
         MyMessageBoxResult return_value = MyMessageBoxResult.Cancel;
 
-        ObservableCollection<ExplorerItem> explorer_data = new ObservableCollection<ExplorerItem>();
-        ObservableCollection<QuickAccessMenuItem> quick_access_data = new ObservableCollection<QuickAccessMenuItem>();
+        List<ExplorerItem> explorer_data = new List<ExplorerItem>();
         ObservableCollection<MultiSelectionItem> multiselection_data = new ObservableCollection<MultiSelectionItem>();
         string current_path = "root";
         string CurrentPath
@@ -121,13 +120,13 @@ namespace File_Manager
             rotate_3d.WorkerReportsProgress = true;
             rotate_3d.DoWork += (object senderw, DoWorkEventArgs ew) =>
             {
-                for (int i = 0; i < 250; i++)
+                for (int i = 0; i < 50; i ++)
                 {
                     rotate_3d.ReportProgress(i);
-                    Thread.Sleep(1);
+                    Thread.Sleep(2);
                 }
             };
-            rotate_3d.ProgressChanged += (object senderw, ProgressChangedEventArgs ew) => { Rotation3d.Angle -= 0.36; };
+            rotate_3d.ProgressChanged += (object senderw, ProgressChangedEventArgs ew) => { Rotation3d.Angle -= 1.8; };
             rotate_3d.RunWorkerCompleted += (object senderw, RunWorkerCompletedEventArgs ew) =>
             {
                 Rotation3d.Angle = 0;
@@ -138,43 +137,46 @@ namespace File_Manager
             #endregion Startup Movement
 
             InitializeData();
-            QuickAccess_List.DataContext = quick_access_data;
             MultiSelection_List.DataContext = multiselection_data;
             if (CurrentPath.Equals("root"))
                 RootView();
             else
-                RootItemBrowse("root", CurrentPath, "");//if fult show root
+                RootItemBrowse("root", CurrentPath, "");//if failure show root
         }
 
         void InitializeData()
         {
+            bool worker_isbusy = true;
             BackgroundWorker get_drivers = new BackgroundWorker();
             get_drivers.WorkerSupportsCancellation = true;
             DriveInfo[] drivers = new DriveInfo[0];
-            get_drivers.DoWork += (object senderw, DoWorkEventArgs ew) => { drivers = DriveInfo.GetDrives(); };
+            get_drivers.DoWork += (object senderw, DoWorkEventArgs ew) => 
+            {
+                drivers = DriveInfo.GetDrives();
+                while (worker_isbusy)
+                    Thread.Sleep(50);
+            };
             get_drivers.RunWorkerCompleted += (object sender, RunWorkerCompletedEventArgs e) =>
             {
                 for (int i = drivers.Length - 1; i > -1; i--)
-                    quick_access_data.Insert(0, new QuickAccessMenuItem(drivers[i]));
-                quick_access_data.Insert(0, new QuickAccessMenuItem("Hard Disk Drives"));
+                    QuickAccess_List.Items.Insert(0, CreateQuickAccessItem(Functions.GetDriveImage(drivers[i], 24), 24, drivers[i].IsReady ? ((drivers[i].VolumeLabel.Equals(string.Empty) ? "Local disk" : drivers[i].VolumeLabel) + " (" + drivers[i].Name + ")") : drivers[i].Name, drivers[i], drivers[i].Name));
+                QuickAccess_List.Items.Insert(0, CreateQuickAccessItem("Local disks"));
             };
             get_drivers.RunWorkerAsync();
-            string tmp_path;
-            quick_access_data.Add(new QuickAccessMenuItem("Your Directories"));
-            if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)))
-                quick_access_data.Add(new QuickAccessMenuItem(new DirectoryInfo(tmp_path), "user"));
-            if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory)))
-                quick_access_data.Add(new QuickAccessMenuItem(new DirectoryInfo(tmp_path), "desktop"));
-            if (Directory.Exists(tmp_path = Functions.GetDownloadsPath()))
-                quick_access_data.Add(new QuickAccessMenuItem(new DirectoryInfo(tmp_path), "download"));
-            if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)))
-                quick_access_data.Add(new QuickAccessMenuItem(new DirectoryInfo(tmp_path), "document"));
-            if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.MyMusic)))
-                quick_access_data.Add(new QuickAccessMenuItem(new DirectoryInfo(tmp_path), "music"));
-            if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures)))
-                quick_access_data.Add(new QuickAccessMenuItem(new DirectoryInfo(tmp_path), "picture"));
-            if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.MyVideos)))
-                quick_access_data.Add(new QuickAccessMenuItem(new DirectoryInfo(tmp_path), "video"));
+
+            string[] user_folders = { Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+                Functions.GetDownloadsPath(),Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),Environment.GetFolderPath(Environment.SpecialFolder.MyMusic),
+                Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),Environment.GetFolderPath(Environment.SpecialFolder.MyVideos) };
+            string[] user_folders_images = { "user", "desktop", "downloads", "documents", "music", "pictures", "videos" };
+            QuickAccess_List.Items.Add(CreateQuickAccessItem("User directories"));
+            for (int i = 0; i < user_folders.Length; i++)
+            {
+                if (Directory.Exists(user_folders[i]))
+                {
+                    DirectoryInfo dir = new DirectoryInfo(user_folders[i]);
+                    QuickAccess_List.Items.Add(CreateQuickAccessItem(Functions.GetDirectoryImage(user_folders_images[i]), 24, dir.Name, dir, dir.FullName));
+                }
+            }
 
             //if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory)))
             //    quick_access_data.Add(new QuickAccessMenuItem() { FullPath = Path.GetFileName(tmp_path), Directory = new DirectoryInfo(tmp_path), Image = Functions.GetSpecialDirectoryImage("desktop"), isDrive = true });
@@ -187,18 +189,70 @@ namespace File_Manager
             //if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.CommonVideos)))
             //    quick_access_data.Add(new QuickAccessMenuItem() { FullPath = Path.GetFileName(tmp_path), Directory = new DirectoryInfo(tmp_path), Image = Functions.GetSpecialDirectoryImage("video"), isDrive = true });
 
-            quick_access_data.Add(new QuickAccessMenuItem("System Directories"));
-            if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles)))
-                quick_access_data.Add(new QuickAccessMenuItem(new DirectoryInfo(tmp_path), "programfile"));
-            if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86)) && !Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86).Equals(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles)))
-                quick_access_data.Add(new QuickAccessMenuItem(new DirectoryInfo(tmp_path), "programfile"));
-            if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.Fonts)))
-                quick_access_data.Add(new QuickAccessMenuItem(new DirectoryInfo(tmp_path), "font"));
-            if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)))
-                quick_access_data.Add(new QuickAccessMenuItem(new DirectoryInfo(tmp_path), "directory"));
-            if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.History)))
-                quick_access_data.Add(new QuickAccessMenuItem(new DirectoryInfo(tmp_path), "history"));
-        //Network
+            string[] special_folders = { Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles) , Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+                Environment.GetFolderPath(Environment.SpecialFolder.Fonts),Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),Environment.GetFolderPath(Environment.SpecialFolder.History)};
+            string[] special_folders_image = { "programfile", "programfile", "fonts", "directory", "history" };
+            QuickAccess_List.Items.Add(CreateQuickAccessItem("System directories"));
+
+            bool k = false;
+            for (int i = 0; i < special_folders.Length; i++)
+            {
+                if (Directory.Exists(special_folders[i]))
+                {
+                    if (!k && (i != special_folders.Length - 1) && (special_folders[i].ToLower().Equals(special_folders[i + 1].ToLower())))
+                    {
+                        k = true;
+                        continue;
+                    }
+                    DirectoryInfo dir = new DirectoryInfo(special_folders[i]);
+                    QuickAccess_List.Items.Add(CreateQuickAccessItem(Functions.GetDirectoryImage(user_folders_images[i]), 24, dir.Name, dir, dir.FullName));
+                }
+                worker_isbusy = false;
+            }
+            //Network
+        }
+
+        private ListBoxItem CreateQuickAccessItem(BitmapImage picture_source, double picture_length, string header, object tag, string string_tag)
+        {
+            Image image = new Image();
+            image.Source = picture_source;
+            image.Width = image.Height = picture_length;
+            image.VerticalAlignment = VerticalAlignment.Top;
+            image.HorizontalAlignment = HorizontalAlignment.Left;
+
+            TextBlock text = new TextBlock();
+            text.Text = header;
+            text.Margin = new Thickness(5, 2, 0, 0);
+            text.VerticalAlignment = VerticalAlignment.Top;
+            text.HorizontalAlignment = HorizontalAlignment.Left;
+            text.FontSize = picture_length / 2 + 2;
+            text.Foreground = Brushes.WhiteSmoke;
+
+            StackPanel stack = new StackPanel();
+            stack.Orientation = Orientation.Horizontal;
+            stack.Children.Add(image);
+            stack.Children.Add(text);
+
+            ListBoxItem item = new ListBoxItem();
+            item.Tag = tag;
+            item.ToolTip = item.ContentStringFormat = string_tag;
+            item.Content = stack;
+            item.MouseUp += (object sender, MouseButtonEventArgs e) =>
+            {
+                if (CurrentPath.ToLower() != ((ListBoxItem)sender).ContentStringFormat.ToLower())
+                    RootItemBrowse(CurrentPath, ((ListBoxItem)sender).ContentStringFormat, "");
+            };
+            return item;
+        }
+
+        private ListBoxItem CreateQuickAccessItem(string title)
+        {
+            ListBoxItem item = new ListBoxItem();
+            item.FontSize = 12;
+            item.Margin = new Thickness(5, 0, 0, 0);
+            item.IsEnabled = false;
+            item.Content = title;
+            return item;
         }
 
         #region Exploreing
@@ -272,7 +326,9 @@ namespace File_Manager
 
         void RootItemBrowse(string old_path, string new_path, string filter_text)
         {
+            auto_changed = true;
             Filter_TextBox.Text = filter_text;
+            auto_changed = false;
             selectedItemName_TextBox.Text = "";
             if (!IsSpecialDirictory(new_path))
             {
@@ -389,6 +445,7 @@ namespace File_Manager
                             explorer_data.Add(new ExplorerItem() { isDirectory = false, FullPath = i.Name, File = i, Image = Functions.GetFileImage24(i.Extension), Size = Functions.FileSize(i.Length, 2), Date = Functions.OrginizeDate(i.LastWriteTimeUtc), Type = Functions.GetFileType(i.Extension), ToolTip = i.FullName });
             if (Explorer.Items.Count > 0)
                 Explorer.ScrollIntoView(Explorer.Items[0]);
+            Explorer.Items.Refresh();
             if (explorer_data.Count == 0)
                 NoFiles_TextBlock.Visibility = Visibility.Visible;
             else
@@ -444,7 +501,7 @@ namespace File_Manager
                     return x.Name.ToLower().CompareTo(y.Name.ToLower());
                 case SortItemsBy.Size:
                     return x.Length.CompareTo(y.Length);
-                case SortItemsBy.type:
+                case SortItemsBy.Type:
                     return x.Extension.ToLower().CompareTo(y.Extension.ToLower());
                 case SortItemsBy.DateModified:
                     return x.LastWriteTimeUtc.Ticks.CompareTo(y.LastWriteTimeUtc.Ticks);
@@ -460,7 +517,7 @@ namespace File_Manager
                     return x.Name.ToLower().CompareTo(y.Name.ToLower());
                 case SortItemsBy.Size:
                     return x.Name.ToLower().CompareTo(y.Name.ToLower());
-                case SortItemsBy.type:
+                case SortItemsBy.Type:
                     return x.Name.ToLower().CompareTo(y.Name.ToLower());
                 case SortItemsBy.DateModified:
                     return x.LastWriteTimeUtc.Ticks.CompareTo(y.LastWriteTimeUtc.Ticks);
@@ -511,12 +568,10 @@ namespace File_Manager
         {
             RootItemBrowse(current_path, current_path, Filter_TextBox.Text.ToLower());
         }
+        
+        
+        //RootItemBrowse(current_path, (QuickAccess_List.SelectedItem as QuickAccessMenuItem).isDrive ? (QuickAccess_List.SelectedItem as QuickAccessMenuItem).driveInfo.Name : (QuickAccess_List.SelectedItem as QuickAccessMenuItem).Directory.FullName, "");
 
-        private void QuickAccessList_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if ((QuickAccess_List.SelectedItem as QuickAccessMenuItem).isDrive || ((QuickAccess_List.SelectedItem as QuickAccessMenuItem).Directory != null))
-                RootItemBrowse(current_path, (QuickAccess_List.SelectedItem as QuickAccessMenuItem).isDrive ? (QuickAccess_List.SelectedItem as QuickAccessMenuItem).driveInfo.Name : (QuickAccess_List.SelectedItem as QuickAccessMenuItem).Directory.FullName, "");
-        }
 
         #endregion Exploreing
 
@@ -594,12 +649,52 @@ namespace File_Manager
                 RootItemBrowse(current_path, current_path, "");
         }
 
+
+        BackgroundWorker filter_wait_before_start = null;
+        int filter_timer = 250;
+        bool auto_changed = false;
+        bool cancel_filter = false;
+
         private void FilterTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (Filter_TextBox.Text.Length > 1)
-                RootItemBrowse(current_path, current_path, Filter_TextBox.Text.ToLower());
-            else if (Filter_TextBox.Text.Length == 0)
-                RootItemBrowse(current_path, current_path, "");
+            if (!auto_changed)
+            {
+                if (Filter_TextBox.Text == "")
+                    filter_placeholder.Visibility = Visibility.Visible;
+                else
+                    filter_placeholder.Visibility = Visibility.Collapsed;
+                if (current_path != "root" && e.Changes != null && e.Changes.Count > 0)
+                {
+                    string path = current_path;
+                    if (filter_wait_before_start != null && filter_wait_before_start.IsBusy)
+                        filter_timer += 100;
+                    else
+                    {
+                        if (filter_wait_before_start == null || !filter_wait_before_start.IsBusy)
+                            filter_wait_before_start = new BackgroundWorker();
+                        filter_wait_before_start.DoWork += (object sender2, DoWorkEventArgs e2) =>
+                        {
+                            while (filter_timer > 0)
+                            {
+                                Thread.Sleep(25);
+                                filter_timer -= 25;
+                            }
+                            filter_wait_before_start.ReportProgress(0);
+                        };
+                        filter_wait_before_start.WorkerReportsProgress = true;
+                        filter_wait_before_start.ProgressChanged += (object sender2, ProgressChangedEventArgs e2) =>
+                        {
+                            if (current_path == path && !cancel_filter)
+                                RootItemBrowse(current_path, current_path, Filter_TextBox.Text.ToLower());
+                            else
+                                cancel_filter = false;
+                        };
+                        filter_wait_before_start.RunWorkerCompleted += (object sender2, RunWorkerCompletedEventArgs e2) => { filter_timer = 250; };
+                        filter_wait_before_start.RunWorkerAsync();
+                    }
+                }
+            }
+            
         }
 
         private void FilterTextBox_KeyUp(object sender, KeyEventArgs e)
@@ -612,6 +707,7 @@ namespace File_Manager
         {
             if (Filter_TextBox.Text != string.Empty)
             {
+                cancel_filter = true;
                 List<FileInfo> files_found = new List<FileInfo>();
                 List<DirectoryInfo> directories_fuond = new List<DirectoryInfo>();
                 string[] filters = (Filter_ComboBox.SelectedItem as ComboBoxItem).Tag as string[];
@@ -622,6 +718,7 @@ namespace File_Manager
                 }
                 catch (Exception) { }
                 FillListWithItems(directories_fuond, files_found, "");
+                cancel_filter = false;
             }
         }
 
@@ -631,7 +728,8 @@ namespace File_Manager
             DirectoryInfo[] sub_directory = new DirectoryInfo[0];
             try
             {
-                files = current.GetFiles();
+                if (dialogMode != SelectFileDialogMode.SelectDirectory)
+                    files = current.GetFiles();
                 sub_directory = current.GetDirectories();
             }
             catch (Exception) { }
@@ -641,10 +739,11 @@ namespace File_Manager
                     directories_fuond.Add(i);
                 SearchForItem(i, p, files_found, directories_fuond, filters);
             }
-
+            bool all_files = (Filter_ComboBox.SelectedItem as ComboBoxItem).Tag is string;
             foreach (var i in files)
             {
-                if (i.Name.ToLower().Contains(p))
+                if (all_files || filters.Contains(i.Extension.ToLower()))
+                    if (i.Name.ToLower().Contains(p))
                     files_found.Add(i);
             }
         }
@@ -857,7 +956,6 @@ namespace File_Manager
             Close();
         }
 
-
         private void SelectedItemNameTextBox_KeyUp(object sender, KeyEventArgs e)
         {
             //if (e.Key == Key.Enter)
@@ -959,7 +1057,7 @@ namespace File_Manager
         {
             FullPath = folder.Name;
             Directory = folder;
-            Image = Functions.GetSpecialDirectoryImage(name);
+            Image = Functions.GetDirectoryImage(name);
             isDrive = false;
             FontSize = 14;
             IsEnable = true;
@@ -1027,9 +1125,49 @@ namespace File_Manager
             set { header = value; }
         }
 
+        double used_space;
+        public double UsedSpace
+        {
+            get { return used_space; }
+            set { used_space = value; }
+        }
+
+        Visibility show_used_space;
+        public Visibility ShowUsedSpace
+        {
+            get { return show_used_space; }
+            set { show_used_space = value; }
+        }
+
+        SolidColorBrush color;
+        public SolidColorBrush Color
+        {
+            get { return color; }
+            set { color = value; }
+        }
+
         public RootItem(DriveInfo i)
         {
-            FullPath = i.IsReady ? ((i.VolumeLabel.Equals(string.Empty) ? "Local Drive" : i.VolumeLabel) + " (" + i.Name + ")") : i.Name;
+            Directory = i.RootDirectory;
+            FullPath = Functions.GetDriveDescription(i);
+            if (i.IsReady)
+            {
+                ShowUsedSpace = Visibility.Visible;
+                if ((i.TotalFreeSpace * 100.0) / i.TotalSize > 15)
+                    Color = Brushes.DodgerBlue;
+                else
+                    Color = Brushes.Tomato;
+                if (i.TotalSize > 0)
+                    UsedSpace = (i.TotalSize - i.TotalFreeSpace) * 125.0 / i.TotalSize;
+                else
+                    UsedSpace = 125;
+            }
+            else
+            {
+                UsedSpace = 0;
+                Color = Brushes.DodgerBlue;
+                ShowUsedSpace = Visibility.Collapsed;
+            }
             Header = "Disk drivers";
             isDrive = true;
             driveInfo = i;
@@ -1039,12 +1177,15 @@ namespace File_Manager
 
         public RootItem(DirectoryInfo di, string header, string image)
         {
+            UsedSpace = 0;
+            Color = Brushes.DodgerBlue;
+            ShowUsedSpace = Visibility.Collapsed;
             FullPath = di.Name;
             Header = header;
             isDrive = false;
             Directory = di;
             toolTip = di.FullName;
-            Image = Functions.GetSpecialDirectoryImage(image);
+            Image = Functions.GetDirectoryImage(image);
         }
     }
 

@@ -31,13 +31,15 @@ namespace File_Manager
                 it.Content = i + 1;
                 cores.Items.Add(it);
             }
-            ManagementObjectSearcher searcher = new ManagementObjectSearcher("select * from Win32_PhysicalMemory");
             long memory = 0;
-            foreach (var share in searcher.Get())
+            using (ManagementObjectSearcher searcher = new ManagementObjectSearcher("select * from Win32_PhysicalMemory"))
             {
-                long tmp;
-                long.TryParse(share.Properties["Capacity"].Value.ToString(), out tmp);
-                memory = memory + tmp;
+                foreach (var share in searcher.Get())
+                {
+                    long tmp;
+                    long.TryParse(share.Properties["Capacity"].Value.ToString(), out tmp);
+                    memory += tmp;
+                }
             }
             memory /= 1048576;
             if (memory == 0)
@@ -70,26 +72,35 @@ namespace File_Manager
 
         private void HardDisk_Checked(object sender, RoutedEventArgs e)
         {
-            sfd = new SelectFileDialog();
-            sfd.FilterMenu.Add(new SelectFileFilter() { display_name = "Virtual Hard Disk Image (*.hdd, *.qcow, *.qed, *.vdi, *.vhd, *.vmdk)", extentions = SelectFileFilter.SetExtentions(".hdd|.qcow|.qed|.vdi|.vhd|.vmdk") });
-            sfd.DialogTitle = "Select virtual hard disk file";
-            disk_file.Text = "";
+            if (Initialize)
+            {
+                sfd = new SelectFileDialog();
+                sfd.FilterMenu.Add(new SelectFileFilter() { display_name = "Virtual Hard Disk Image (*.hdd, *.qcow, *.qed, *.vdi, *.vhd, *.vmdk)", extentions = SelectFileFilter.SetExtentions(".hdd|.qcow|.qed|.vdi|.vhd|.vmdk") });
+                sfd.DialogTitle = "Select virtual hard disk file";
+                disk_file.Text = "";
+            }
         }
 
         private void CDRom_Checked(object sender, RoutedEventArgs e)
         {
-            sfd = new SelectFileDialog();
-            sfd.FilterMenu.Add(new SelectFileFilter() { display_name = "Virtual CD Rom Image (*.iso, *.img)", extentions = SelectFileFilter.SetExtentions(".iso|.img") });
-            sfd.DialogTitle = "Select CD rom image file";
-            disk_file.Text = "";
+            if (Initialize)
+            {
+                sfd = new SelectFileDialog();
+                sfd.FilterMenu.Add(new SelectFileFilter() { display_name = "Virtual CD Rom Image (*.iso, *.img)", extentions = SelectFileFilter.SetExtentions(".iso|.img") });
+                sfd.DialogTitle = "Select CD rom image file";
+                disk_file.Text = "";
+            }
         }
 
         private void FloppyDisk_Checked(object sender, RoutedEventArgs e)
         {
-            sfd = new SelectFileDialog();
-            sfd.FilterMenu.Add(new SelectFileFilter() { display_name = "Virtual Floppy Disk Image (*.vfd)", extentions = SelectFileFilter.SetExtentions(".vfd") });
-            sfd.DialogTitle = "Select virtual floppy disk file";
-            disk_file.Text = "";
+            if (Initialize)
+            {
+                sfd = new SelectFileDialog();
+                sfd.FilterMenu.Add(new SelectFileFilter() { display_name = "Virtual Floppy Disk Image (*.vfd)", extentions = SelectFileFilter.SetExtentions(".vfd") });
+                sfd.DialogTitle = "Select virtual floppy disk file";
+                disk_file.Text = "";
+            }
         }
 
         private void Browse_Click(object sender, RoutedEventArgs e)

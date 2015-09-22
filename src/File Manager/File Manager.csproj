@@ -160,6 +160,9 @@
     <Compile Include="Operation.xaml.cs">
       <DependentUpon>Operation.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Options.xaml.cs">
+      <DependentUpon>Options.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Preview.xaml.cs">
       <DependentUpon>Preview.xaml</DependentUpon>
     </Compile>
@@ -311,6 +314,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Operation.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Options.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -723,6 +730,93 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Images\Explorer Interface\bookmark.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\details.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Tools Icon\directory-analyzer.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Tools Icon\system-monitor.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Tools Icon\empty-directory-remover.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Tools Icon\files-destroyer.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\dialog-sad.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Menu\about-tool-blue.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\24\image.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\24\music.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\24\video.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\24\document.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\24\font.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\24\other.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\24\application.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Icons\24\archive.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\arrow.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\cut.png" />
+    <Resource Include="Images\Explorer Interface\Invert-selection.png" />
+    <Resource Include="Images\Explorer Interface\redo.png" />
+    <Resource Include="Images\Explorer Interface\select-all.png" />
+    <Resource Include="Images\Explorer Interface\select-none.png" />
+    <Resource Include="Images\Explorer Interface\undo.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\copy.png" />
+    <Resource Include="Images\Explorer Interface\paste.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Appearance\messages.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Tools Icon\modren-message.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\delete.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\Ascending.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Tools Icon\encrypt.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Tools Icon\extension-changer.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Tools Icon\coming-soon.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Tools Icon\Virtual-machine.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\compress-files-manager.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

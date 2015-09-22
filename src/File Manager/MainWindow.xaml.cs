@@ -747,7 +747,7 @@ namespace File_Manager
 
         private void NewShortcut_Click(object sender, RoutedEventArgs e)
         {
-            new New_Shortcut().ShowDialog();
+            New_Shortcut.CreateShortcut("", true);
         }
 
         private void PlanText_Click(object sender, RoutedEventArgs e)
@@ -1726,7 +1726,7 @@ namespace File_Manager
                 DateModified = "";
             }
             Icon = Functions.GetDriveImage(drive, 24);
-            FileType = Functions.GetDriveDescription(drive.DriveType);
+            FileType = Functions.GetDriveDescription(drive);
             FileExt = "";
         }
 

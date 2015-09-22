@@ -90,18 +90,24 @@ namespace File_Manager
         }
 
         SHA1 Hasher = new SHA1Cng();
-        int files_count = 0;
+        //int files_count = 0;
         bool sun_bridle = true, bridle_father = true, show_message_again = true, CloseWindow = false, starting_window = true;
         double dublicate_size = 0;
         double deleted_size = 0;
         double total_size = 0;
-        List<BasicFileInfo> file_list;
-        List<string> sha1_string;
-        BackgroundWorker find_duplicate_BackgroundWorker;
+        //List<BasicFileInfo> file_list;
+        //List<string> sha1_string;
+        //BackgroundWorker find_duplicate_BackgroundWorker;
 
         public Identical_File_Remover()
         {
             InitializeComponent();
+        }
+
+        public Identical_File_Remover(List<string> items)
+        {
+            InitializeComponent();
+            FindDuplicate(items);
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -121,178 +127,191 @@ namespace File_Manager
                 sfd.DialogTitle = "Add all files in this directory.";
                 sfd.MultiSelect = true;
                 if (sfd.ShowWindow() == MyMessageBoxResult.OK)
+                    FindDuplicate(sfd.SelectedItems);
+            }
+        }
+
+        private void FindDuplicate(List<string> _paths)
+        {
+            List<string> paths = new List<string>();
+            foreach (string i in _paths)
+                paths.Add(i);
+            ClearList_Click(null, null);
+            progressbar.Visibility = Visibility.Visible;
+            main_grid.IsEnabled = false;
+            TaskbarItemInfo.ProgressValue = 0;
+
+            BackgroundWorker find_duplicate = new BackgroundWorker();
+            find_duplicate.WorkerReportsProgress = true;
+            find_duplicate.DoWork += (object dw_sender, DoWorkEventArgs dw_e) =>
+            {
+                bool first_stage = true;
+                Thread progress_thread = new Thread(() =>
                 {
-                    List<string> paths = new List<string>();
-                    foreach (string i in sfd.SelectedItems)
-                        paths.Add(i);
-                    ClearList_Click(null, null);
-                    progressbar.Visibility = Visibility.Visible;
-                    main_grid.IsEnabled = false;
-                    TaskbarItemInfo.ProgressValue = 0;
-
-                    BackgroundWorker find_duplicate = new BackgroundWorker();
-                    find_duplicate.WorkerReportsProgress = true;
-                    find_duplicate.DoWork += (object dw_sender, DoWorkEventArgs dw_e) =>
+                    for (int i = 0; i < 126 && first_stage; i++)
                     {
-                        bool first_stage = true;
-                        Thread progress_thread = new Thread(() =>
-                        {
-                            for (int i = 0; i < 126 && first_stage; i++)
-                            {
-                                if (CloseWindow) return;
-                                if (!find_duplicate.IsBusy)
-                                    break;
-                                else
-                                    try
-                                    { if (first_stage) find_duplicate.ReportProgress(0, 0.75); }
-                                    catch (Exception) { }
-                                Thread.Sleep(100);
-                                int sleep_time = i < 100 ? 100 : i < 120 ? 1000 : i < 126 ? 5000 : 10000;
-                            }
-                        });
-                        List<DublicateFileInfo> files = new List<DublicateFileInfo>();
-                        foreach (string i in paths)
+                        if (CloseWindow) return;
+                        if (!find_duplicate.IsBusy)
+                            break;
+                        else
                             try
-                            { GetAllFiles(files, new DirectoryInfo(i)); }
+                            { if (first_stage) find_duplicate.ReportProgress(0, 0.75); }
                             catch (Exception) { }
-                        first_stage = false;
-                        find_duplicate.ReportProgress(-1, 25);
-                        files.Sort((x, y) => x.size.CompareTo(y.size));
-                        int start_i = 0, start_k = 0;
+                        Thread.Sleep(100);
+                        int sleep_time = i < 100 ? 100 : i < 120 ? 1000 : i < 126 ? 5000 : 10000;
+                    }
+                });
+                List<DublicateFileInfo> files = new List<DublicateFileInfo>();
+                foreach (string i in paths)
+                {
+                    if (File.Exists(i))
+                    {
+                        FileInfo tmp_file = new FileInfo(i);
+                        files.Add(new DublicateFileInfo() { fullpath = tmp_file.FullName, size = tmp_file.Length, file = tmp_file });
+                    }
+                    else
+                    {
+                        try
+                        { GetAllFiles(files, new DirectoryInfo(i)); }
+                        catch (Exception) { }
+                    }
+                }
+                first_stage = false;
+                find_duplicate.ReportProgress(-1, 25);
+                files.Sort((x, y) => x.size.CompareTo(y.size));
+                int start_i = 0, start_k = 0;
 
-                        for (int i = 0; i < files.Count - 1; i++)
+                for (int i = 0; i < files.Count - 1; i++)
+                {
+                    find_duplicate.ReportProgress(0, 70.0 / files.Count);
+                    start_i = i;
+                    int same_size = 0;
+                    if (files.Count > i + 1 && files[i].size == files[i + 1].size)
+                    {
+                        ReadPartsOF(files[i]);
+                        same_size++;
+                    }
+                    else
+                        continue;
+                    int j;
+                    for (j = i + 1; j < files.Count; j++)
+                    {
+                        if (files[i].size == files[j].size)
                         {
-                            find_duplicate.ReportProgress(0, 70.0 / files.Count);
-                            start_i = i;
-                            int same_size = 0;
-                            if (files.Count > i + 1 && files[i].size == files[i + 1].size)
+                            ReadPartsOF(files[j]);
+                            same_size++;
+                        }
+                        else break;
+                    }
+                    if (same_size > 1)
+                    {
+                        List<DublicateFileInfo> small_list = files.GetRange(start_i, same_size);
+                        small_list.Sort((x, y) => x.parts.CompareTo(y.parts));
+                        for (int k = 0; k < small_list.Count - 1; k++)
+                        {
+                            start_k = k;
+                            int duplicates = 0;
+                            if (small_list.Count > k + 1 && small_list[k].parts == small_list[k + 1].parts)
                             {
-                                ReadPartsOF(files[i]);
-                                same_size++;
+                                CalcHash(small_list[k]);
+                                duplicates++;
                             }
                             else
                                 continue;
-                            int j;
-                            for (j = i + 1; j < files.Count; j++)
+                            int l;
+                            for (l = k + 1; l < small_list.Count; l++)
                             {
-                                if (files[i].size == files[j].size)
+                                if (small_list[k].parts.Equals(small_list[l].parts))
                                 {
-                                    ReadPartsOF(files[j]);
-                                    same_size++;
+                                    CalcHash(small_list[l]);
+                                    duplicates++;
                                 }
                                 else break;
                             }
-                            if (same_size > 1)
+                            if (duplicates > 1)
                             {
-                                List<DublicateFileInfo> small_list = files.GetRange(start_i, same_size);
-                                small_list.Sort((x, y) => x.parts.CompareTo(y.parts));
-                                for (int k = 0; k < small_list.Count - 1; k++)
+                                List<DublicateFileInfo> micro_list = small_list.GetRange(start_k, duplicates);
+                                micro_list.Sort((x, y) =>/* x.SHA1 == null ? -1 : y.SHA1 == null ? 1 : */x.SHA1.CompareTo(y.SHA1));
+                                for (int m = 0; m < micro_list.Count - 1; m++)
                                 {
-                                    start_k = k;
-                                    int duplicates = 0;
-                                    if (small_list.Count > k + 1 && small_list[k].parts == small_list[k + 1].parts)
+                                    if (micro_list.Count > m + 1 && micro_list[m].SHA1 == micro_list[m + 1].SHA1)
                                     {
-                                        CalcHash(small_list[k]);
-                                        duplicates++;
+                                        find_duplicate.ReportProgress(1);
+                                        find_duplicate.ReportProgress(2, micro_list[m].file);
                                     }
                                     else
                                         continue;
-                                    int l;
-                                    for (l = k + 1; l < small_list.Count; l++)
-                                    {
-                                        if (small_list[k].parts.Equals(small_list[l].parts))
-                                        {
-                                            CalcHash(small_list[l]);
-                                            duplicates++;
-                                        }
-                                        else break;
-                                    }
-                                    if (duplicates > 1)
-                                    {
-                                        List<DublicateFileInfo> micro_list = small_list.GetRange(start_k, duplicates);
-                                        micro_list.Sort((x, y) =>/* x.SHA1 == null ? -1 : y.SHA1 == null ? 1 : */x.SHA1.CompareTo(y.SHA1));
-                                        for (int m = 0; m < micro_list.Count - 1; m++)
-                                        {
-                                            if (micro_list.Count > m + 1 && micro_list[m].SHA1 == micro_list[m + 1].SHA1)
-                                            {
-                                                find_duplicate.ReportProgress(1);
-                                                find_duplicate.ReportProgress(2, micro_list[m].file);
-                                            }
-                                            else
-                                                continue;
-                                            int n;
-                                            for (n = m + 1; n < micro_list.Count; n++)
-                                                if (micro_list[m].SHA1.Equals(micro_list[n].SHA1))
-                                                    find_duplicate.ReportProgress(2, micro_list[n].file);
-                                                else
-                                                    break;
-                                            m = n - 1;
-                                            find_duplicate.ReportProgress(3);
-                                        }
-                                    }
-                                    k = l - 1;// will be l in for loop
-                                    duplicates = 0;
-                                    //break;
+                                    int n;
+                                    for (n = m + 1; n < micro_list.Count; n++)
+                                        if (micro_list[m].SHA1.Equals(micro_list[n].SHA1))
+                                            find_duplicate.ReportProgress(2, micro_list[n].file);
+                                        else
+                                            break;
+                                    m = n - 1;
+                                    find_duplicate.ReportProgress(3);
                                 }
                             }
-                            i = j - 1;
-                            same_size = 0;
+                            k = l - 1;// will be l in for loop
+                            duplicates = 0;
                             //break;
                         }
-                    };
-
-                    find_duplicate.ProgressChanged += (object bw_sender, ProgressChangedEventArgs bw_e) =>
-                    {
-                        switch(bw_e.ProgressPercentage)
-                        {
-                            case -1:
-                                progressbar.Value = Convert.ToDouble(bw_e.UserState);
-                                TaskbarItemInfo.ProgressValue = progressbar.Value / 100;
-                                break;
-                            case 0:
-                                progressbar.Value += Convert.ToDouble(bw_e.UserState);
-                                TaskbarItemInfo.ProgressValue = progressbar.Value / 100;
-                                break;
-                            case 1:
-                                dublicate_data.Add(new DublicateFiles_ListView());
-                                item_group_viewer.Items.Refresh();
-                                break;
-                            case 2:
-                                dublicate_data[dublicate_data.Count - 1].Dublicats.Add(new FilePath_ListView(((FileInfo)bw_e.UserState)));
-                                break;
-                            case 3:
-                                dublicate_data[dublicate_data.Count - 1].Size = dublicate_data[dublicate_data.Count - 1].Dublicats[0].File.Length;
-                                dublicate_data[dublicate_data.Count - 1].FileType = Functions.GetFileType(dublicate_data[dublicate_data.Count - 1].Dublicats[0].File.Extension);
-                                dublicate_data[dublicate_data.Count - 1].FullPath = dublicate_data[dublicate_data.Count - 1].Dublicats.Count + (dublicate_data[dublicate_data.Count - 1].Dublicats.Count > 1 ? " dublicats " : " dublicat");
-                                dublicate_data[dublicate_data.Count - 1].TotalFileSize = Functions.FileSize(dublicate_data[dublicate_data.Count - 1].Size * dublicate_data[dublicate_data.Count - 1].Dublicats.Count, 2);
-                                break;
-                        }
-                    };
-
-                    find_duplicate.RunWorkerCompleted += (object bw_sender, RunWorkerCompletedEventArgs bw_e) =>
-                        {
-                            if (!CloseWindow)
-                            {
-                                main_grid.IsEnabled = true;
-                                SelectAll_Click(null, null);
-                                if (dublicate_data.Count > 0)
-                                    delete.IsEnabled = select_all.IsEnabled = select_none.IsEnabled = clear_list.IsEnabled = sort_button.IsEnabled = true;
-                                find_dublicate.IsEnabled = true;
-                                items_label.Text = dublicate_data.Count > 1 ? "items" : "item";
-                                number.Text = " " + dublicate_data.Count;
-                                dublicate_data.Sort(Sorter);
-                                item_group_viewer.Items.Refresh();
-                                progressbar.Value = 100;
-                                TaskbarItemInfo.ProgressValue = 100;
-                                Messages.ShowMessage("Search done.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, true, dublicate_data.Count > 0 ? string.Format("We found {0} item{1}", dublicate_data.Count, dublicate_data.Count > 1 ? "s" : "") : "Congratulations we did not find any dublicates here.");
-                                TaskbarItemInfo.ProgressValue = 0;
-                                progressbar.Visibility = Visibility.Hidden;
-                                flow_shart.Visibility = Visibility.Visible;
-                            }
-                        };
-                    find_duplicate.RunWorkerAsync();
+                    }
+                    i = j - 1;
+                    same_size = 0;
+                    //break;
                 }
-            }
+            };
+
+            find_duplicate.ProgressChanged += (object bw_sender, ProgressChangedEventArgs bw_e) =>
+            {
+                switch (bw_e.ProgressPercentage)
+                {
+                    case -1:
+                        progressbar.Value = Convert.ToDouble(bw_e.UserState);
+                        TaskbarItemInfo.ProgressValue = progressbar.Value / 100;
+                        break;
+                    case 0:
+                        progressbar.Value += Convert.ToDouble(bw_e.UserState);
+                        TaskbarItemInfo.ProgressValue = progressbar.Value / 100;
+                        break;
+                    case 1:
+                        dublicate_data.Add(new DublicateFiles_ListView());
+                        item_group_viewer.Items.Refresh();
+                        break;
+                    case 2:
+                        dublicate_data[dublicate_data.Count - 1].Dublicats.Add(new FilePath_ListView(((FileInfo)bw_e.UserState)));
+                        break;
+                    case 3:
+                        dublicate_data[dublicate_data.Count - 1].Size = dublicate_data[dublicate_data.Count - 1].Dublicats[0].File.Length;
+                        dublicate_data[dublicate_data.Count - 1].FileType = Functions.GetFileType(dublicate_data[dublicate_data.Count - 1].Dublicats[0].File.Extension);
+                        dublicate_data[dublicate_data.Count - 1].FullPath = dublicate_data[dublicate_data.Count - 1].Dublicats.Count + (dublicate_data[dublicate_data.Count - 1].Dublicats.Count > 1 ? " dublicats " : " dublicat");
+                        dublicate_data[dublicate_data.Count - 1].TotalFileSize = Functions.FileSize(dublicate_data[dublicate_data.Count - 1].Size * dublicate_data[dublicate_data.Count - 1].Dublicats.Count, 2);
+                        break;
+                }
+            };
+
+            find_duplicate.RunWorkerCompleted += (object bw_sender, RunWorkerCompletedEventArgs bw_e) =>
+            {
+                if (!CloseWindow)
+                {
+                    main_grid.IsEnabled = true;
+                    SelectAll_Click(null, null);
+                    if (dublicate_data.Count > 0)
+                        delete.IsEnabled = select_all.IsEnabled = select_none.IsEnabled = clear_list.IsEnabled = sort_button.IsEnabled = true;
+                    find_dublicate.IsEnabled = true;
+                    items_label.Text = dublicate_data.Count > 1 ? "items" : "item";
+                    number.Text = " " + dublicate_data.Count;
+                    dublicate_data.Sort(Sorter);
+                    item_group_viewer.Items.Refresh();
+                    progressbar.Value = 100;
+                    TaskbarItemInfo.ProgressValue = 100;
+                    Messages.ShowMessage("Search done.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, true, dublicate_data.Count > 0 ? string.Format("We found {0} item{1}", dublicate_data.Count, dublicate_data.Count > 1 ? "s" : "") : "Congratulations we did not find any dublicates here.");
+                    TaskbarItemInfo.ProgressValue = 0;
+                    progressbar.Visibility = Visibility.Hidden;
+                    flow_shart.Visibility = Visibility.Visible;
+                }
+            };
+            find_duplicate.RunWorkerAsync();
         }
 
         private void GetAllFiles(List<DublicateFileInfo> list_to_add, DirectoryInfo directory)
@@ -337,7 +356,7 @@ namespace File_Manager
                     for (int i = 0; i < 32; i++)
                     {
                         BR.BaseStream.Position = BR.BaseStream.Length * i / 32;
-                        sb.Append(System.Text.Encoding.UTF8.GetString(BR.ReadBytes(4)));
+                        sb.Append(Encoding.UTF8.GetString(BR.ReadBytes(4)));
                     }
                 }
                 catch (Exception) { };
@@ -595,7 +614,7 @@ namespace File_Manager
                     f_date.Text = "Date: " + string.Format("{0}/{1}/{2}  ", OrginizeDate(file.LastWriteTimeUtc.Day, 2), OrginizeDate(file.LastWriteTimeUtc.Month, 2), OrginizeDate(file.LastWriteTimeUtc.Year, 4)) + string.Format("{0}:{1}", OrginizeDate(file.LastWriteTimeUtc.Hour, 2), OrginizeDate(file.LastWriteTimeUtc.Minute, 2));
                     f_image.Source = Functions.GetFileImage256(file.Extension);
                     f_size.Text = "Size: " + Functions.FileSize(file.Length, 2);
-                    f_type.Text = "Type: " + Functions.GetFileType(file.Extension) + (file.Extension.Length > 0 ? string.Format("({0})", file.Extension) : string.Empty);
+                    f_type.Text = "Type: " + Functions.GetFileType(file.Extension) + (file.Extension.Length > 0 ? string.Format(" ({0})", file.Extension) : string.Empty);
                 }
                 catch (Exception ex)
                 {
@@ -621,7 +640,7 @@ namespace File_Manager
                     s_date.Text = "Date: " + string.Format("{0}/{1}/{2}  ", OrginizeDate(file.LastWriteTimeUtc.Day, 2), OrginizeDate(file.LastWriteTimeUtc.Month, 2), OrginizeDate(file.LastWriteTimeUtc.Year, 4)) + string.Format("{0}:{1}", OrginizeDate(file.LastWriteTimeUtc.Hour, 2), OrginizeDate(file.LastWriteTimeUtc.Minute, 2));
                     s_image.Source = Functions.GetFileImage256(file.Extension);
                     s_size.Text = "Size: " + Functions.FileSize(file.Length, 2);
-                    s_type.Text = "Type: " + Functions.GetFileType(file.Extension) + (file.Extension.Length > 0 ? string.Format("({0})", file.Extension) : string.Empty);
+                    s_type.Text = "Type: " + Functions.GetFileType(file.Extension) + (file.Extension.Length > 0 ? string.Format(" ({0})", file.Extension) : string.Empty);
                 }
                 catch (Exception ex)
                 {
@@ -703,6 +722,26 @@ namespace File_Manager
             }
         }
 
+        private void AboutTool_Click(object sender, RoutedEventArgs e)
+        {
+            //version 1:
+            //find duplicate base
+            //1.1:
+            //improve speed and fixed bug
+            //2:
+            //redisgin the tools
+            //imrove the interface
+            //2.1:
+            //resize list view (splitter in grid) 
+            //2.2:
+            //imrove tool speed
+            //2.3:
+            //add "is semiler to" tool
+            //2.4:
+            //bug fixed
+            //
+        }
+
         private void FirstFilePath_TextChanged(object sender, TextChangedEventArgs e)
         {
             if (!starting_window)
@@ -774,14 +813,19 @@ namespace File_Manager
                                         files.Add(s.file.FullName);
                                         new Renamer().ShowWindow(files, "", ExtentionChanger.ExtentionSuggester, true);
                                     }
+                                main_grid.IsEnabled = true;
                                 return;
                             }
                         }
                     }
                     main_grid.IsEnabled = true;
-                    Messages.ShowMessage("Files is equal.", ModrenMessageButton.OK, ModrenMessageImage.Cross, ModrenMessageSound.Information, false, "");
+                    Messages.ShowMessage("Files is not equal.", ModrenMessageButton.OK, ModrenMessageImage.Cross, ModrenMessageSound.Information, false, "");
                 }
+                else if (s_filepath.Text != "-" && s_filepath.Text != "")
+                        Messages.ShowMessage("File is not exist", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, string.Format("the file '{0}' is not exist", s_filepath.Text));
             }
+            else if (f_filepath.Text != "-" && f_filepath.Text != "")
+                Messages.ShowMessage("File is not exist", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, string.Format("the file '{0}' is not exist", f_filepath.Text));
         }
 
         private void Browse_Click(object sender, RoutedEventArgs e)

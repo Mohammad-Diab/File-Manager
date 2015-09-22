@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:File_Manager"
         mc:Ignorable="d"
-        Title="FILE MANAGER" FontSize="14" Topmost="True" MinWidth="350" MinHeight="125" WindowStartupLocation="CenterScreen" ResizeMode="CanResize" Height="210" Width="500" Loaded="Window_Loaded">
+        Title="FILE MANAGER" FontSize="14" Topmost="True" MinWidth="350" MinHeight="125" WindowStartupLocation="CenterScreen" ResizeMode="CanResize" Height="210" Width="500" Loaded="Window_Loaded" Icon="Images/Tools Icon/modren-message.ico">
     <Grid>
         <Rectangle Height="33" Stroke="Black" Visibility="Collapsed" StrokeThickness="0" VerticalAlignment="Bottom" Opacity="0.5">
             <Rectangle.Fill>
@@ -15,7 +15,7 @@
                 </LinearGradientBrush>
             </Rectangle.Fill>
         </Rectangle>
-        <Rectangle x:Name="Background" Fill="RoyalBlue" Height="5" Stroke="Black" StrokeThickness="0" VerticalAlignment="Top"/>
+        <Rectangle x:Name="Topbar" Fill="RoyalBlue" Height="5" Stroke="Black" StrokeThickness="0" VerticalAlignment="Top"/>
         <Image x:Name="image" HorizontalAlignment="Left" Height="48" Margin="10,10,0,0" VerticalAlignment="Top" Width="48" Source="Images/Appearance/dialog-information.png"/>
         <StackPanel x:Name="stack_panal" Margin="0,5,0,0" VerticalAlignment="Top" HorizontalAlignment="Left">
             <TextBlock x:Name="title" TextWrapping="Wrap" Margin="63,10,0,0" VerticalAlignment="Top" Foreground="RoyalBlue" FontSize="18" Text="Main Message" HorizontalAlignment="Left"/>
@@ -78,7 +78,7 @@
         </Button>
 
         <Button x:Name="ok" Content="OK" HorizontalAlignment="Right" Margin="0,0,10,3" VerticalAlignment="Bottom" Width="85" Background="{x:Null}" Click="Ok_Click" BorderThickness="2,1" BorderBrush="Black" FontSize="14.667"/>
-        <Button x:Name="cancel" Content="Cancel" HorizontalAlignment="Right" Margin="0,0,100,3" VerticalAlignment="Bottom" Width="85" Background="{x:Null}" BorderThickness="2,1" BorderBrush="Black" FontSize="14.667"/>
+        <Button x:Name="cancel" Content="Cancel" HorizontalAlignment="Right" Margin="0,0,100,3" VerticalAlignment="Bottom" Width="85" Background="{x:Null}" BorderThickness="2,1" Click="Cancel_Click" BorderBrush="Black" FontSize="14.667"/>
         <CheckBox x:Name="show_again" Content="Don't show this message again." HorizontalAlignment="Left" Margin="25,0,0,7" VerticalAlignment="Bottom"/>
         <MediaElement x:Name="sound_player" HorizontalAlignment="Left" Height="0" VerticalAlignment="Top" Visibility="Collapsed" Width="0"/>
     </Grid>

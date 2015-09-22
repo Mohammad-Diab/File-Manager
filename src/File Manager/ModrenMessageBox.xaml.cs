@@ -19,7 +19,7 @@ namespace File_Manager
     /// </summary>
     partial class ModrenMessageBox : Window
     {
-        bool has_addition_info = false;
+        bool has_addition_info = false, is_costum_button = false;
         public bool HasAdditionInfo
         {
             set { has_addition_info = value; }
@@ -35,6 +35,7 @@ namespace File_Manager
 
         internal MyMessageBoxResult ShowMessage(ModrenMessageButton buttons)
         {
+            is_costum_button = true;
             ShowDialog();
             //buttons_panal.DataContext = content;
             //buttons_panal.Items.Refresh();
@@ -44,7 +45,7 @@ namespace File_Manager
         internal MyMessageBoxResult ShowMessage(ModrenMessageButton buttons, out bool show_message_again)
         {
             ShowDialog();
-            show_message_again = show_again.IsChecked.HasValue ? show_again.IsChecked.Value : true;
+            show_message_again = show_again.IsChecked.HasValue ? !show_again.IsChecked.Value : true;
             return Value(buttons);
         }
 
@@ -80,7 +81,9 @@ namespace File_Manager
             //extra_info.MaxHeight = MaxHeight - 200;
             stack_panal.MaxHeight = SystemParameters.PrimaryScreenHeight - 75;
             Width = stack_panal.ActualWidth + (ok.Visibility == Visibility.Visible ? 75 : 25);
-            Height = stack_panal.ActualHeight + (ok.Visibility == Visibility.Visible ? 75 : 25);
+            Height = stack_panal.ActualHeight + (ok.Visibility == Visibility.Visible ? 75 : is_costum_button ? 50 : 25);
+            Left = (SystemParameters.PrimaryScreenWidth - Width) / 2;
+            Top = (SystemParameters.PrimaryScreenHeight - Height) / 2;
             ////////buttons_panal.Items.Refresh();
             //if (extra_info.Visibility == Visibility.Visible)
             //{
@@ -112,6 +115,12 @@ namespace File_Manager
             }
             else
                 Messages.ShowMessage("Passwrd field is empty.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
+        }
+
+        private void Cancel_Click(object sender, RoutedEventArgs e)
+        {
+            returned_value = 0;
+            Close();
         }
 
         private void ShowPassword_Checked(object sender, RoutedEventArgs e)
@@ -160,19 +169,19 @@ namespace File_Manager
             switch (icon)
             {
                 case ModrenMessageImage.Delete:
-                    Background.Fill = ok.Background = Brushes.Tomato;
+                    Topbar.Fill = ok.Background = Brushes.Tomato;
                     Thickness tmp = ok.Margin;
                     ok.Margin = cancel.Margin;
                     cancel.Margin = tmp;
-                    ok.Foreground = Brushes.WhiteSmoke;
+                    ok.Foreground = ok.BorderBrush = Brushes.WhiteSmoke;
                     image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/delete.png"));
                     break;
                 case ModrenMessageImage.Exclamation:
-                    Background.Fill = Brushes.Peru;
+                    ok.BorderBrush = Topbar.Fill = Brushes.Peru;
                     image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-Warning.png"));
                     break;
                 case ModrenMessageImage.Information:
-                    Background.Fill = Brushes.Green;
+                    ok.BorderBrush = Topbar.Fill = Brushes.Green;
                     image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-information.png"));
                     break;
                 case ModrenMessageImage.None:
@@ -182,16 +191,20 @@ namespace File_Manager
                     image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-question.png"));
                     break;
                 case ModrenMessageImage.Stop:
-                    Background.Fill = Brushes.Tomato;
+                    ok.BorderBrush = Topbar.Fill = Brushes.Tomato;
                     image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-error.png"));
                     break;
                 case ModrenMessageImage.Tick:
-                    Background.Fill = Brushes.Green;
+                    Topbar.Fill = Brushes.Green;
                     image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-tick.png"));
                     break;
                 case ModrenMessageImage.Cross:
-                    Background.Fill = Brushes.Green;
+                    Topbar.Fill = Brushes.Green;
                     image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-cross.png"));
+                    break;
+                case ModrenMessageImage.Sad:
+                    ok.BorderBrush = Topbar.Fill = Brushes.Peru;
+                    image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/dialog-sad.png"));
                     break;
             }
         }
@@ -277,7 +290,7 @@ namespace File_Manager
             return return_value;
         }
 
-        public static MyMessageBoxResult ShowMessage(string Message, params ButtonContent[] buttons_content)
+        public static MyMessageBoxResult ShowMessage(string Message, string addition_info, params ButtonContent[] buttons_content)
         {
             List<ButtonContent> content = new List<ButtonContent>();
             ModrenMessageBox message = new ModrenMessageBox();
@@ -285,7 +298,10 @@ namespace File_Manager
             message.HasAdditionInfo = true;
             message.show_again.Visibility = message.Caution_grid.Visibility = message.password_grid.Visibility = message.extra_info.Visibility = message.ok.Visibility = message.cancel.Visibility = Visibility.Collapsed;
             message.buttons_panal.Visibility = Visibility.Visible;
-            message.addition_info.Text = "What do you want to do?";
+            if (addition_info == null || addition_info == "")
+                message.addition_info.Visibility = Visibility.Collapsed;
+            else
+                message.addition_info.Text = addition_info;
             message.SetImage(ModrenMessageImage.Question);
             message.SetSound(ModrenMessageSound.Question);
             //message.buttons_panal.DataContext = content;
@@ -346,6 +362,7 @@ namespace File_Manager
         Password = 7,
         Tick = 8,
         Cross = 9,
+        Sad = 10,
         Custum = 100
     }
 
@@ -362,7 +379,8 @@ namespace File_Manager
     {
         Retry = 1,
         Skip = 2,
-        Cancel = 3
+        Cancel = 3,
+        Default = 100
     }
 
     public class ButtonContent

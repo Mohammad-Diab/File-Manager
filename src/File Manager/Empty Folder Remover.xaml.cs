@@ -25,30 +25,28 @@ namespace File_Manager
     {
         int progress_value = 0;
         List<EmptyDirectoriesFilesListView> worker_list = new List<EmptyDirectoriesFilesListView>();
+        List<EmptyDirectoriesFilesListView> list_to_view = new List<EmptyDirectoriesFilesListView>();
         bool CloseWindow = false;
         //ObservableCollection<EmptyDirectoriesFilesListView> list_to_view = new ObservableCollection<EmptyDirectoriesFilesListView>();
 
         public Empty_Folder_Remover()
         {
             InitializeComponent();
-            items_list.DataContext = worker_list;
-            if (Functions.IsRunningAsAdmin())
-            {
-                items_list.Margin = new Thickness(10, 41, 10, 10);
-                caution.Visibility = Visibility.Collapsed;
-            }
         }
 
         public Empty_Folder_Remover(string path)
         {
             InitializeComponent();
-            items_list.DataContext = worker_list;
+            BegainSearch(path);
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
             if (Functions.IsRunningAsAdmin())
             {
                 items_list.Margin = new Thickness(10, 41, 10, 10);
                 caution.Visibility = Visibility.Collapsed;
             }
-            BegainSearch(path);
         }
 
         private void FindEmptey_Click(object sender, RoutedEventArgs e)
@@ -66,6 +64,7 @@ namespace File_Manager
         {
             if (Directory.Exists(path))
             {
+                list_to_view = new List<EmptyDirectoriesFilesListView>();
                 if (worker_list.Count > 0)
                     if (Messages.ShowMessage("Clear list?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "") == MyMessageBoxResult.Yes)
                         ClearList_Click(clear_list, null);
@@ -110,13 +109,16 @@ namespace File_Manager
                 {
                     if (!CloseWindow)
                     {
+                        list_to_view = worker_list;
+                        items_list.DataContext = list_to_view;
+                        
                         //if (worker_list != null)
                         //    foreach (var i in worker_list)
                         //        list_to_view.Add(i);
                         items_list.Items.Refresh();
                         progressbar.Value = 5100;
                         progress_value = 5100;
-                        if (items_list.Items.Count > 0)
+                        if (worker_list.Count > 0)
                             delete_items.IsEnabled = select_all.IsEnabled = clear_list.IsEnabled = true;
                         else
                             Messages.ShowMessage("No empty files or directories here.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
@@ -189,11 +191,18 @@ namespace File_Manager
 
         private void AboutTool_Click(object sender, RoutedEventArgs e)
         {
-            //  version : 1.02
+            //  version : 1.1
             //  find empty directory and empty file
             //  find empty dirctory which contains just empty directoies or files
+            //  1.2:
             //  improve speed
             //  new interface
+            //  1.21:
+            //  bugs fixed
+            //  not relese// 2:
+            //  find empty from multi pathes whether files or folders
+            //
+
         }
 
         private void Item_PreviewKeyUp(object sender, KeyEventArgs e)

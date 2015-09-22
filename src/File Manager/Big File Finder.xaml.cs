@@ -32,28 +32,60 @@ namespace File_Manager
             get { return current_page; }
             set
             {
-                switch(value)
+                if (value != current_page)
                 {
-                    case DirectoriesAnalizePages.Files:
-                        if (all_files_data.Count == 0)
-                        {
+                    switch (value)
+                    {
+                        case DirectoriesAnalizePages.Files:
+                            all_files_data.Clear();
                             FillAllFiles(root.Children);
+                            //new StreamWriter(File.OpenWrite("d:\\dd\\dn.txt")).Write(sb.ToString());
                             all_files_data.Sort(Sorter);
                             all_files_list.Items.Refresh();
-                        }
-                        break;
-                    case DirectoriesAnalizePages.Staticals:
-                        //show big files type or ...
-                        break;
+                            break;
+                        case DirectoriesAnalizePages.Staticals:
+                            if (all_files_data.Count == 0)
+                                ViewStatical();
+                            break;
+                    }
+                    current_page = value;
                 }
-                current_page = value;
             }
         }
 
+        private void ViewStatical()
+        {
+            List<StaticalItem> tmp_list = new List<StaticalItem>();
+            foreach(var i in StaticalItem.statical_list)
+            {
+                if (i.Value.FilesCount > 0)
+                    tmp_list.Add(i.Value);
+            }
+            tmp_list.Sort((x, y) => { return -1 * x.Size.CompareTo(y.Size); });
+            foreach (UIElement i in statical_stack.Children)
+                    i.Visibility = Visibility.Collapsed;
+            statical_stack.Children[statical_stack.Children.Count - 1].Visibility = statical_stack.Children[0].Visibility = Visibility.Visible;
+            for (int i = 0; i < tmp_list.Count; i++)
+            {
+                statical_stack.Children[i + 1].Visibility = Visibility.Visible;
+                ((statical_stack.Children[i + 1] as Grid).Children[0] as TextBlock).Text = tmp_list[i].Header;
+                ((statical_stack.Children[i + 1] as Grid).Children[1] as Image).Source = new BitmapImage(new Uri(tmp_list[i].ImagePath));
+                ((statical_stack.Children[i + 1] as Grid).Children[2] as TextBlock).Text = tmp_list[i].FilesCount + " files";
+                ((statical_stack.Children[i + 1] as Grid).Children[3] as TextBlock).Text = Functions.FileSize(tmp_list[i].Size, 2);
+                ((statical_stack.Children[i + 1] as Grid).Children[4] as TextBlock).Text = Math.Round(tmp_list[i].Percent, 2) + "%";
+            }
+            ((statical_stack.Children[statical_stack.Children.Count - 1] as Grid).Children[2] as TextBlock).Text = StaticalItem.total_count + " files";
+            ((statical_stack.Children[statical_stack.Children.Count - 1] as Grid).Children[3] as TextBlock).Text = Functions.FileSize(StaticalItem.total_size, 2);
+        }
+
+        //StringBuilder sb = new StringBuilder();
         private void FillAllFiles(List<BigFileListView> list)
         {
             foreach (var i in list)
             {
+
+                //sb.AppendLine(i.FullPath);
+
                 if (i.isDirectory)
                     FillAllFiles(i.Children);
                 else
@@ -209,6 +241,66 @@ namespace File_Manager
                 DeleteItems_Click(delete_files, null);
         }
 
+        private void AllFilesList_PreviewKeyUp(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Space)
+            {
+                if (all_files_data[all_files_list.SelectedIndex].isDirectory && Directory.Exists(all_files_data[all_files_list.SelectedIndex].FullPath))
+                    new Preview().ShowDialog(new DirectoryInfo(all_files_data[all_files_list.SelectedIndex].FullPath), ItemType.Directory);
+                else if (!all_files_data[all_files_list.SelectedIndex].isDirectory && File.Exists(all_files_data[all_files_list.SelectedIndex].FullPath))
+                    new Preview().ShowDialog(new FileInfo(all_files_data[all_files_list.SelectedIndex].FullPath), ItemType.File);
+                if (MainWindow.GoToPath)
+                {
+                    MainWindow.GoToPath = false;
+                    new MainWindow(MainWindow.to_go_path).ShowDialog();
+                }
+            }
+            else if (e.Key == Key.Enter)
+                LaunchFile(all_files_data[all_files_list.SelectedIndex].FullPath);
+            else if (e.Key == Key.Delete)
+            {
+                List<FileOperationItem> files = new List<FileOperationItem>();
+                StringBuilder items_name = new StringBuilder();
+                foreach (BigFileListView i in all_files_list.SelectedItems)
+                {
+                    if (i.isDirectory)
+                        files.Add(new FileOperationItem(new DirectoryInfo(i.FullPath), false, ""));
+                    else
+                        files.Add(new FileOperationItem(new FileInfo(i.FullPath), false, ""));
+                    items_name.AppendLine(i.FullPath);
+                }
+                if (files.Count > 0)
+                {
+                    bool delete = false;
+                    if (files.Count > 1)
+                    {
+                        if (Messages.ShowMessage(string.Format("Are you sure you want to permanently delete these {0} items", files.Count), ModrenMessageButton.YesNo, ModrenMessageImage.Delete, ModrenMessageSound.Question, true, items_name.ToString()) == MyMessageBoxResult.Yes)
+                            delete = true;
+                    }
+                    else if (Messages.ShowMessage("Are you sure you want to permanently delete these item", ModrenMessageButton.YesNo, ModrenMessageImage.Delete, ModrenMessageSound.Question, true, Messages.GetItemInfo(files[0].Item)) == MyMessageBoxResult.Yes)
+                        delete = true;
+                    if (delete)
+                    {
+                        new Operation().CopyDialogShow(files, OperationType.Delete, "", true);
+                        Messages.ShowMessage("Files deleted done.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
+                    }
+                }
+                else
+                    Messages.ShowMessage("You have not selected any file to delete.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
+                all_files_list.Items.Refresh();
+            }
+        }
+
+        private void LaunchFile(string path)
+        {
+            if (path != null)
+                if (File.Exists(path))
+                    try { System.Diagnostics.Process.Start(path); }
+                    catch (Exception ex) { Messages.ShowMessage("We can not open '" + path + "'.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
+                else
+                    Messages.ShowMessage("We can not find '" + path + "'.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, false, "");
+        }
+
         private void GoUp_Click(object sender, RoutedEventArgs e)
         {
             if (parent.Parent.Parent == null)
@@ -350,6 +442,33 @@ namespace File_Manager
             CurrentPage = (DirectoriesAnalizePages)tab_panal.Children.IndexOf((Label)sender) + 1;
         }
 
+        private void AboutTool_Click(object sender, RoutedEventArgs e)
+        {
+            //version 1:
+            //find big 100 files in a directory
+            //1.1:
+            //can now find big 100 directory in a directory
+            //version 2:
+            //directory analizer base
+            //explore directory and view there size in tree view
+            //2.1:
+            //color for each use
+            //2.2:
+            //imrove algorethm and speed
+            //bugs fixed
+            //3:
+            //redesgin the tool
+            //explorer to explore items instate of tree view
+            //imrove calculation speed
+            //improve tool speed
+            //3.1
+            //all files list sorted by size
+            //can explore more than one item at same time
+            //3.2
+            //statical info
+            //bug fixed (do not show all files in directory)
+        }
+
         private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
         {
             if (!starting_window)
@@ -401,7 +520,10 @@ namespace File_Manager
 
         public BigFileListView(DirectoryInfo directory, BigFileListView parent, BigFileListView home, ref bool Cancel)
         {
-            SetInfo(directory, parent, home, ref Cancel);
+            //if (!Classes.JunctionPoint.Exists(directory.FullName))
+                SetInfo(directory, parent, home, ref Cancel);
+            //else
+            //{ string h = directory.FullName; }
         }
 
         internal void SetInfo(DirectoryInfo directory, BigFileListView parent, BigFileListView home, ref bool Cancel)
@@ -448,6 +570,7 @@ namespace File_Manager
                     {
                         if (Cancel) return 0;
                         parent.Children.Add(new BigFileListView(i, parent, home));
+                        StaticalItem.AddFile(i);
                         size += i.Length;
                     }
                     catch (Exception) { }
@@ -486,42 +609,42 @@ namespace File_Manager
             return -1 * SizeDouble.CompareTo(((BigFileListView)obj).SizeDouble);
         }
 
-        private String directories_and_files;
+        private string directories_and_files;
         public string DirectoriesAndFiles
         {
             get { return directories_and_files; }
             set { directories_and_files = value; }
         }
 
-        private String file_name;
+        private string file_name;
         public string FileName
         {
             get { return file_name; }
             set { file_name = value; }
         }
 
-        private String file_type;
+        private string file_type;
         public string FileType
         {
             get { return file_type; }
             set { file_type = value; }
         }
 
-        private String file_size;
+        private string file_size;
         public string FileSize
         {
             get { return file_size; }
             set { file_size = value; }
         }
 
-        private String percent;
+        private string percent;
         public string Percent
         {
             get { return percent; }
             set { percent = value; }
         }
 
-        private String size_from_all;
+        private string size_from_all;
         public string SizeFromAll
         {
             get { return size_from_all; }
@@ -576,10 +699,131 @@ namespace File_Manager
     
     }
 
+    public class StaticalItem
+    {
+        static internal Dictionary<StaticalType, StaticalItem> statical_list = new Dictionary<StaticalType, StaticalItem>();
+        static internal long total_size = 0;
+        static internal long total_count = 0;
+
+        long size;
+        public long Size
+        {
+            get { return size; }
+        }
+
+        int files_count;
+        public int FilesCount
+        {
+            get { return files_count; }
+        }
+
+        double percent = 0;
+        public double Percent
+        {
+            get { return percent; }
+        }
+
+        string header;
+        public string Header
+        {
+            get { return header; }
+        }
+
+        string image_path;
+        public string ImagePath
+        {
+            get { return image_path; }
+        }
+
+        public StaticalItem(StaticalType type, string name, string image_path)
+        {
+            header = name;
+            percent = 0;
+            files_count = 0;
+            size = 0;
+            this.image_path = image_path;
+            statical_list.Add(type, this);
+        }
+
+        static public void AddFile(FileInfo file)
+        {
+            if (statical_list.Count == 0)
+                CreateDictionary();
+            FileCategory type = Functions.GetFileCategory(file.Extension);
+            switch (type)
+            {
+                case FileCategory.Application:
+                case FileCategory.TextCanRunAsApplication:
+                    statical_list[StaticalType.Application].AddFile(file.Length);
+                    break;
+                case FileCategory.Archive:
+                case FileCategory.DiskImage:
+                    statical_list[StaticalType.Archive].AddFile(file.Length);
+                    break;
+                case FileCategory.Audio:
+                    statical_list[StaticalType.Music].AddFile(file.Length);
+                    break;
+                case FileCategory.Vedio:
+                    statical_list[StaticalType.Video].AddFile(file.Length);
+                    break;
+                case FileCategory.Document:
+                case FileCategory.Text:
+                case FileCategory.Html:
+                    statical_list[StaticalType.Document].AddFile(file.Length);
+                    break;
+                case FileCategory.Font:
+                    statical_list[StaticalType.Font].AddFile(file.Length);
+                    break;
+                case FileCategory.Image:
+                    statical_list[StaticalType.Image].AddFile(file.Length);
+                    break;
+                default:
+                    statical_list[StaticalType.Other].AddFile(file.Length);
+                    break;
+            }
+        }
+
+        private static void CreateDictionary()
+        {
+            new StaticalItem(StaticalType.Image, "Image", Functions.StandardImageSource + "24/image.png");
+            new StaticalItem(StaticalType.Music, "Music", Functions.StandardImageSource + "24/music.png");
+            new StaticalItem(StaticalType.Video, "Video", Functions.StandardImageSource + "24/video.png");
+            new StaticalItem(StaticalType.Document, "Document", Functions.StandardImageSource + "24/document.png");
+            new StaticalItem(StaticalType.Application, "Application", Functions.StandardImageSource + "24/application.png");
+            new StaticalItem(StaticalType.Archive, "Archive", Functions.StandardImageSource + "24/archive.png");
+            new StaticalItem(StaticalType.Font, "Font", Functions.StandardImageSource + "24/font.png");
+            new StaticalItem(StaticalType.Other, "Other", Functions.StandardImageSource + "24/other.png");
+        }
+
+        private void AddFile(long file_size)
+        {
+            total_size += file_size;
+            size += file_size;
+            files_count++;
+            total_count++;
+            foreach (var i in statical_list)
+                i.Value.percent = (i.Value.size * 100.0) / total_size;
+        }
+
+    }
+
     public enum DirectoriesAnalizePages
     {
         Browse = 1,
         Files = 2,
         Staticals = 3
     }
+
+    public enum StaticalType
+    {
+        Image = 1,
+        Music = 2,
+        Video = 3,
+        Document = 4,
+        Application = 5,
+        Archive = 6,
+        Font = 7,
+        Other = 100
+    }
+
 }

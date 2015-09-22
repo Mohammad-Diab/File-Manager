@@ -7,12 +7,11 @@
             <StackPanel x:Name="tab_panal" Height="36" VerticalAlignment="Top" Orientation="Horizontal" Background="Black">
                 <Label x:Name="label1" Content="EXT. CHANGER" FontSize="18" Background="White" Cursor="Hand" PreviewMouseLeftButtonUp="TabChange_MouseButtonUp"/>
                 <Label x:Name="label2" Content="SUGGEST EXT." FontSize="18" Foreground="White" Background="Black" Cursor="Hand" PreviewMouseLeftButtonUp="TabChange_MouseButtonUp"/>
-                <ProgressBar x:Name="rename2_progressbar" Visibility="Hidden" HorizontalAlignment="Right" Height="20" Margin="20,0,0,0" Width="200" Maximum="1050"/>
             </StackPanel>
 
             <Grid x:Name="mother" Margin="0,0,0,0">
                 <Grid HorizontalAlignment="Left" Width="495" Margin="0,40,0,0">
-                    <ListView x:Name="FilesList" Margin="10,42,15,80" SelectionMode="Extended" ItemsSource="{Binding}" Background="{x:Null}">
+                    <ListView x:Name="renamer_list" Margin="10,42,15,80" SelectionMode="Extended" ItemsSource="{Binding}" Background="{x:Null}" AllowDrop="True" Drop="FilesList_Drop">
                         <ListView.ItemTemplate>
                             <DataTemplate>
                                 <Grid Margin="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
@@ -64,7 +63,6 @@
                             </RadialGradientBrush>
                         </TextBlock.Foreground>
                     </TextBlock>
-
                 </Grid>
 
                 <Grid HorizontalAlignment="Left" Margin="500,40,0,0" Width="495">
@@ -75,17 +73,17 @@
                                 <GradientStop Color="Red" Offset="1"/>
                             </RadialGradientBrush>
                         </TextBlock.Foreground><Run x:Name="items_count2"/><Run Text=" "/><Run x:Name="items_done"/><Run x:Name="items_and"/><Run x:Name="items_failed"/></TextBlock>
-                    <Button ToolTip="Add files" Margin="10,5,0,0" VerticalAlignment="Top" Click="AddFile2_Click" HorizontalAlignment="Left" Background="{x:Null}">
+                    <Button ToolTip="Add files" Margin="10,5,0,0" VerticalAlignment="Top" Click="SuggesterAddFile_Click" HorizontalAlignment="Left" Background="{x:Null}">
                         <Button.Content>
                             <Image Source="Images/Appearance/add-files.png" Width="28" Height="28" Stretch="UniformToFill"/>
                         </Button.Content>
                     </Button>
-                    <Button ToolTip="Add folder (add all files in it)" Margin="47,5,0,0" VerticalAlignment="Top" Click="AddFolder2_Click" HorizontalAlignment="Left" Background="{x:Null}">
+                    <Button ToolTip="Add folder (add all files in it)" Margin="47,5,0,0" VerticalAlignment="Top" Click="SuggesterAddFolder_Click" HorizontalAlignment="Left" Background="{x:Null}">
                         <Button.Content>
                             <Image Source="Images/Appearance/add-folder.png" Height="28" Width="28" Stretch="UniformToFill"/>
                         </Button.Content>
                     </Button>
-                    <Button ToolTip="Clear list" Margin="0,5,52,0" VerticalAlignment="Top" Click="ClearList2_Click" HorizontalAlignment="Right" Background="{x:Null}">
+                    <Button ToolTip="Clear list" Margin="0,5,52,0" VerticalAlignment="Top" Click="SuggesterClearList_Click" HorizontalAlignment="Right" Background="{x:Null}">
                         <Button.Content>
                             <Image Source="Images/Appearance/list-clear.png" Height="28" Width="28" Stretch="UniformToFill"/>
                         </Button.Content>
@@ -95,50 +93,54 @@
                             <Image Source="Images/Appearance/setting.png" Height="28" Width="28" Stretch="UniformToFill"/>
                         </Button.Content>
                     </Button>
-                    <Button ToolTip="Remove selected files" Margin="0,5,89,0" VerticalAlignment="Top" Click="RemoveSelected2_Click" HorizontalAlignment="Right" Background="{x:Null}">
+                    <Button ToolTip="Remove selected files" Margin="0,5,89,0" VerticalAlignment="Top" Click="SuggesterRemoveSelected_Click" HorizontalAlignment="Right" Background="{x:Null}">
                         <Image Source="Images/Appearance/list-remove.png" Height="28" Width="28" Stretch="UniformToFill"/>
                     </Button>
-                    <Button VerticalAlignment="Bottom" Click="Rename2_Click" Height="32" Background="ForestGreen" Foreground="White" HorizontalAlignment="Right" Width="109" Margin="0,0,15,10">
+                    <Button VerticalAlignment="Bottom" Click="SuggesterRename_Click" Height="32" Background="ForestGreen" Foreground="White" HorizontalAlignment="Right" Width="109" Margin="0,0,15,10">
                         <Grid Width="105" Height="28">
                             <TextBlock Text="Rename" Foreground="WhiteSmoke" Margin="35,5,0,0" FontSize="14" HorizontalAlignment="Left" VerticalAlignment="Top"/>
                             <Image Source="Images/Appearance/rename.png" Width="28" Stretch="Fill" HorizontalAlignment="Left" Margin="2,0,0,0"/>
                         </Grid>
                     </Button>
                     <Button x:Name="suggest_button" Margin="10,0,0,28" Content="Suggest file extension" VerticalAlignment="Bottom" Click="Suggest_Click" Height="28" Foreground="Green" HorizontalAlignment="Left" Width="157" BorderBrush="Green">
-                            <Button.Background>
-                                <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
-                                    <GradientStop Color="#7F1A661A" Offset="0"/>
-                                    <GradientStop Color="#66FFFFFF" Offset="1"/>
-                                </LinearGradientBrush>
-                            </Button.Background>
-                        </Button>
+                        <Button.Background>
+                            <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                <GradientStop Color="#7F1A661A" Offset="0"/>
+                                <GradientStop Color="#66FFFFFF" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Button.Background>
+                    </Button>
                     <CheckBox x:Name="remove_extension2" Content="Remove old extension" HorizontalAlignment="Left" VerticalAlignment="Bottom" FontSize="14" Foreground="Green" BorderBrush="Green" IsChecked="True" Margin="10,0,0,5"/>
-                    <ListView x:Name="FilesList2" Margin="10,42,15,66" SelectionMode="Extended" ItemsSource="{Binding}" Background="{x:Null}">
-                    <ListView.View>
-                        <GridView>
-                            <GridViewColumn Width="300" Header="File Path">
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <Grid Margin="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                                            <TextBlock Margin="28,2,0,0" Text="{Binding FullPath}" HorizontalAlignment="Left" FontSize="14"/>
-                                            <Image Margin="0" Source="{Binding Image}" Height="24" Width="24" VerticalAlignment="Top" HorizontalAlignment="Left"/>
-                                        </Grid>
-                                    </DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-                            <GridViewColumn Header="Extension" Width="100">
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <ComboBox ItemsSource="{Binding PossibleExt}" SelectedIndex="{Binding SelectedExt}"/>
-                                    </DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-                        </GridView>
-                    </ListView.View>
-                </ListView>
+                    <ListView x:Name="sugester_list" Margin="10,42,15,66" SelectionMode="Extended" ItemsSource="{Binding}" Background="{x:Null}" AllowDrop="True" Drop="FilesList_Drop">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Width="300" Header="File Path">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                                                <TextBlock Margin="28,2,0,0" Text="{Binding FullPath}" HorizontalAlignment="Left" FontSize="14"/>
+                                                <Image Margin="0" Source="{Binding Image}" Height="24" Width="24" VerticalAlignment="Top" HorizontalAlignment="Left"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="Extension" Width="100">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <ComboBox ItemsSource="{Binding PossibleExt}" SelectedIndex="{Binding SelectedExt}"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
                 </Grid>
             </Grid>
             <Rectangle x:Name="rec" Fill="Red" HorizontalAlignment="Left" Height="4" Margin="0,32,0,0" VerticalAlignment="Top" Width="129"/>
         </Grid>
+        <Button ToolTip="About Super Extention Changer" HorizontalAlignment="Right" VerticalAlignment="Top" Width="36" Height="36" Background="{x:Null}" BorderBrush="{x:Null}" Click="AboutTool_Click">
+            <Image Stretch="Fill" Source="Images/Menu/about-tool.png"/>
+        </Button>
+        <ProgressBar x:Name="rename2_progressbar" Visibility="Hidden" Height="20" Margin="260,7,50,0" Maximum="1050" VerticalAlignment="Top"/>
     </Grid>
 </Window>

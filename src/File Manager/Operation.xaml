@@ -12,10 +12,15 @@
         </TaskbarItemInfo>
     </Window.TaskbarItemInfo>
     <Grid>
-        <TextBlock x:Name="remain" Width="125" HorizontalAlignment="Left" Margin="5,5,0,0" Text="88.8" VerticalAlignment="Top" FontSize="48" Foreground="DodgerBlue" TextAlignment="Center"/>
-        <TextBlock x:Name="remain_unit" HorizontalAlignment="Left" Margin="130,40,0,0" Text="Items" VerticalAlignment="Top" FontSize="14"/>
+        <StackPanel Orientation="Vertical" Height="75" VerticalAlignment="Top" HorizontalAlignment="Left">
+            <TextBlock x:Name="remain_title" Margin="0,2,0,0" Text="Remaining" HorizontalAlignment="Stretch" VerticalAlignment="Top" TextAlignment="Center"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                <TextBlock x:Name="remain" Margin="0,-5,0,0" Width="125" HorizontalAlignment="Left" Text="88.8" VerticalAlignment="Top" FontSize="48" Foreground="DodgerBlue" TextAlignment="Center"/>
+                <TextBlock x:Name="remain_unit" HorizontalAlignment="Left" Text="Items" Margin="0,0,0,10" VerticalAlignment="Bottom" FontSize="14"/>
+            </StackPanel>
+        </StackPanel>
+
         <TextBlock x:Name="operation" HorizontalAlignment="Left" Margin="160,4,0,0" TextWrapping="Wrap" VerticalAlignment="Top" FontSize="16" Text="Collecting Files:" Foreground="DodgerBlue"/>
-        <TextBlock x:Name="remain_title" HorizontalAlignment="Left" Margin="5,2,0,0" Text="Remaining" VerticalAlignment="Top" Width="125" TextAlignment="Center"/>
         <ProgressBar x:Name="progress_bar" Height="10" Margin="175,54,50,0" VerticalAlignment="Top" Foreground="DodgerBlue"  IsIndeterminate="True"/>
         <TextBlock x:Name="name_textblock" Margin="175,30,10,0" VerticalAlignment="Top" TextTrimming="CharacterEllipsis"><Run Text="Name: "/><Run Text=" "/><Run x:Name="item_name"/></TextBlock>
         <Button HorizontalAlignment="Right" Margin="0,5,50,0" VerticalAlignment="Top" Background="{x:Null}" Width="20" Height="20" Click="Stop_Click" BorderBrush="{x:Null}">

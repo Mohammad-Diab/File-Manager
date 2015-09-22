@@ -98,5 +98,8 @@
             </Grid>
             <Rectangle x:Name="rec" Fill="Red" HorizontalAlignment="Left" Height="4" Margin="0,32,0,0" VerticalAlignment="Top" Width="125"/>
         </Grid>
+        <Button ToolTip="About Files Destroy" HorizontalAlignment="Right" VerticalAlignment="Top" Width="36" Height="36" Background="{x:Null}" BorderBrush="{x:Null}" Click="AboutTool_Click">
+            <Image Stretch="Fill" Source="Images/Menu/about-tool.png"/>
+        </Button>
     </Grid>
 </Window>

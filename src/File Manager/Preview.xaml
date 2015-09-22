@@ -450,7 +450,7 @@
             </StackPanel>
         </Grid>
         <Grid x:Name="app_bar" Margin="0,0,0,-80" VerticalAlignment="Bottom" Height="110" Background="#00000000">
-            <Rectangle Fill="RoyalBlue" VerticalAlignment="Bottom" Height="100"/>
+            <Rectangle x:Name="app_bar_background" Visibility="Hidden" Fill="RoyalBlue" VerticalAlignment="Bottom" Height="100"/>
             <Grid x:Name="caution" Height="30" VerticalAlignment="Bottom" Visibility="Collapsed" Margin="0,0,0,80">
                 <Rectangle Fill="Black" Height="30" Stroke="Black" VerticalAlignment="Bottom" Opacity="0.5"/>
                 <Rectangle Height="29" VerticalAlignment="Bottom" Opacity="0.9" RenderTransformOrigin="0.5,0.5">
@@ -469,9 +469,9 @@
                 </Rectangle>
                 <TextBlock x:Name="failed" Text="Caution: This file type maybe contain a virus or damage your computer" Foreground="WhiteSmoke" FontSize="16" TextAlignment="Center" HorizontalAlignment="Left" Width="800" Height="24" VerticalAlignment="Top" Margin="0,3,0,0" FontWeight="SemiBold"/>
             </Grid>
-            <TextBlock HorizontalAlignment="Right" TextWrapping="Wrap" Text="..." VerticalAlignment="Bottom" Margin="0,-38,10,74" Foreground="White" FontSize="48"/>
-            <Grid PreviewMouseLeftButtonUp="app_bar_PreviewMouseLeftButtonUp" Margin="0,5,0,80" Background="#004169E1"/>
-            <StackPanel Margin="0,30,0,0" Orientation="Horizontal">
+            <TextBlock x:Name="app_bar_dots" Visibility="Hidden" HorizontalAlignment="Right" TextWrapping="Wrap" Text="..." VerticalAlignment="Bottom" Margin="0,-38,10,74" Foreground="White" FontSize="48"/>
+            <Grid x:Name="app_bar_grid" Visibility="Hidden" PreviewMouseLeftButtonUp="app_bar_PreviewMouseLeftButtonUp" Margin="0,5,0,80" Background="#004169E1"/>
+            <StackPanel x:Name="app_bar_stack" Visibility="Hidden" Margin="0,30,0,0" Orientation="Horizontal">
                 <Grid Height="76" x:Name="app_bar_button1" VerticalAlignment="Bottom" Margin="205,0,0,0" ToolTip="open subtitle file" Width="56" HorizontalAlignment="Left" >
                     <Button Background="{x:Null}" Template="{StaticResource appBarButton}" Click="LoadSubtitle_Click" Margin="0,0,0,20" Width="56" Height="56" Content="S" FontSize="26" Foreground="White"/>
                     <TextBlock Text="load subtitle" VerticalAlignment="Bottom" Margin="0,0,0,5" Foreground="White" FontSize="10" TextTrimming="CharacterEllipsis" TextAlignment="Center"/>

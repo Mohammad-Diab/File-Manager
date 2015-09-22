@@ -9,7 +9,6 @@
         <StackPanel x:Name="tab_panal" Height="36" VerticalAlignment="Top" Orientation="Horizontal" Background="Black">
             <Label x:Name="label1" Content="FIND DUBLICTES" FontSize="18" Background="White" Cursor="Hand" PreviewMouseLeftButtonUp="TabChange_MouseButtonUp"/>
             <Label x:Name="label2" Content="IS SIMILER TO" FontSize="18" Foreground="White" Background="Black" Cursor="Hand" PreviewMouseLeftButtonUp="TabChange_MouseButtonUp"/>
-            <ProgressBar x:Name="progressbar" Width="275" Margin="20,8,0,8" Maximum="100" Visibility="Hidden"/>
         </StackPanel>
 
         <Grid x:Name="mother" Margin="0,0,0,0">
@@ -169,5 +168,11 @@
             </Grid>
         </Grid>
         <Rectangle x:Name="rec" Fill="Red" HorizontalAlignment="Left" Height="4" Margin="0,32,0,0" VerticalAlignment="Top" Width="140"/>
+        <Button ToolTip="About Duplicate files remover" HorizontalAlignment="Right" VerticalAlignment="Top" Width="36" Height="36" Background="{x:Null}" BorderBrush="{x:Null}" Click="AboutTool_Click">
+            <Button.Content>
+                <Image Stretch="Fill" Source="Images/Menu/about-tool.png"/>
+            </Button.Content>
+        </Button>
+        <ProgressBar x:Name="progressbar" Margin="300,8,50,0" Maximum="100" Visibility="Hidden" Height="20" VerticalAlignment="Top"/>
     </Grid>
 </Window>

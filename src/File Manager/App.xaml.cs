@@ -16,8 +16,10 @@ namespace File_Manager
     /// </summary>
     public partial class App : Application
     {
+        public static bool IsAdmin = false;
         private void Application_Startup(object sender, StartupEventArgs e)
         {
+            IsAdmin = Functions.IsRunningAsAdmin();
             BinaryFormatter BF = new BinaryFormatter();
             if (File.Exists("FileInfo.dat"))
             {

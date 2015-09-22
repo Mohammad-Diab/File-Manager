@@ -87,7 +87,8 @@
             <Button Content="Compress" HorizontalAlignment="Right" Margin="0,0,10,10" VerticalAlignment="Bottom" Width="75" Background="{x:Null}" Foreground="RoyalBlue" Click="Compress_Click" BorderBrush="RoyalBlue"/>
             <Button Content="Close" HorizontalAlignment="Right" Margin="0,0,90,10" VerticalAlignment="Bottom" Width="75" Background="{x:Null}" Click="Close_Click"/>
             <TextBlock x:Name="textBlock1" HorizontalAlignment="Left" Margin="10,5,0,0" TextWrapping="Wrap" Text="Compress files options" FontSize="28" VerticalAlignment="Top" Foreground="RoyalBlue"/>
-        </Grid>
+        <Rectangle Height="5" Stroke="Black" VerticalAlignment="Top" Fill="RoyalBlue" StrokeThickness="0"/>
+    </Grid>
 </Window>
 
     

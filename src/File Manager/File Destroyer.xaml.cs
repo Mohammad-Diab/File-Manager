@@ -22,6 +22,7 @@ namespace File_Manager
     {
         //dont add file with already in list
         bool CloseWindow = false, starting_window = true;
+        DriveInfo selectdrive = null;
         DestroyPages current_page = DestroyPages.FilesDestroy;
         DestroyPages CurrentPage
         {
@@ -39,12 +40,16 @@ namespace File_Manager
             InitializeComponent();
         }
 
-        public File_Destroyer(List<FileInfo> list)
+        public File_Destroyer(object list, bool destroy_files)//true file destroyer false disk destroyer
         {
             InitializeComponent();
-            foreach (var i in list)
-                destroy_list_data.Add(new DestroyListView(i));
-            Destroy_Click(destroy_button, new RoutedEventArgs());
+            if (destroy_files)
+                AddFiles(list as string[]);
+            else
+            {
+                CurrentPage = DestroyPages.DiskDestroy;
+                selectdrive = list as DriveInfo;
+            }
         }
 
         private void Window_Closing(object sender, CancelEventArgs e)
@@ -181,7 +186,7 @@ namespace File_Manager
                     if (repete < 1) repete = 1;
                     else if (repete > 35) repete = 35;
                     delete = delete_files.IsChecked.Value;
-                    method = method_cb.SelectedIndex == 0 ? DestroyMethod.FastZero : method_cb.SelectedIndex == 1 ? DestroyMethod.FastOne : DestroyMethod.Secure;
+                    method = (DestroyMethod)method_cb.SelectedIndex + 1;
                     List<FileInfo> files = new List<FileInfo>();
                     foreach (var i in destroy_list_data)
                         files.Add(i.File);
@@ -228,13 +233,18 @@ namespace File_Manager
             get_drivers.RunWorkerCompleted += (object sender, RunWorkerCompletedEventArgs e) =>
             {
                 drive_list.Items.Clear();
-                foreach (var i in drivers)
-                    if (i.IsReady && i.DriveType != DriveType.CDRom && i.TotalFreeSpace > 0)
-                        drive_list.Items.Add(i.Name);
+                int select_index = -1;
+                for (int i = 0; i < drivers.Length; i++)
+                    if (drivers[i].IsReady && drivers[i].DriveType != DriveType.CDRom && drivers[i].TotalFreeSpace > 0)
+                    {
+                        if (selectdrive != null && drivers[i].Name.ToLower() == selectdrive.Name.ToLower())
+                            select_index = i;
+                        drive_list.Items.Add(drivers[i].Name);
+                    }
+                drive_list.SelectedIndex = select_index;
                 drive_list.IsEnabled = destroy_button.IsEnabled = refresh.IsEnabled = true;
             };
             get_drivers.RunWorkerAsync();
-
         }
 
         private void DriveList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -288,7 +298,7 @@ namespace File_Manager
                         if (repeat < 1) repeat = 1;
                         else if (repeat > 35) repeat = 35;
                         delete = disk_delete_files.IsChecked.Value;
-                        method = disk_method_cb.SelectedIndex == 0 ? DestroyMethod.FastZero : disk_method_cb.SelectedIndex == 1 ? DestroyMethod.FastOne : DestroyMethod.Secure;
+                        method = (DestroyMethod)(disk_method_cb.SelectedIndex + 1);
                         new Operation().StartDestroyDisk(drive, method, repeat, delete, true);
                         Messages.ShowMessage("Destroying done.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
                         DriveList_SelectionChanged(null, null);
@@ -333,6 +343,25 @@ namespace File_Manager
             CurrentPage = (DestroyPages)tab_panal.Children.IndexOf((Label)sender) + 1;
         }
 
+        private void AboutTool_Click(object sender, RoutedEventArgs e)
+        {
+            //version 1:
+            //basic files destroyer
+            //1.1:
+            //seure method added
+            //1.2:
+            //new interface
+            //deleted files desrtoyer
+            //2:
+            //improve interface:
+            //improve speed and can now pause op
+            //fast (zero an one) method
+            //2.1:
+            //fast (random) method
+            //fixed bug
+
+        }
+
         private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
         {
             if (!starting_window)
@@ -372,6 +401,7 @@ namespace File_Manager
     {
         FastZero = 1,
         FastOne = 2,
-        Secure = 3
+        FastRandom = 3,
+        Secure = 4
     }
 }

@@ -37,9 +37,16 @@ namespace File_Manager
             InitializeComponent();
         }
 
-        public Files_Encrepter(string file, bool encrypt)//true for encrypt and false foredcrypt
+        public Files_Encrepter(string[] files, bool encrypt)//true for encrypt and false for decrypt
         {
             InitializeComponent();
+            if (encrypt)
+                AddFiles(files, encrypt_data, encrypt_list);
+            else
+            {
+                AddFiles(files, decrypt_data, decrypt_list);
+                CurrentPage = EncryptPages.FilesDecrypt;
+            }
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -370,6 +377,21 @@ namespace File_Manager
             ((Label)sender).Background = Brushes.White;
             ((Label)sender).Foreground = Brushes.Black;
             CurrentPage = (EncryptPages)tab_panal.Children.IndexOf((Label)sender) + 1;
+        }
+
+        private void AboutTool_Click(object sender, RoutedEventArgs e)
+        {
+            //version 1:
+            //first relese
+            //1.1:
+            //imrove speed
+            //improve interface
+            //2:
+            //new interface
+            //new encrype method (old files will not dencrypt in this version)
+          // new not published //2.1:
+            //add method(fast-mid-slow)
+            //encrypt on same file or encrypt to other file
         }
 
         private void Window_SizeChanged(object sender, SizeChangedEventArgs e)

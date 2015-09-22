@@ -3,7 +3,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:System="clr-namespace:System;assembly=mscorlib" 
     x:Class="File_Manager.ChangeDate"
-    Title="Date Selector" Height="175" MaxHeight="175" MaxWidth="350" Width="325" WindowStyle="ThreeDBorderWindow" ResizeMode="NoResize" WindowStartupLocation="CenterScreen">
+    Title="Date Selector" Height="175" MaxHeight="175" MaxWidth="350" Width="325" ResizeMode="NoResize" WindowStartupLocation="CenterScreen" WindowStyle="ToolWindow">
     <Grid>
         <Grid.Background>
             <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
@@ -12,11 +12,11 @@
             </LinearGradientBrush>
         </Grid.Background>
         <Button Content="Change" Margin="0,0,10,10" Visibility="Visible" Background="{x:Null}" BorderBrush="#FFFF8000" Foreground="#FFFF8000" VerticalAlignment="Bottom" Height="24" HorizontalAlignment="Right" Width="79" Click="OK_Click"/>
-        <DatePicker x:Name="date_picker" SelectedDate="1/22/1993" Margin="70,21,45,0" VerticalAlignment="Top" Height="28" RenderTransformOrigin="0.5,0.5" DisplayDateStart="1980-01-01" DisplayDateEnd="2100-12-31" FirstDayOfWeek="Saturday" SelectedDateFormat="Long"/>
+        <DatePicker x:Name="date_picker" SelectedDate="1/22/1993" Margin="70,10,45,0" VerticalAlignment="Top" Height="28" RenderTransformOrigin="0.5,0.5" DisplayDateStart="1980-01-01" DisplayDateEnd="2100-12-31" FirstDayOfWeek="Saturday" SelectedDateFormat="Long"/>
         <Button Content="Cancel" Margin="0,0,94,10" Visibility="Visible" VerticalAlignment="Bottom" Height="24" Background="{x:Null}" HorizontalAlignment="Right" Width="79" Click="Cancel_Click"/>
-        <TextBlock HorizontalAlignment="Left" Margin="10,21,0,0" TextWrapping="Wrap" Text="Date:" VerticalAlignment="Top" FontSize="20" Foreground="Black"/>
-        <TextBlock HorizontalAlignment="Left" Margin="10,68,0,0" TextWrapping="Wrap" Text="Time:" VerticalAlignment="Top" FontSize="20" Foreground="Black"/>
-        <ComboBox x:Name="hour" HorizontalAlignment="Left" Margin="70,75,0,0" VerticalAlignment="Top" Width="50" SelectedIndex="0">
+        <TextBlock HorizontalAlignment="Left" Margin="10,14,0,0" TextWrapping="Wrap" Text="Date:" VerticalAlignment="Top" FontSize="16" Foreground="Black"/>
+        <TextBlock HorizontalAlignment="Left" Margin="10,62,0,0" TextWrapping="Wrap" Text="Time:" VerticalAlignment="Top" FontSize="16" Foreground="Black"/>
+        <ComboBox x:Name="hour" HorizontalAlignment="Left" Margin="70,65,0,0" VerticalAlignment="Top" Width="50" SelectedIndex="0">
             <System:String>00</System:String>
             <System:String>01</System:String>
             <System:String>02</System:String>
@@ -42,69 +42,7 @@
             <System:String>22</System:String>
             <System:String>23</System:String>
         </ComboBox>
-        <ComboBox x:Name="minute" Margin="147,75,0,0" VerticalAlignment="Top" SelectedIndex="0" HorizontalAlignment="Left" Width="50">
-            <System:String>00</System:String>
-            <System:String>01</System:String>
-            <System:String>02</System:String>
-            <System:String>03</System:String>
-            <System:String>04</System:String>
-            <System:String>05</System:String>
-            <System:String>06</System:String>
-            <System:String>07</System:String>
-            <System:String>08</System:String>
-            <System:String>09</System:String>
-            <System:String>10</System:String>
-            <System:String>11</System:String>
-            <System:String>12</System:String>
-            <System:String>13</System:String>
-            <System:String>14</System:String>
-            <System:String>15</System:String>
-            <System:String>16</System:String>
-            <System:String>17</System:String>
-            <System:String>18</System:String>
-            <System:String>19</System:String>
-            <System:String>20</System:String>
-            <System:String>21</System:String>
-            <System:String>22</System:String>
-            <System:String>23</System:String>
-            <System:String>24</System:String>
-            <System:String>25</System:String>
-            <System:String>26</System:String>
-            <System:String>27</System:String>
-            <System:String>28</System:String>
-            <System:String>29</System:String>
-            <System:String>30</System:String>
-            <System:String>31</System:String>
-            <System:String>32</System:String>
-            <System:String>33</System:String>
-            <System:String>34</System:String>
-            <System:String>35</System:String>
-            <System:String>36</System:String>
-            <System:String>37</System:String>
-            <System:String>38</System:String>
-            <System:String>39</System:String>
-            <System:String>40</System:String>
-            <System:String>41</System:String>
-            <System:String>42</System:String>
-            <System:String>43</System:String>
-            <System:String>44</System:String>
-            <System:String>45</System:String>
-            <System:String>46</System:String>
-            <System:String>47</System:String>
-            <System:String>48</System:String>
-            <System:String>49</System:String>
-            <System:String>50</System:String>
-            <System:String>51</System:String>
-            <System:String>52</System:String>
-            <System:String>53</System:String>
-            <System:String>54</System:String>
-            <System:String>55</System:String>
-            <System:String>56</System:String>
-            <System:String>57</System:String>
-            <System:String>58</System:String>
-            <System:String>59</System:String>
-        </ComboBox>
-        <ComboBox x:Name="second" HorizontalAlignment="Left" Margin="224,75,0,0" VerticalAlignment="Top" Width="50" SelectedIndex="0">
+        <ComboBox x:Name="minute" Margin="147,65,0,0" VerticalAlignment="Top" SelectedIndex="0" HorizontalAlignment="Left" Width="50">
             <System:String>00</System:String>
             <System:String>01</System:String>
             <System:String>02</System:String>
@@ -166,9 +104,71 @@
             <System:String>58</System:String>
             <System:String>59</System:String>
         </ComboBox>
-        <TextBlock HorizontalAlignment="Left" Margin="75,59,0,0" TextWrapping="Wrap" Text="HH" VerticalAlignment="Top"/>
-        <TextBlock HorizontalAlignment="Left" Margin="152,59,0,0" TextWrapping="Wrap" Text="MM" VerticalAlignment="Top"/>
-        <TextBlock HorizontalAlignment="Left" Margin="229,59,0,0" TextWrapping="Wrap" Text="SS" VerticalAlignment="Top"/>
-        <Button Content="now" HorizontalAlignment="Left" Margin="5,0,0,5" VerticalAlignment="Bottom" Width="50" ToolTip="Set values to current date and time." Background="{x:Null}" Click="Now_Click"/>
+        <ComboBox x:Name="second" HorizontalAlignment="Left" Margin="224,65,0,0" VerticalAlignment="Top" Width="50" SelectedIndex="0">
+            <System:String>00</System:String>
+            <System:String>01</System:String>
+            <System:String>02</System:String>
+            <System:String>03</System:String>
+            <System:String>04</System:String>
+            <System:String>05</System:String>
+            <System:String>06</System:String>
+            <System:String>07</System:String>
+            <System:String>08</System:String>
+            <System:String>09</System:String>
+            <System:String>10</System:String>
+            <System:String>11</System:String>
+            <System:String>12</System:String>
+            <System:String>13</System:String>
+            <System:String>14</System:String>
+            <System:String>15</System:String>
+            <System:String>16</System:String>
+            <System:String>17</System:String>
+            <System:String>18</System:String>
+            <System:String>19</System:String>
+            <System:String>20</System:String>
+            <System:String>21</System:String>
+            <System:String>22</System:String>
+            <System:String>23</System:String>
+            <System:String>24</System:String>
+            <System:String>25</System:String>
+            <System:String>26</System:String>
+            <System:String>27</System:String>
+            <System:String>28</System:String>
+            <System:String>29</System:String>
+            <System:String>30</System:String>
+            <System:String>31</System:String>
+            <System:String>32</System:String>
+            <System:String>33</System:String>
+            <System:String>34</System:String>
+            <System:String>35</System:String>
+            <System:String>36</System:String>
+            <System:String>37</System:String>
+            <System:String>38</System:String>
+            <System:String>39</System:String>
+            <System:String>40</System:String>
+            <System:String>41</System:String>
+            <System:String>42</System:String>
+            <System:String>43</System:String>
+            <System:String>44</System:String>
+            <System:String>45</System:String>
+            <System:String>46</System:String>
+            <System:String>47</System:String>
+            <System:String>48</System:String>
+            <System:String>49</System:String>
+            <System:String>50</System:String>
+            <System:String>51</System:String>
+            <System:String>52</System:String>
+            <System:String>53</System:String>
+            <System:String>54</System:String>
+            <System:String>55</System:String>
+            <System:String>56</System:String>
+            <System:String>57</System:String>
+            <System:String>58</System:String>
+            <System:String>59</System:String>
+        </ComboBox>
+        <TextBlock HorizontalAlignment="Left" Margin="75,49,0,0" TextWrapping="Wrap" Text="HH" VerticalAlignment="Top"/>
+        <TextBlock HorizontalAlignment="Left" Margin="152,49,0,0" TextWrapping="Wrap" Text="MM" VerticalAlignment="Top"/>
+        <TextBlock HorizontalAlignment="Left" Margin="229,49,0,0" TextWrapping="Wrap" Text="SS" VerticalAlignment="Top"/>
+        <Button Content="now" HorizontalAlignment="Left" Margin="5,0,0,5" VerticalAlignment="Bottom" Width="50" ToolTip="Set values to current date and time." Background="AliceBlue" Click="Now_Click"/>
     </Grid>
 </Window>

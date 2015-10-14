@@ -1948,12 +1948,13 @@ namespace File_Manager
 
         byte[] file_imprint = { 0x46, 0x4D, 0x45, 0x3A, 0x20, 0x65, 0x46, 0x69, 0x6C, 0x20, 0x4D, 0x61, 0x6E, 0x61, 0x67, 0x65, 0x72, 0x20, 0x45, 0x6E, 0x63, 0x72, 0x79, 0x70, 0x74, 0x65, 0x64, 0x20, 0x46, 0x69, 0x6C, 0x65, 0x2E, 0x42, 0x79, 0x20, 0x44, 0x72, 0x2E, 0x4D, 0x6F, 0x68, 0x61, 0x6D, 0x6D, 0x61, 0x64 };//FME: File Manager Encrypted File.By Dr.Mohammad
 
-        internal void StartEncrept(List<FileInfo> files_list, byte[] EncPassword,bool delete_files ,string save_in, bool show_dialog)
+        internal void StartEncrept(List<FileInfo> files_list, byte[] EncPassword, bool delete_files, bool overwrite_files, string save_in, bool encrypt_files_name, bool is_package, bool show_dialog)
         {
             operation_type = OperationType.Encrypt;
             //already_exist = new OperationTree(null, false, "", operation_type, null, false, "this file already exist.");
             unsucsess = new OperationTree(null, false, "", operation_type, null, false, "can not encrypt file.");
             Title = string.Format("Encrypting {0} {1}", files_list.Count, files_list.Count > 1 ? "items" : "item");
+            byte[] general_encrypter = Files_Encrepter.PreparePassword(Files_Encrepter.general_password, Files_Encrepter.general_secret_number, 128);
             double max_value = 0;
             foreach (FileInfo i in files_list)
             {
@@ -1976,7 +1977,8 @@ namespace File_Manager
                 {
                     while (bw.IsBusy)
                     {
-                        bw.ReportProgress(1);
+                        try { bw.ReportProgress(1); }
+                        catch (Exception) { }
                         Thread.Sleep(100);
                         while (pause_copy)
                         {
@@ -1988,54 +1990,122 @@ namespace File_Manager
                 });
                 process_thread.Start();
 
-                for (int index = 0; index < files_list.Count; index++)
+                if (is_package)
                 {
-                    if (CloseWindow) return;
-                    while (pause_copy)
+                    byte[] user_secret_number = Files_Encrepter.GetSecretNumber(128);
+                    EncryptFileHeader header = new EncryptFileHeader(is_package, encrypt_files_name, 3, Files_Encrepter.EncryptBytes(user_secret_number, general_encrypter), Files_Encrepter.HashBytes(EncPassword, 128), files_list.Count);
+                    byte[] user_encrypter = Files_Encrepter.PreparePassword(EncPassword, user_secret_number, 128);
+                    string zeroz = "0000000000";
+                    int num = 1;
+                    string file_name = "file" + zeroz.Substring(0, 10 - num.ToString().Length) + num.ToString() + ".enp";
+                    if (save_in[save_in.Length - 1] != '\\') save_in += '\\';
+                    while (File.Exists(save_in + file_name))
                     {
-                        Thread.Sleep(50);
-                        if (CloseWindow)
-                            return;
+                        num++;
+                        file_name = "file" + zeroz.Substring(0, 10 - num.ToString().Length) + num.ToString() + ".enp";
                     }
-                    EncryptFile(files_list[index], EncPassword, save_in);
-                }
-
-                while (unsucsess.children.Count > 0)
-                {
-
-                    sleep_thread = true;
-                    encrypt_files_BackgroundWorker.ReportProgress(-1);
-                    while (sleep_thread)
-                        Thread.Sleep(50);
-                    OperationTree temp = new OperationTree(null, false, "", operation_type, null, false, "");
-                    double rem = max_value;
-                    foreach (var i in unsucsess.children)
+                    BinaryWriter BW = new BinaryWriter(File.OpenWrite(save_in + file_name));
+                    int id_counter = 0;
+                    foreach (var file in files_list)
                     {
-                        temp.children.Add(i);
-                        //rem -= i.size;
+                        id_counter++;
+                        header.indices.Add(new EncryptFileHeaderIndex(id_counter, file, encrypt_files_name ? general_encrypter : user_encrypter));
                     }
-                    //old_progress_value = progress_value = Convert.ToInt64(rem);
-                    unsucsess.children.Clear();
-                    foreach (var i in temp.children)
+                    for (int i = 0; i < files_list.Count; i++)
                     {
+                        if (CloseWindow) return;
                         while (pause_copy)
                         {
                             Thread.Sleep(50);
                             if (CloseWindow)
                                 return;
                         }
-                        if (i.user_option == OperationOption.Skip)
+                        EncryptFile(files_list[i], user_encrypter, BW, i == 0 ? header.GetFirstFileIndex() : 0, header.indices[i]);
+                    }
+                    header.SetFirstFileInfo(header.indices[0].start_index, header.indices[0].length);
+                    WriteHeader(BW, header);
+                    BW.Close();
+                }
+
+                else
+                {
+                    foreach (var i in files_list)
+                    {
+                        byte[] user_secret_number = Files_Encrepter.GetSecretNumber(128);
+                        EncryptFileHeader header = new EncryptFileHeader(is_package, encrypt_files_name, 3, Files_Encrepter.EncryptBytes(user_secret_number, general_encrypter), Files_Encrepter.HashBytes(EncPassword, 128), 1);
+                        byte[] user_encrypter = Files_Encrepter.PreparePassword(EncPassword, user_secret_number, 128);
+                        string zeroz = "0000000000";
+                        int num = 1;
+                        string file_name = "file" + zeroz.Substring(0, 10 - num.ToString().Length) + num.ToString() + ".enf";
+                        if (save_in[save_in.Length - 1] != '\\') save_in += '\\';
+                        while (File.Exists(save_in + file_name))
                         {
-                            i.Done = true;
-                            progress_value += i.size;
+                            num++;
+                            file_name = "file" + zeroz.Substring(0, 10 - num.ToString().Length) + num.ToString() + ".enf";
                         }
-                        else
+                        BinaryWriter BW = new BinaryWriter(File.OpenWrite(save_in + file_name));
+                        header.indices.Add(new EncryptFileHeaderIndex(1, i, encrypt_files_name ? general_encrypter : user_encrypter));
+                        EncryptFile(i, user_encrypter, BW, header.GetFirstFileIndex(), header.indices[0]);
+                        if (CloseWindow) return;
+                        while (pause_copy)
                         {
-                            if (CloseWindow) return;
-                            EncryptFile((FileInfo)i.item, EncPassword, save_in);
+                            Thread.Sleep(50);
+                            if (CloseWindow)
+                                return;
                         }
+                        WriteHeader(BW, header);
+                        BW.Close();
                     }
                 }
+                
+                //for (int index = 0; index < files_list.Count; index++)
+                //{
+                //    if (CloseWindow) return;
+                //    while (pause_copy)
+                //    {
+                //        Thread.Sleep(50);
+                //        if (CloseWindow)
+                //            return;
+                //    }
+                //    EncryptFile(files_list[index], EncPassword, save_in);
+                //}
+
+                //while (unsucsess.children.Count > 0)
+                //{
+
+                //    sleep_thread = true;
+                //    encrypt_files_BackgroundWorker.ReportProgress(-1);
+                //    while (sleep_thread)
+                //        Thread.Sleep(50);
+                //    OperationTree temp = new OperationTree(null, false, "", operation_type, null, false, "");
+                //    double rem = max_value;
+                //    foreach (var i in unsucsess.children)
+                //    {
+                //        temp.children.Add(i);
+                //        //rem -= i.size;
+                //    }
+                //    //old_progress_value = progress_value = Convert.ToInt64(rem);
+                //    unsucsess.children.Clear();
+                //    foreach (var i in temp.children)
+                //    {
+                //        while (pause_copy)
+                //        {
+                //            Thread.Sleep(50);
+                //            if (CloseWindow)
+                //                return;
+                //        }
+                //        if (i.user_option == OperationOption.Skip)
+                //        {
+                //            i.Done = true;
+                //            progress_value += i.size;
+                //        }
+                //        else
+                //        {
+                //            if (CloseWindow) return;
+                //            EncryptFile((FileInfo)i.item, EncPassword, save_in);
+                //        }
+                //    }
+                //}
             };
 
             encrypt_files_BackgroundWorker.ProgressChanged += Destroy_ProgressChanged;
@@ -2054,107 +2124,79 @@ namespace File_Manager
                 Show();
         }
 
-        private void EncryptFile(FileInfo file, byte[] EncPassword, string save_in)
+        void WriteHeader(BinaryWriter bw, EncryptFileHeader header)
         {
-            SHA256Cng sha1 = new SHA256Cng();
-            MD5 md5 = new MD5Cng();
-            string enc_file;
-            byte[] random_number = GetRandomNumber(sha1, md5);
-            byte[] secret_code = new byte[16];
-            for (int i = 0; i < random_number.Length; i++)
-                secret_code[i] = (byte)(random_number[i] ^ EncPassword[i]);
-            var password = md5.ComputeHash(EncPassword);
-            password = sha1.ComputeHash(password);
-            BinaryReader br = new BinaryReader(file.Open(FileMode.Open));
-            
-            if (!Directory.Exists(save_in))
-                Directory.CreateDirectory(save_in);
-
-            if (File.Exists(save_in + "\\" + file.Name + ".fme"))
+            bw.BaseStream.Position = 0;
+            //8 byte then "FILE MANAGER encrypted file, version: "
+            if (header.is_package) bw.Write((byte)205); else bw.Write((byte)204);
+            if (header.encrypt_files_name) bw.Write((byte)139); else bw.Write((byte)140);
+            byte[] fileb = { 16, 191, 91, 144, 31, 2, 70, 73, 76, 69, 32, 77, 65, 78, 65, 71, 69, 82, 32, 101, 110, 99, 114, 121, 112, 116, 101, 100, 32, 102, 105, 108, 101, 44, 32, 118, 101, 114, 115, 105, 111, 110, 58, 32 };
+            bw.Write(fileb);
+            bw.Write(header.version);
+            bw.Write(header.secret_number);
+            bw.Write(header.password_hash);
+            bw.Write(header.GetFirstFileIndex());
+            bw.Write(header.first_file_length);
+            bw.Write(header.indices.Count);
+            foreach(var i in header.indices)
             {
-                int num = 2;
-                while (File.Exists(string.Format("{0}\\{1} ({2})" + file.Extension + ".fme", save_in, Path.GetFileNameWithoutExtension(file.FullName), num))) num++;
-                enc_file = string.Format("{0}\\{1} ({2})" + file.Extension + ".fme", save_in, Path.GetFileNameWithoutExtension(file.FullName), num);
-            }
-            else
-                enc_file = save_in + "\\" + file.Name + ".fme";
-
-            BinaryWriter bw = new BinaryWriter(File.Open(enc_file, FileMode.OpenOrCreate));
-
-            try
-            {
-                bw.Write(file_imprint);
-                bw.Write(random_number);
-                bw.Write(secret_code);
-
-                byte[] encrypt_phrase = new byte[Functions.buffer];
-                for (int i = 0; i < encrypt_phrase.Length; i++)
-                    if (i % 3 == 0)
-                        encrypt_phrase[i] = secret_code[(i / 3) % 16];
-                    else
-                        encrypt_phrase[i] = password[(i - (i / 3)) % 32];
-                WriteFile(br, file.Length, bw, encrypt_phrase);
-            }
-            catch (Exception ex)
-            {
-                try
-                {
-                    try { br.Close(); }
-                    catch (Exception) { }
-                    bw.Close();
-                    if (File.Exists(enc_file))
-                        File.Delete(enc_file);
-                }
-                catch (Exception) { }
-                unsucsess.children.Add(new OperationTree(file, false, "", OperationType.Encrypt, root, ex.Message));
+                bw.Write(i.id);
+                bw.Write(i.file_name_length);
+                bw.Write(i.fileName);
+                bw.Write(i.start_index);
+                bw.Write(i.length);
+                bw.Write(i.crc);
             }
         }
 
-        private byte WriteFile(BinaryReader br, long file_size, BinaryWriter bw, byte[] encrypt_phrase)
+        private byte EncryptFile(FileInfo file, byte[] encryption_code, BinaryWriter bw, long start_index, EncryptFileHeaderIndex index)
         {
-            long k;
-            for (k = encrypt_phrase.Length; k <= file_size; k += encrypt_phrase.Length)
+            BinaryReader br = null;
+            try
             {
-                while (pause_copy)
+                bw.BaseStream.Position = start_index;
+                long position = bw.BaseStream.Position;
+                br = new BinaryReader(file.OpenRead());
+                long k;
+                for (k = encryption_code.Length; k <= file.Length; k += encryption_code.Length)
                 {
-                    Thread.Sleep(50);
+                    while (pause_copy)
+                    {
+                        Thread.Sleep(50);
+                        if (CloseWindow)
+                        {
+                            bw.Close();
+                            return 0;
+                        }
+                    }
                     if (CloseWindow)
                     {
                         bw.Close();
                         return 0;
                     }
+                    bw.Write(Files_Encrepter.EncryptBytes(br.ReadBytes(Functions.buffer), encryption_code));
+                    progress_value += encryption_code.Length;
                 }
+                long remain = (file.Length - (k - encryption_code.Length));
                 if (CloseWindow)
                 {
                     bw.Close();
                     return 0;
                 }
-                if (OperationType == OperationType.Encrypt)
-                    bw.Write(EncryptBytes(br.ReadBytes(Functions.buffer), encrypt_phrase));
-                else if (OperationType == OperationType.Decrypt)
-                    bw.Write(DecryptBytes(br.ReadBytes(Functions.buffer), encrypt_phrase));
-                progress_value += encrypt_phrase.Length;
+                bw.Write(Files_Encrepter.EncryptBytes(br.ReadBytes((int)remain), encryption_code));
+                progress_value += remain;
+                br.Close();
+                index.start_index = position;
+                index.length = file.Length;
+                return 1;
             }
-            long remain = (file_size - (k - encrypt_phrase.Length));
-            if (CloseWindow)
+            catch (Exception ex)
             {
-                bw.Close();
+                try { if (br != null) br.Close(); }
+                catch (Exception) { }
+                unsucsess.children.Add(new OperationTree(file, false, "", OperationType.Encrypt, root, ex.Message));
                 return 0;
             }
-            if (OperationType == OperationType.Encrypt)
-                bw.Write(EncryptBytes(br.ReadBytes((int)remain), encrypt_phrase));
-            //bw.Write(EncryptBytes(br.ReadBytes((int)remain), encrypt_phrase), 0, (int)remain);
-            else if (OperationType == OperationType.Decrypt)
-            {
-                //var kk = br.ReadBytes((int)remain);
-                //var nn = DecryptBytes(kk, encrypt_phrase);
-                //bw.Write(nn);
-                bw.Write(DecryptBytes(br.ReadBytes((int)remain), encrypt_phrase));
-            }
-            progress_value += remain;
-            br.Close();
-            bw.Close();
-            return 1;
         }
 
         private byte[] GetRandomNumber(SHA256Cng sha1, MD5 md5)
@@ -2171,26 +2213,17 @@ namespace File_Manager
             return num;
         }
 
-        private byte[] EncryptBytes(byte[] v, byte[] encrypt_phrase)
-        {
-            byte[] encrypted_bytes = new byte[v.Length];
-            Parallel.For(0, v.Length, (i) =>
-            {
-                encrypted_bytes[i] = (byte)(v[i] ^ encrypt_phrase[i]);
-                encrypted_bytes[i]--;
-            });
-            return encrypted_bytes;
-        }
 
-        internal void StartDecrept(List<FileInfo> files_list, byte[] dec_password, string save_in, bool show_dialog)// 128 bit
+        internal void StartDecrept(List<FileInfo> files_list, byte[] DecPassword, string save_in, bool show_dialog)
         {
             operation_type = OperationType.Decrypt;
             unsucsess = new OperationTree(null, false, "", operation_type, null, false, "can not decrypt file.");
             Title = string.Format("Decrypting {0} {1}", files_list.Count, files_list.Count > 1 ? "items" : "item");
+            byte[] general_decrypter = Files_Encrepter.PreparePassword(Files_Encrepter.general_password, Files_Encrepter.general_secret_number, 128);
             double max_value = 0;
             foreach (FileInfo i in files_list)
             {
-                max_value += i.Length > 325 ? i.Length : 0;
+                max_value += i.Length;
                 while (pause_copy)
                 {
                     Thread.Sleep(50);
@@ -2221,53 +2254,37 @@ namespace File_Manager
                 });
                 process_thread.Start();
 
-                for (int index = 0; index < files_list.Count; index++)
+                foreach (var file in files_list)
                 {
-                    if (CloseWindow) return;
-                    while (pause_copy)
+                    BinaryReader BR = new BinaryReader(file.OpenRead());
+                    EncryptFileHeader header;
+                    try
                     {
-                        Thread.Sleep(50);
-                        if (CloseWindow)
-                            return;
-                    }
-                    DecryptFile(files_list[index], dec_password, save_in);
-                }
+                        switch (ReadHeader(BR, general_decrypter, DecPassword, out header))
+                        {
+                            case 0:
+                                if (save_in[save_in.Length - 1] != '\\')
+                                    save_in += '\\';
+                                foreach (var catalog in header.indices)
+                                {
+                                    if (CloseWindow) return;
+                                    while (pause_copy)
+                                    {
+                                        Thread.Sleep(50);
+                                        if (CloseWindow)
+                                            return;
+                                    }
+                                    DecryptFile(new FileInfo(save_in + "jjjjkj.jpg"/*save_in + catalog.file_name*/), Files_Encrepter.PreparePassword(DecPassword, header.secret_number, 128), BR, catalog);
+                                }
+                                break;
+                            case 1:
+                                break;
+                            case -1:
+                                break;
+                        }
 
-                while (unsucsess.children.Count > 0)
-                {
-
-                    sleep_thread = true;
-                    decrypt_files_BackgroundWorker.ReportProgress(-1);
-                    while (sleep_thread)
-                        Thread.Sleep(50);
-                    OperationTree temp = new OperationTree(null, false, "", operation_type, null, false, "");
-                    double rem = max_value;
-                    foreach (var i in unsucsess.children)
-                    {
-                        temp.children.Add(i);
-                        //rem -= i.size;
                     }
-                    //old_progress_value = progress_value = Convert.ToInt64(rem);
-                    unsucsess.children.Clear();
-                    foreach (var i in temp.children)
-                    {
-                        while (pause_copy)
-                        {
-                            Thread.Sleep(50);
-                            if (CloseWindow)
-                                return;
-                        }
-                        if (i.user_option == OperationOption.Skip)
-                        {
-                            i.Done = true;
-                            progress_value += i.size;
-                        }
-                        else
-                        {
-                            if (CloseWindow) return;
-                            DecryptFile((FileInfo)i.item, dec_password, save_in);
-                        }
-                    }
+                    catch (Exception) { }
                 }
             };
 
@@ -2282,96 +2299,127 @@ namespace File_Manager
                 Show();
         }
 
-        //files without extension go to super extention changer to detect there extension
-        private void DecryptFile(FileInfo file, byte[] dec_password, string save_in)
+        //1 is incurrect file 
+        //0 everything OK
+        //-1 invalid Password
+        private int ReadHeader(BinaryReader BR, byte[] general_code, byte[] user_password, out EncryptFileHeader header)
         {
-            SHA256Cng sha1 = new SHA256Cng();
-            MD5 md5 = new MD5Cng();
-            BinaryReader br = new BinaryReader(file.Open(FileMode.Open));
+            bool is_package, encrypt_files_name;
+            byte b0 = BR.ReadByte();
+            if (b0 == 204) is_package = false;
+            else if (b0 == 205) is_package = true;
+            else
+            {
+                header = null;
+                return 1;
+            }
+            byte b1 = BR.ReadByte();
+            if (b1 == 139) encrypt_files_name = false;
+            else if (b1 == 140) encrypt_files_name = true;
+            else
+            {
+                header = null;
+                return 1;
+            }
+            byte[] orginal = { 16, 191, 91, 144, 31, 2, 70, 73, 76, 69, 32, 77, 65, 78, 65, 71, 69, 82, 32, 101, 110, 99, 114, 121, 112, 116, 101, 100, 32, 102, 105, 108, 101, 44, 32, 118, 101, 114, 115, 105, 111, 110, 58, 32 };
+            byte[] file_bytes = BR.ReadBytes(44);
+            for (int i = 0; i < file_bytes.Length; i++)
+                if (orginal[i] != file_bytes[i])
+                {
+                    header = null;
+                    return 1;
+                }
+            var ver = BR.ReadBytes(4);
+            float version = BitConverter.ToSingle(ver, 0);
+            var secret_number = Files_Encrepter.DecryptBytes(BR.ReadBytes(128), general_code);
+            var file_password = BR.ReadBytes(128);
+            if (ComparePasswoeds(user_password, file_password))
+            {
+                var b2 = BR.ReadBytes(8);
+                long first_file_index = BitConverter.ToInt64(b2, 0);
+                var b3 = BR.ReadBytes(8);
+                long first_file_length = BitConverter.ToInt64(b3, 0);
+                var b4 = BR.ReadBytes(4);
+                int files_count = BitConverter.ToInt32(b4, 0);
+                header = new EncryptFileHeader(is_package, encrypt_files_name, version, secret_number, user_password, files_count);
+                header.SetFirstFileInfo(first_file_index, first_file_length);
+                byte[] decrypter = encrypt_files_name ? Files_Encrepter.PreparePassword(user_password, secret_number, 128) : general_code;
+                for (int i = 0; i < files_count; i++)
+                {
+                    var id = BR.ReadBytes(8);
+                    byte file_name_length = BR.ReadByte();
+                    var file_name = BR.ReadBytes(file_name_length * 2);
+                    var start_index = BR.ReadBytes(8);
+                    var length = BR.ReadBytes(8);
+                    var crc = BR.ReadBytes(8);
+                    header.indices.Add(new EncryptFileHeaderIndex(id, file_name, start_index, length, crc, decrypter));
+                }
+                return 0;
+            }
+            else
+            {
+                header = null;
+                return -1;
+            }
+        }
+
+        private bool ComparePasswoeds(byte[] user_password, byte[] password_in_file)
+        {
+            user_password = Files_Encrepter.HashBytes(user_password, 128);
+            for (int i = 0; i < 128; i++)
+                if (user_password[i] != password_in_file[i])
+                    return false;
+            return true;
+        }
+
+        private byte DecryptFile(FileInfo output_file, byte[] decryption_code, BinaryReader br, EncryptFileHeaderIndex catalog)
+        {
             BinaryWriter bw = null;
-            string orginal_file = "";
             try
             {
-                if (!Directory.Exists(save_in))
-                    Directory.CreateDirectory(save_in);
-                bool currect_enc_file = true;
-                var b = br.ReadBytes(file_imprint.Length);
-                for (int i = 0; i < b.Length; i++)
-                    if (file_imprint[i] != b[i])
-                        currect_enc_file = false;
-                if (!currect_enc_file)
-                    throw new Exception("It is invlid encrypted file or has been encrypted with other version of app.");
-                string file_name = file.Extension.Length < 2 ? file.Name : file.Extension.ToLower().Equals(".fme") ? file.Name.Remove(file.Name.LastIndexOf(".")) : file.Name;
-                string extention = "";
-                if (file_name.LastIndexOf(".") > -1)
+                br.BaseStream.Position = catalog.start_index;
+                bw = new BinaryWriter(output_file.OpenWrite());
+                long k;
+                for (k = decryption_code.Length; k <= catalog.length; k += decryption_code.Length)
                 {
-                    extention = file_name.Substring(file_name.LastIndexOf("."));
-                    file_name = file_name.Remove(file_name.LastIndexOf("."));
+                    while (pause_copy)
+                    {
+                        Thread.Sleep(50);
+                        if (CloseWindow)
+                        {
+                            bw.Close();
+                            return 0;
+                        }
+                    }
+                    if (CloseWindow)
+                    {
+                        bw.Close();
+                        return 0;
+                    }
+                    bw.Write(Files_Encrepter.DecryptBytes(br.ReadBytes(decryption_code.Length), decryption_code));
+                    progress_value += decryption_code.Length;
                 }
-
-                if (File.Exists(save_in + "\\" + file_name + extention))
+                long remain = (catalog.length - (k - decryption_code.Length));
+                if (CloseWindow)
                 {
-                    int num = 1;
-                    while (File.Exists(string.Format("{0}\\{1} ({2})", save_in, file_name, num) + extention)) num++;
-                    orginal_file = string.Format("{0}\\{1} ({2})", save_in, file_name, num) + extention;
+                    bw.Close();
+                    return 0;
                 }
-                else
-                    orginal_file = save_in + "\\" + (file.Extension.Length > 1 ? file.Extension.ToLower().Equals(".fme") ? file.Name.Remove(file.Name.LastIndexOf(".")) : file.Name : file.Name);
-                var random_numbers = br.ReadBytes(16);
-                var secret_code = br.ReadBytes(16);
-                var password = md5.ComputeHash(dec_password);
-                password = sha1.ComputeHash(password);
-
-                byte[] new_secret_code = new byte[16];
-                for (int i = 0; i < random_numbers.Length; i++)
-                    new_secret_code[i] = (byte)(random_numbers[i] ^ dec_password[i]);
-                bool currect_password = true;
-                for (int i = 0; i < secret_code.Length * 1000; i++)
-                {
-                    if (i % 1000 == 0)
-                        if (secret_code[i / 1000] != new_secret_code[i / 1000])
-                            currect_password = false;
-                }
-                if (!currect_password)
-                    throw new Exception("be sure that you have entered the currect password");
-
-                bw = new BinaryWriter(File.Open(orginal_file, FileMode.OpenOrCreate));
-
-                byte[] decrypt_phrase = new byte[Functions.buffer];
-                for (int i = 0; i < decrypt_phrase.Length; i++)
-                    if (i % 3 == 0)
-                        decrypt_phrase[i] = secret_code[(i / 3) % 16];
-                    else
-                        decrypt_phrase[i] = password[(i - (i / 3)) % 32];
-                WriteFile(br, file.Length, bw, decrypt_phrase);
-
+                bw.Write(Files_Encrepter.DecryptBytes(br.ReadBytes((int)remain), decryption_code));
+                progress_value += remain;
+                br.Close();
+                return 1;
             }
             catch (Exception ex)
             {
-                try
-                {
-                    try { br.Close(); }
-                    catch (Exception) { }
-                    if (bw != null)
-                        bw.Close();
-                    if (File.Exists(orginal_file))
-                        File.Delete(orginal_file);
-                }
+                try { if (br != null) br.Close(); }
                 catch (Exception) { }
-                unsucsess.children.Add(new OperationTree(file, false, "", OperationType.Encrypt, root, ex.Message));
+                ////unsucsess.children.Add(new OperationTree(catalog, false, "", OperationType.Encrypt, root, ex.Message));
+                return 0;
             }
         }
 
-        private byte[] DecryptBytes(byte[] v, byte[] encrypt_phrase)
-        {
-            byte[] encrypted_bytes = new byte[v.Length];
-            Parallel.For(0, v.Length, (i) =>
-            {
-                v[i]++;
-                encrypted_bytes[i] = (byte)(v[i] ^ encrypt_phrase[i]);
-            });
-            return encrypted_bytes;
-        }
+
 
         #endregion Encrypt Files
 

@@ -888,22 +888,22 @@ namespace File_Manager
                     }
                     else
                         if (dialogMode == SelectFileDialogMode.SelectDirectory)
-                        {
-                            return_value = MyMessageBoxResult.OK;
-                            SelectedItem = current_path;
-                            SelectedItems = new List<string>();
-                            SelectedItems.Add(current_path);
-                            Close();
-                        }
-                        else if (dialogMode == SelectFileDialogMode.OpenFile)
-                            Functions.ShuckWindow(this, true, "Please select an item.");
+                    {
+                        return_value = MyMessageBoxResult.OK;
+                        SelectedItem = current_path;
+                        SelectedItems = new List<string>();
+                        SelectedItems.Add(current_path);
+                        Close();
+                    }
+                    else if (dialogMode == SelectFileDialogMode.OpenFile)
+                        Functions.ShuckWindow(this, true, "Please select an item.");
+                    else
+                    {
+                        if (selectedItemName_TextBox.Text == "")
+                            Functions.ShuckWindow(this, true, "Please write file name.");
                         else
-                        {
-                            if (selectedItemName_TextBox.Text == "")
-                                Functions.ShuckWindow(this, true, "Please write file name.");
-                            else
-                                FinishThis(new ExplorerItem() { isDirectory = false, ToolTip = Path.Combine(current_path, selectedItemName_TextBox.Text) });
-                        }
+                            FinishThis(new ExplorerItem() { isDirectory = false, ToolTip = Path.Combine(current_path, selectedItemName_TextBox.Text) });
+                    }
                 }
             }
             else if (MultiSelect && use_multiselection_list)
@@ -937,13 +937,24 @@ namespace File_Manager
                     else
                         Functions.ShuckWindow(this, true, "You can not choose selected items.");
                 }
-                else if (dialogMode == SelectFileDialogMode.SelectDirectory)
+                else if (dialogMode == SelectFileDialogMode.SelectDirectory&& CurrentPath != "root")
                 {
                     return_value = MyMessageBoxResult.OK;
-                    SelectedItem = (RootPage.SelectedItem as RootItem).toolTip;
+                    SelectedItem = CurrentPath;
                     SelectedItems = new List<string>();
-                    SelectedItems.Add((RootPage.SelectedItem as RootItem).toolTip);
+                    SelectedItems.Add(CurrentPath);
                     Close();
+                }
+                else if (CurrentPath == "root")
+                {
+                    if (dialogMode == SelectFileDialogMode.SelectDirectory)
+                    {
+                        return_value = MyMessageBoxResult.OK;
+                        SelectedItem = (RootPage.SelectedItem as RootItem).toolTip;
+                        SelectedItems = new List<string>();
+                        SelectedItems.Add((RootPage.SelectedItem as RootItem).toolTip);
+                        Close();
+                    }
                 }
                 else
                     Functions.ShuckWindow(this, true, "Please select an item.");

@@ -6,8 +6,10 @@ using System.IO;
 using System.Linq;
 using System.Management;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Security.Principal;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -291,6 +293,8 @@ namespace File_Manager
             return false;
         }
 
+
+
         public static string GetFileType(string extension)
         {
             if (FileInfoCombonents.FilesInformation.ContainsKey(extension.ToLower()))
@@ -298,6 +302,32 @@ namespace File_Manager
             else if (extension.Length > 2)
                 return extension.ToUpper().Remove(0, 1) + " File";
             else return "File";
+        }
+
+        public static int GetFileIndex(string extension)
+        {
+            if (extension.Length == 0)
+                return 0;
+            else if (extension[extension.Length - 1] == '_')
+                extension = ".cab";
+            extension = extension.ToLower();
+            int first = 0;
+            int last = FileInformation.file_extentions.Length - 1;
+            int mid = 0;
+            bool found = false;
+            while (first <= last && !found)
+            {
+                mid = (first + last) / 2;
+                if (String.Compare(FileInformation.file_extentions[mid], extension) == 0)
+                    found = true;
+                else
+                    if (String.Compare(FileInformation.file_extentions[mid], extension) > 0)
+                    last = mid - 1;
+                else
+                    first = mid + 1;
+            }
+            if (found) return mid;
+            else return FileInformation.file_extentions.Length - 1;
         }
 
         public static FileCategory GetFileCategory(string extention)
@@ -329,31 +359,25 @@ namespace File_Manager
                 return FileInfoCombonents.FilesInformation["."].Bitmap64;
         }
 
-        public static int GetFileIndex(string extension)
+        internal static BitmapImage GetFileImage64(string extension)
         {
-            if (extension.Length == 0)
-                return 0;
-            else if (extension[extension.Length - 1] == '_')
-                extension = ".cab";
-            extension = extension.ToLower();
-            int first = 0;
-            int last = FileInformation.file_extentions.Length - 1;
-            int mid = 0;
-            bool found = false;
-            while (first <= last && !found)
-            {
-                mid = (first + last) / 2;
-                if (String.Compare(FileInformation.file_extentions[mid], extension) == 0)
-                    found = true;
-                else
-                    if (String.Compare(FileInformation.file_extentions[mid], extension) > 0)
-                        last = mid - 1;
-                    else
-                        first = mid + 1;
-            }
-            if (found) return mid;
-            else return FileInformation.file_extentions.Length - 1;
+            if (FileInfoCombonents.FilesInformation.ContainsKey(extension.ToLower()))
+                return FileInfoCombonents.FilesInformation[extension.ToLower()].Bitmap64;
+            else
+                return FileInfoCombonents.FilesInformation["."].Bitmap64;
         }
+
+        internal static BitmapSource GetFileImage256(string extension)
+        {
+            if (FileInfoCombonents.FilesInformation.ContainsKey(extension.ToLower()))
+                return FileInfoCombonents.FilesInformation[extension.ToLower()].Bitmap256;
+            else
+                return FileInfoCombonents.FilesInformation["."].Bitmap256;
+        }
+
+
+
+
 
         public static void AddAllFiles(string directory, string parent_path, bool remove, List<FileOperationItem> list)
         {
@@ -513,21 +537,7 @@ namespace File_Manager
         #endregion
 
 
-        internal static BitmapSource GetFileImage256(string extension)
-        {
-            if (FileInfoCombonents.FilesInformation.ContainsKey(extension.ToLower()))
-                return FileInfoCombonents.FilesInformation[extension.ToLower()].Bitmap256;
-            else
-                return FileInfoCombonents.FilesInformation["."].Bitmap256;
-        }
 
-        internal static BitmapImage GetFileImage64(string extension)
-        {
-            if (FileInfoCombonents.FilesInformation.ContainsKey(extension.ToLower()))
-                return FileInfoCombonents.FilesInformation[extension.ToLower()].Bitmap64;
-            else
-                return FileInfoCombonents.FilesInformation["."].Bitmap64;
-        }
 
         internal static void GetAllFiles(DirectoryInfo root,BackgroundWorker adder,ref bool cancel_operation)
         {
@@ -553,6 +563,7 @@ namespace File_Manager
             }
             catch (Exception) { }
         }
+
     }
 
     class GeneralPurpose

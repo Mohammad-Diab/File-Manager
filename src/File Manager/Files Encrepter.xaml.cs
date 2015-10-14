@@ -14,7 +14,7 @@ using System.Windows.Controls;
 using System.Windows.Media.Animation;
 using System.Windows.Input;
 using System.Windows.Media;
-
+using System.Windows.Controls.Primitives;
 
 namespace File_Manager
 {
@@ -55,20 +55,6 @@ namespace File_Manager
             starting_window = false;
             encrypt_list.DataContext = encrypt_data;
             decrypt_list.DataContext = decrypt_data;
-        }
-
-        private byte[] PreparePassword(string pass)
-        {
-            MD5 hasher1 = new MD5Cng();
-            SHA256 hasher2 = new SHA256Cng();
-            var st1 = hasher1.ComputeHash(UnicodeEncoding.Unicode.GetBytes(pass));
-            for (int i = 0; i < st1.Length; i++)
-                st1[i]++;
-            var st2 = hasher2.ComputeHash(st1);
-            List<byte> tt1 = new List<byte>();
-            for (int i = st2.Length; i <= 65536; i += st2.Length)
-                tt1.AddRange(st2);
-            return tt1.ToArray<byte>();
         }
 
         private void Window_Closing(object sender, CancelEventArgs e)
@@ -190,16 +176,16 @@ namespace File_Manager
         {
             PasswordBox password = sender == enc_show_password ? enc_password : dec_password;
             TextBox password_text = sender == enc_show_password ? enc_password_text : dec_password_text;
-            if (password.Visibility == Visibility.Visible)
+            if (((ToggleButton)sender).IsChecked.Value)
             {
-                ((Button)sender).Content = "Hide";
+                ((ContentControl)sender).ToolTip = "Hide password";
                 password.Visibility = Visibility.Hidden;
                 password_text.Visibility = Visibility.Visible;
                 password_text.Text = password.Password;
             }
             else
             {
-                ((Button)sender).Content = "Show";
+                ((ContentControl)sender).ToolTip = "Show password";
                 password.Visibility = Visibility.Visible;
                 password_text.Visibility = Visibility.Hidden;
                 password.Password = password_text.Text;
@@ -234,41 +220,51 @@ namespace File_Manager
                 Messages.ShowMessage("Some field is missing.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "List is empty.");
             else if (password.Length < 8)
                 Messages.ShowMessage("Some field has wrong values.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "Password must be at least 8 charectars.");
-            else if (enc_output.Text == string.Empty)
-                Messages.ShowMessage("Some field has wrong values.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "Please select output directory.");
-            else if (enc_output.Text.Any(x => Path.GetInvalidPathChars().Any(y => y.Equals(x))))
-                Messages.ShowMessage("Some field has wrong values.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "We have found invalid charectars in your selected path.");
-            else if (!Directory.Exists(enc_output.Text))
+            else if (overwrite_file.IsChecked == false)
             {
-                if (Messages.ShowMessage("We can not find directory '" + enc_output.Text + "', try to create it?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "") == MyMessageBoxResult.Yes)
+                if (enc_output.Text == string.Empty)
+                    Messages.ShowMessage("Some field has wrong values.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "Please select output directory.");
+                else if (enc_output.Text.Any(x => Path.GetInvalidPathChars().Any(y => y.Equals(x))))
+                    Messages.ShowMessage("Some field has wrong values.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "We have found invalid charectars in your selected path.");
+                else if (!Directory.Exists(enc_output.Text))
+                {
+                    if (Messages.ShowMessage("We can not find directory '" + enc_output.Text + "', try to create it?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "") == MyMessageBoxResult.Yes)
+                        encrypt = true;
+                }
+                else
                     encrypt = true;
             }
             else
                 encrypt = true;
-            if (encrypt && Messages.ShowMessage("We have got all information we needed, start encription?",ModrenMessageButton.YesNo,ModrenMessageImage.Question,ModrenMessageSound.Question,false,"", "all files in list will encrypt with same password, make sure to keep it in safe place.") == MyMessageBoxResult.Yes)
+            if (encrypt && Messages.ShowMessage("We have got all information we needed, start encryption?", ModrenMessageButton.YesNo,ModrenMessageImage.Question,ModrenMessageSound.Question,false,"", "all files in list will encrypt with same password, make sure to keep it in safe place.") == MyMessageBoxResult.Yes)
             {
-                bool delete;
+                bool delete, enc_file_name, enc_pack_files;
                 string save_in = enc_output.Text;
-                if (!Directory.Exists(save_in))
+                if (overwrite_file.IsChecked == false)
                 {
-                    try { Directory.CreateDirectory(save_in); }
-                    catch (Exception ex)
+                    if (!Directory.Exists(save_in))
                     {
-                        Messages.ShowMessage("We can not create directory '" + save_in + "'", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message);
-                        return;
+                        try { Directory.CreateDirectory(save_in); }
+                        catch (Exception ex)
+                        {
+                            Messages.ShowMessage("We can not create directory '" + save_in + "'", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message);
+                            return;
+                        }
                     }
                 }
                 delete = enc_delete_files.IsChecked.Value;
+                enc_file_name = this.enc_file_name.IsChecked.Value;
+                enc_pack_files = this.enc_pack_files.IsChecked.Value;
                 List<FileInfo> files_list = new List<FileInfo>();
                 foreach (var i in encrypt_data)
                     files_list.Add(i.File);
                 byte[] bytes = new byte[password.Length * sizeof(char)];
                 Buffer.BlockCopy(password.ToCharArray(), 0, bytes, 0, bytes.Length);
                 bytes = new MD5Cng().ComputeHash(bytes);
-                new Operation().StartEncrept(files_list, bytes, delete, save_in, true);
+                new Operation().StartEncrept(files_list, bytes, delete, overwrite_file.IsChecked.Value, save_in, enc_file_name, enc_pack_files, true);
                 
                 ClearList_Click(encrypt_clear_button, null);
-                Messages.ShowMessage("Eencription done.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
+                Messages.ShowMessage("Encryption done.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
             }
         }
 
@@ -288,6 +284,23 @@ namespace File_Manager
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
                 if ((data = (string[])e.Data.GetData(DataFormats.FileDrop)).Length == 1 && Directory.Exists(data[0]))
                     enc_output.Text = data[0];
+        }
+
+        private void EncryptOverwriteFile_Checked(object sender, RoutedEventArgs e)
+        {
+            enc_output_grid.IsEnabled = false;
+            enc_delete_files.IsChecked = enc_delete_files.IsEnabled = false;
+            enc_pack_files.IsChecked = encrypt_add_button.IsEnabled = false;
+        }
+
+        private void RadioButton_Checked(object sender, RoutedEventArgs e)
+        {
+            if (enc_output_grid != null)
+            {
+                enc_output_grid.IsEnabled = true;
+                enc_delete_files.IsEnabled = true;
+                encrypt_add_button.IsEnabled = true;
+            }
         }
 
         #endregion
@@ -315,7 +328,7 @@ namespace File_Manager
             }
             else
                 decrypt = true;
-            if (decrypt && Messages.ShowMessage("We have got all information we needed, start de-encription?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "", "make sure that all files in the list has same password.") == MyMessageBoxResult.Yes)
+            if (decrypt && Messages.ShowMessage("We have got all information we needed, start de-encryption?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "", "make sure that all files in the list has same password.") == MyMessageBoxResult.Yes)
             {
                 string save_in = dec_output.Text;
                 if (!Directory.Exists(save_in))
@@ -335,7 +348,7 @@ namespace File_Manager
                 bytes = new MD5Cng().ComputeHash(bytes);
                 new Operation().StartDecrept(files_list, bytes, save_in, true);
                 ClearList_Click(null, null);
-                Messages.ShowMessage("De-encription done.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
+                Messages.ShowMessage("De-encryption done.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
             }
         }
 
@@ -361,7 +374,7 @@ namespace File_Manager
 
         void TabChange_MouseButtonUp(object sender, MouseButtonEventArgs e)
         {
-            ThicknessAnimation ta = new ThicknessAnimation(new Thickness((-1 * tab_panal.Children.IndexOf((Label)sender)) * ActualWidth, 0, 0, 0), new Duration(new TimeSpan(2000000)));
+            ThicknessAnimation ta = new ThicknessAnimation(new Thickness((-1 * tab_panal.Children.IndexOf((Label)sender)) * ActualWidth, 40, 0, 0), new Duration(new TimeSpan(2000000)));
             double rec_wid = 0;
             foreach (Label i in tab_panal.Children)
                 if (i != sender)
@@ -400,7 +413,7 @@ namespace File_Manager
             {
                 //if(current_page==DestroyPages.DiskDestroy)//****
                 double t = (-1 * ((int)CurrentPage - 1)) * e.NewSize.Width;
-                ThicknessAnimation ta = new ThicknessAnimation(new Thickness(t, 0, 0, 0), new Duration(new TimeSpan(0)));
+                ThicknessAnimation ta = new ThicknessAnimation(new Thickness(t, 40, 0, 0), new Duration(new TimeSpan(0)));
                 mother.BeginAnimation(MarginProperty, ta);
                 for (int i = 0; i < mother.Children.Count; i++)
                 {
@@ -410,6 +423,90 @@ namespace File_Manager
             }
         }
 
+
+
+
+        static SHA256Cng sha1 = new SHA256Cng();
+        static MD5 md5 = new MD5Cng();
+        public static byte[] general_password = { 3, 130, 64, 104, 54, 111, 89, 162, 66, 76, 93, 113, 180, 185, 75, 222, 104, 214, 161, 4, 79, 124, 48, 122, 155, 200, 210, 132, 170, 19, 234, 188, 148, 158, 168, 128, 36, 98, 152, 195, 226, 194, 25, 190, 6, 26, 15, 144, 254, 9, 112, 108, 101, 219, 241, 3, 88, 9, 228, 135, 230, 148, 145, 223, 184, 8, 14, 15, 188, 186, 24, 190, 154, 211, 127, 17, 16, 84, 41, 172, 189, 31, 4, 31, 122, 236, 252, 236, 213, 99, 163, 99, 193, 49, 185, 49, 176, 207, 223, 207, 40, 69, 49, 69, 232, 248, 121, 248, 102, 75, 83, 75, 72, 14, 133, 14, 165, 20, 190, 20, 238, 10, 100, 10, 175, 178, 153, 178 };
+        public static byte[] general_secret_number = { 3, 130, 64, 104, 54, 111, 89, 162, 66, 76, 93, 113, 180, 185, 75, 222, 104, 214, 161, 4, 79, 124, 48, 122, 155, 200, 210, 132, 170, 19, 234, 188, 148, 158, 168, 128, 36, 98, 152, 195, 226, 194, 25, 190, 6, 26, 15, 144, 254, 9, 112, 108, 101, 219, 241, 3, 88, 9, 228, 135, 230, 148, 145, 223, 184, 8, 14, 15, 188, 186, 24, 190, 154, 211, 127, 17, 16, 84, 41, 172, 189, 31, 4, 31, 122, 236, 252, 236, 213, 99, 163, 99, 193, 49, 185, 49, 176, 207, 223, 207, 40, 69, 49, 69, 232, 248, 121, 248, 102, 75, 83, 75, 72, 14, 133, 14, 165, 20, 190, 20, 238, 10, 100, 10, 175, 178, 153, 178 };
+
+        internal static byte[] EncryptBytes(byte[] word, byte[] key)
+        {
+            byte[] encrypted_bytes = new byte[word.Length];
+            Parallel.For(0, word.Length, (i) =>
+            {
+                encrypted_bytes[i] = (byte)(word[i] ^ key[i % key.Length]);
+                encrypted_bytes[i]--;
+            });
+            return encrypted_bytes;
+        }
+
+        internal static byte[] DecryptBytes(byte[] word, byte[] key)
+        {
+            byte[] decrypted_bytes = new byte[word.Length];
+            Parallel.For(0, word.Length, (i) =>
+            {
+                decrypted_bytes[i]++;
+                decrypted_bytes[i] = (byte)(word[i] ^ key[i % key.Length]);
+            });
+            return decrypted_bytes;
+        }
+
+        internal static byte[] PreparePassword(byte[] password, byte[] secret_number, int length)
+        {
+            var sha_hash = new SHA512Cng();
+            var code1 = sha_hash.ComputeHash(password);
+            var code2 = sha_hash.ComputeHash(secret_number);
+            byte[] secret_code = new byte[code2.Length];
+            Parallel.For(0, code1.Length, (i) => { secret_code[i] = (byte)((code1[i] + code2[i]) / 2 + 8); });
+            byte[] encryption_code = new byte[length];
+            int iteration = 1;
+            for (int i = 0; i < length; i++)
+            {
+                encryption_code[i] = secret_code[iteration];
+                iteration++;
+                if (iteration == code1.Length)
+                    iteration = 0;
+            }
+            return encryption_code;
+        }
+
+        //SecretNumber must generate depend on password
+        internal static byte[] GetSecretNumber(int length)
+        {
+            byte[] secret_number = new byte[length];
+            new Random(0).NextBytes(secret_number);
+            return secret_number;
+            //byte[] secret_number = new byte[length];
+            //var bytes = BitConverter.GetBytes(key);
+            //for (int i = 0; i < length; i++)
+            //    secret_number[i] = bytes[i % bytes.Length];
+            //return secret_number;
+        }
+
+        internal static byte[] HashBytes(byte[] bytes, int length)
+        {
+            var password = md5.ComputeHash(bytes);
+            for (int i = 0; i < password.Length; i++)
+                password[i]++;
+            password = sha1.ComputeHash(password);
+            if (length > 0)
+            {
+                int iteration = 1;
+                byte[] password_hash = new byte[length];
+                for (int i = 0; i < length; i++)
+                {
+                    password_hash[i] = password[iteration];
+                    iteration++;
+                    if (iteration == password.Length)
+                        iteration = 0;
+                }
+                return password_hash;
+            }
+            return password;
+        }
+
     }
 
     enum EncryptPages
@@ -417,4 +514,113 @@ namespace File_Manager
         FilesEncrypt = 1,
         FilesDecrypt = 2
     }
+
+    class EncryptFileHeader
+    {
+        internal bool is_package;
+        internal bool encrypt_files_name;
+        internal string tool_version;
+        internal float version;
+        internal byte[] secret_number;
+        internal byte[] password_hash;
+        long first_file_index;
+        internal long first_file_length;
+        internal int files_count;
+        internal List<EncryptFileHeaderIndex> indices;
+
+        internal EncryptFileHeader(bool IsPackage,bool EncryptFilesName, float ToolVersion, byte[] SecretNumber, byte[] PasswordHash, int FilesCount)
+        {
+            is_package = IsPackage;
+            encrypt_files_name = EncryptFilesName;
+            tool_version = ToolVersion.ToString();
+            version = ToolVersion;
+            secret_number = SecretNumber;
+            password_hash = PasswordHash;
+            files_count = FilesCount;
+            indices = new List<EncryptFileHeaderIndex>();
+        }
+
+        internal long GetFirstFileIndex()
+        {
+            return 300 * indices.Count + 8 + 38 + 4 + 128 + 128 + 8 + 8 + 8;
+            // 300(288 for each file indises and 12 byte for extra info) + 8 for id + 38 file manager version + 4 version + 128 secrut number + 128 password + 8 first file start + 8 first file length + 8 files count;
+        }
+
+        internal void SetFirstFileInfo(long index, long length)
+        {
+            first_file_index = index;
+            first_file_length = length;
+        }
+    }
+
+    class EncryptFileHeaderIndex
+    {
+        internal long id;
+        internal byte file_name_length;
+        internal byte[] fileName;
+        internal string file_name;
+        internal long start_index;
+        internal long length;
+        internal byte[] crc;
+
+        internal EncryptFileHeaderIndex(long ID, FileInfo file, byte[] encrypter)
+        {
+            id = ID;
+            file_name_length = (byte)file.Name.Length;//(byte)file.Name.Length;
+            byte[] bytes = new byte[file_name_length * sizeof(char)];
+            //var name_byte = Encoding.Unicode.GetBytes(file.Name);
+            //string name2 = Encoding.Unicode.GetString(name_byte);
+            Buffer.BlockCopy(file.Name.ToCharArray(), 0, bytes, 0, file_name_length * sizeof(char));
+            //string name = Encoding.Unicode.GetString(bytes);
+            fileName = Files_Encrepter.EncryptBytes(bytes, encrypter);
+            length = file.Length;
+            crc = new byte[8];//encrypt with user or general password
+        }
+
+        internal EncryptFileHeaderIndex(byte[] ID, byte[] encrypted_name, byte[] start_index, byte[] length, byte[] encrypted_CRC, byte[] decrypter)
+        {
+            id = BitConverter.ToInt64(ID, 0);
+            file_name_length = (byte)(encrypted_name.Length / sizeof(char));
+            file_name = Encoding.UTF8.GetString(Files_Encrepter.DecryptBytes(encrypted_name, decrypter));
+            this.start_index = BitConverter.ToInt64(start_index, 0);
+            this.length = BitConverter.ToInt64(length, 0);
+            crc = Files_Encrepter.DecryptBytes(encrypted_CRC, decrypter);
+        }
+
+        internal void SetCRC(byte[] crc, byte[] encrypter)
+        {
+            this.crc = Files_Encrepter.EncryptBytes(crc, encrypter);
+        }
+    }
 }
+
+//Gnerat Password
+//private void button_Click(object sender, RoutedEventArgs e)
+//{
+//    string password = "FILE MANAGER";
+//    byte[] bytes = new byte[password.Length * sizeof(char)];
+//    Buffer.BlockCopy(password.ToCharArray(), 0, bytes, 0, bytes.Length);
+//    var a1 = new SHA512Cng().ComputeHash(bytes);
+//    var a2 = new MD5Cng().ComputeHash(bytes);
+//    byte[] t1 = new byte[32];
+//    new Random(DateTime.Now.Millisecond).NextBytes(t1);
+//    for (int i = 0; i < a2.Length; i++)
+//        t1[i] = a2[i];
+//    var a3 = new SHA1Cng().ComputeHash(bytes);
+//    byte[] t2 = new byte[32];
+//    new Random(DateTime.Now.Millisecond).NextBytes(t2);
+//    for (int i = 0; i < a3.Length; i++)
+//        t2[i] = a3[i];
+//    string p = "";
+//    for (int i = 0; i < 128; i++)
+//    {
+//        if (i % 2 == 0)
+//            p += (a1[i / 2] + ", ");
+//        else
+//            if ((i / 2) % 2 == 0)
+//            p += (t1[i / 4] + ", ");
+//        else
+//            p += (t2[i / 4] + ", ");
+//    }
+//    MessageBox.Show(p);
+//}

@@ -728,7 +728,7 @@ namespace File_Manager
             if (e.LeftButton == MouseButtonState.Released)
             {
                 DoubleAnimation grid_opacity = new DoubleAnimation(1, show_duration);
-                image_control.BeginAnimation(Grid.OpacityProperty, grid_opacity);
+                image_control.BeginAnimation(OpacityProperty, grid_opacity);
                 hide_after = 2500;
             }
         }

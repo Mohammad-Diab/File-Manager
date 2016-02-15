@@ -447,7 +447,7 @@ namespace File_Manager
             byte[] decrypted_bytes = new byte[word.Length];
             Parallel.For(0, word.Length, (i) =>
             {
-                decrypted_bytes[i]++;
+                word[i]++;
                 decrypted_bytes[i] = (byte)(word[i] ^ key[i % key.Length]);
             });
             return decrypted_bytes;
@@ -476,13 +476,66 @@ namespace File_Manager
         internal static byte[] GetSecretNumber(int length)
         {
             byte[] secret_number = new byte[length];
-            new Random(0).NextBytes(secret_number);
+            new Random((int)(0/*DateTime.Now.Ticks / 34553786873*/)).NextBytes(secret_number);
             return secret_number;
             //byte[] secret_number = new byte[length];
             //var bytes = BitConverter.GetBytes(key);
             //for (int i = 0; i < length; i++)
             //    secret_number[i] = bytes[i % bytes.Length];
             //return secret_number;
+        }
+
+        private void Test_Click(object sender, RoutedEventArgs e)
+        {
+            var b1 = new byte[16];
+            new Random(new Random(DateTime.Now.Millisecond).Next()).NextBytes(b1);
+            byte[] pass = new byte[enc_password_text.Text.Length * 2];
+            Buffer.BlockCopy(enc_password_text.Text.ToCharArray(), 0, pass, 0, pass.Length);
+            var sec_num = GetSecretNumber(128);
+            byte[] encrypt_key = PreparePassword(pass, sec_num, 16);
+            var enc_word = EncryptBytes(b1, encrypt_key);
+
+            byte[] dec_word = DecryptBytes(enc_word, encrypt_key);
+
+            MessageBox.Show(StringMaker(pass, sec_num, encrypt_key, enc_word, dec_word, b1), "Result");
+        }
+
+        string StringMaker(byte[] pass, byte[] sec_num, byte[] enc_key, byte[] enc_word, byte[] dec_word, byte[] real_word)
+        {
+            StringBuilder mm = new StringBuilder();
+            mm.Append("Password\t\t\t: ");
+            foreach (var i in pass)
+                mm.Append(i + ", ");
+            mm.Append("\n");
+
+            mm.Append("Secret Number\t: ");
+            foreach (var i in sec_num)
+                mm.Append(i + ", ");
+            mm.Append("\n");
+
+            mm.Append("Encrypt Key\t\t: ");
+            foreach (var i in enc_key)
+                mm.Append(i + ", ");
+            mm.Append("\n");
+
+            mm.Append("Enc Word\t\t\t: ");
+            foreach (var i in enc_word)
+                mm.Append(i + ", ");
+            mm.Append("\n");
+            mm.Append("\n");
+            mm.Append("\n");
+
+            mm.Append("read Word\t\t\t: ");
+            foreach (var i in real_word)
+                mm.Append(i + ", ");
+            mm.Append("\n");
+
+            mm.Append("Dec Word\t\t\t: ");
+            foreach (var i in dec_word)
+                mm.Append(i + ", ");
+            mm.Append("\n");
+
+            return mm.ToString();
         }
 
         internal static byte[] HashBytes(byte[] bytes, int length)
@@ -542,7 +595,10 @@ namespace File_Manager
 
         internal long GetFirstFileIndex()
         {
-            return 300 * indices.Count + 8 + 38 + 4 + 128 + 128 + 8 + 8 + 8;
+            first_file_index = 4 + 38 + 4 + 128 + 128 + 8 + 8 + 4;
+            foreach (var i in indices)
+                first_file_index += (i.file_name_length * 2);
+            return first_file_index + 128;
             // 300(288 for each file indises and 12 byte for extra info) + 8 for id + 38 file manager version + 4 version + 128 secrut number + 128 password + 8 first file start + 8 first file length + 8 files count;
         }
 
@@ -555,7 +611,7 @@ namespace File_Manager
 
     class EncryptFileHeaderIndex
     {
-        internal long id;
+        internal int id;
         internal byte file_name_length;
         internal byte[] fileName;
         internal string file_name;
@@ -563,7 +619,7 @@ namespace File_Manager
         internal long length;
         internal byte[] crc;
 
-        internal EncryptFileHeaderIndex(long ID, FileInfo file, byte[] encrypter)
+        internal EncryptFileHeaderIndex(int ID, FileInfo file, byte[] encrypter)
         {
             id = ID;
             file_name_length = (byte)file.Name.Length;//(byte)file.Name.Length;
@@ -571,17 +627,44 @@ namespace File_Manager
             //var name_byte = Encoding.Unicode.GetBytes(file.Name);
             //string name2 = Encoding.Unicode.GetString(name_byte);
             Buffer.BlockCopy(file.Name.ToCharArray(), 0, bytes, 0, file_name_length * sizeof(char));
+            //
+            //string jjj = "real name:\n";
+            //foreach (var i in bytes)
+            //    jjj += (i + " ,");
+            //MessageBox.Show(jjj);
+            //
             //string name = Encoding.Unicode.GetString(bytes);
             fileName = Files_Encrepter.EncryptBytes(bytes, encrypter);
+
+            //
+            //string kkk = "enc name:\n";
+            //foreach (var i in fileName)
+            //    kkk += (i + " ,");
+            //MessageBox.Show(kkk);
+            //
+
             length = file.Length;
             crc = new byte[8];//encrypt with user or general password
         }
 
         internal EncryptFileHeaderIndex(byte[] ID, byte[] encrypted_name, byte[] start_index, byte[] length, byte[] encrypted_CRC, byte[] decrypter)
         {
-            id = BitConverter.ToInt64(ID, 0);
+            //
+            //string kkk = "enc name:\n";
+            //foreach (var i in encrypted_name)
+            //    kkk += (i + " ,");
+            //MessageBox.Show(kkk);
+            //
+
+            id = BitConverter.ToInt32(ID, 0);
             file_name_length = (byte)(encrypted_name.Length / sizeof(char));
-            file_name = Encoding.UTF8.GetString(Files_Encrepter.DecryptBytes(encrypted_name, decrypter));
+            file_name = Encoding.Unicode.GetString(Files_Encrepter.DecryptBytes(encrypted_name, decrypter));
+            //
+            //string jjj = "decryptez name:\n";
+            //foreach (var i in Files_Encrepter.DecryptBytes(encrypted_name, decrypter))
+            //    jjj += (i + " ,");
+            //MessageBox.Show(jjj);
+            //
             this.start_index = BitConverter.ToInt64(start_index, 0);
             this.length = BitConverter.ToInt64(length, 0);
             crc = Files_Encrepter.DecryptBytes(encrypted_CRC, decrypter);

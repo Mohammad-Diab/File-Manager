@@ -921,7 +921,7 @@ namespace File_Manager
             {
                 case SortItemsBy.Random:
                 case SortItemsBy.RandomDescending:
-                    return new Random((int)DateTime.UtcNow.Ticks).Next(0, 50000) % 2;
+                    return (new Random((int)(DateTime.UtcNow.Ticks % 100000000)).Next(50000) % 3) - 1;
                 default:
                 case SortItemsBy.Name:
                     return x.Name.ToLower().CompareTo(y.Name.ToLower());

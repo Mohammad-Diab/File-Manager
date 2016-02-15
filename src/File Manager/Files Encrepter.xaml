@@ -122,5 +122,6 @@
         <Button ToolTip="About Files Destroy" HorizontalAlignment="Right" VerticalAlignment="Top" Width="36" Height="36" Background="{x:Null}" BorderBrush="{x:Null}" Click="AboutTool_Click">
             <Image Stretch="Fill" Source="Images/Menu/about-tool.png"/>
         </Button>
+        <Button x:Name="button" Content="enc" HorizontalAlignment="Right" Height="46" Margin="-127,0,746,0" VerticalAlignment="Bottom" Width="75" Click="Test_Click"/>
     </Grid>
 </Window>

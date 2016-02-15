@@ -1,0 +1,22 @@
+01- press 'space' on item at all files in 'Directory analizer'
+02- video on 'statical' in 'Directory analizer' is zero while analize 'E:\'
+03- change date for 'System Volume Information'
+04- FILE Button content slow the animation of '3 rectangles' when back
+05- Recent move form file and directory animation
+06- up button can pressed many time and causes slow the system and may crash
+07- quick access when press on directory it reload it even it on the same path isSpacial Directory must check before check path
+08- file manager browser can deencrypt files
+09- find empty directory on "Mohammad Folder"
+10- right click on directiry list while no item is selected view details section
+11- when no item is selected view details about current path
+12- hide menu when lost focus (allow change path or selection or else...) or window is not activate
+13- Recent
+14- Comressed files manager
+15- Preview new design
+16- encrypt more than one file in one file
+17- encrypt file name and extension (optinal) if not encrypted file manager can view real file name
+18- improve encrypt algorethm and support legacy algorethm
+19- lock files (encrypt just file header) this tools has master password
+20- don't include password in encrypte files incluse any word encrypted with same password and compare
+21- in copy file add choise to continue copy this file (when file is exist and smaller size -has not completed copy-)
+22- Copy to Title bar contain move to

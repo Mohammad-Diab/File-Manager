@@ -805,7 +805,7 @@
                         <Rectangle Fill="WhiteSmoke" Height="1" HorizontalAlignment="Left" Width="250" IsEnabled="False" Margin="10,80,0,0" VerticalAlignment="Top"/>
                         <Image Margin="100,105,0,0" Height="128" VerticalAlignment="Top" Source="Images/App Icon.png" HorizontalAlignment="Left" Width="128"/>
                         <TextBlock Text="mohammad.diab93@outlook.com " Margin="66,301,0,0" VerticalAlignment="Top" FontSize="16" FontFamily="Segoe Print" Foreground="Lime" TextAlignment="Center" HorizontalAlignment="Left"/>
-                        <TextBlock Margin="30,250,0,0" VerticalAlignment="Top" FontSize="18" TextAlignment="Center" Text="FILE MANAGER 0.9.0-beta.1" HorizontalAlignment="Left">
+                        <TextBlock Margin="30,250,0,0" VerticalAlignment="Top" FontSize="18" TextAlignment="Center" Text="FILE MANAGER 0.9.0" HorizontalAlignment="Left">
                             <TextBlock.Foreground>
                                 <LinearGradientBrush EndPoint="0.5,1" MappingMode="RelativeToBoundingBox" StartPoint="0.5,0">
                                     <GradientStop Color="#FFFFFF61" Offset="0.996"/>

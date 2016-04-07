@@ -27,6 +27,31 @@
                 <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="11"/>
             </Grid>
         </ControlTemplate>
+        <Style x:Key="link_button" TargetType="{x:Type Button}">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="ToolTipService.ShowOnDisabled" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border Background="{TemplateBinding Background}" Padding="4,2">
+                            <TextBlock x:Name="link_text" Text="{Binding Content, RelativeSource={RelativeSource TemplatedParent}}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="link_text" Property="TextDecorations" Value="Underline"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="link_text" Property="TextDecorations" Value="Underline"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="link_text" Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
     <Grid x:Name="container">
         <Grid x:Name="mother_of_all_grid" Margin="0,0,0,0" HorizontalAlignment="Left" Width="4800">
@@ -37,17 +62,17 @@
                     </ScrollViewer>
                     <Grid x:Name="image_control" MouseEnter="ImageControl_MouseEnter" MouseLeave="ImageControl_MouseLeave">
                         <TextBlock x:Name="zoom_value" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="0,10,10,0"/>
-                        <Button x:Name ="rotate_left" Foreground ="black" FontSize ="28" FontWeight ="Bold" Margin="301,0,0,10" Template="{StaticResource roundButtonTemplate}" Background="{x:Null}" BorderBrush="{x:Null}" HorizontalAlignment="Left" Width="60" Visibility="Visible" MouseEnter="Grid1_MouseOver" MouseLeave="Grid1_MouseLeave" Height="64" VerticalAlignment="Bottom" Click="RotateLeft_Click">
+                        <Button x:Name ="rotate_left" ToolTip="Rotate left" Foreground ="black" FontSize ="28" FontWeight ="Bold" Margin="301,0,0,10" Template="{StaticResource roundButtonTemplate}" Background="{x:Null}" BorderBrush="{x:Null}" HorizontalAlignment="Left" Width="60" Visibility="Visible" MouseEnter="Grid1_MouseOver" MouseLeave="Grid1_MouseLeave" Height="64" VerticalAlignment="Bottom" Click="RotateLeft_Click">
                             <Button.Content>
                                 <Image x:Name="play_content" Source="Images/Menu/rotate-left.png" Height="32" Width="32"/>
                             </Button.Content>
                         </Button>
-                        <Button x:Name ="save_image" Foreground ="White" FontSize ="28" FontWeight ="Bold" Template="{StaticResource roundButtonTemplate}"  Margin="368,0,0,10" Background="{x:Null}" BorderBrush="{x:Null}" HorizontalAlignment="Left" Width="60" Visibility="Visible" IsEnabled="True" MouseEnter="Grid1_MouseOver" MouseLeave="Grid1_MouseLeave" Click="SaveImage_Click" Height="64" VerticalAlignment="Bottom">
+                        <Button x:Name ="save_image" ToolTip="Save a rotated copy" Foreground ="White" FontSize ="28" FontWeight ="Bold" Template="{StaticResource roundButtonTemplate}"  Margin="368,0,0,10" Background="{x:Null}" BorderBrush="{x:Null}" HorizontalAlignment="Left" Width="60" Visibility="Visible" IsEnabled="True" MouseEnter="Grid1_MouseOver" MouseLeave="Grid1_MouseLeave" Click="SaveImage_Click" Height="64" VerticalAlignment="Bottom">
                             <Button.Content>
                                 <Image x:Name="pause_content" Source="Images/Appearance/save.png" Height="32" Width="32"/>
                             </Button.Content>
                         </Button>
-                        <Button x:Name ="rotate_right" Template="{StaticResource roundButtonTemplate}"  Foreground ="White" FontSize ="28" FontWeight ="Bold" Margin="437,0,0,10" Background="{x:Null}" BorderBrush="{x:Null}" HorizontalAlignment="Left" Width="60" Visibility="Visible" MouseEnter="Grid1_MouseOver" MouseLeave="Grid1_MouseLeave" Click="RotateRight_Click" Height="64" VerticalAlignment="Bottom">
+                        <Button x:Name ="rotate_right" ToolTip="Rotate right" Template="{StaticResource roundButtonTemplate}"  Foreground ="White" FontSize ="28" FontWeight ="Bold" Margin="437,0,0,10" Background="{x:Null}" BorderBrush="{x:Null}" HorizontalAlignment="Left" Width="60" Visibility="Visible" MouseEnter="Grid1_MouseOver" MouseLeave="Grid1_MouseLeave" Click="RotateRight_Click" Height="64" VerticalAlignment="Bottom">
                             <Button.Content>
                                 <Image Source="Images/Menu/rotate-right.png" Height="32" Width="32"/>
                             </Button.Content>
@@ -166,14 +191,20 @@
                 </Grid>
             </Grid>
             <Grid Margin="800,44,0,0" HorizontalAlignment="Left" Width="800">
-                <Image x:Name="item_image" HorizontalAlignment="Left" Height="256" VerticalAlignment="Top" Width="256" Margin="10,46,0,0"/>
-                <TextBox x:Name="item_path" Margin="30,6,30,0" Text="C:\Users\pal\Desktop\cd.iso" VerticalAlignment="Top" FontSize="16" IsReadOnly="True"/>
+                <Image x:Name="item_image" HorizontalAlignment="Left" Height="190" VerticalAlignment="Top" Width="190" Margin="40,46,0,0"/>
+                <StackPanel Margin="10,240,0,0" Width="255" HorizontalAlignment="Left" VerticalAlignment="Top">
+                    <TextBlock x:Name="info_owner" FontSize="13" Foreground="Black" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock x:Name="info_version" FontSize="13" Foreground="Black" TextTrimming="CharacterEllipsis" Visibility="Collapsed"/>
+                    <TextBlock x:Name="info_dimensions" FontSize="13" Foreground="Black" TextTrimming="CharacterEllipsis" Visibility="Collapsed"/>
+                </StackPanel>
+                <TextBox x:Name="item_path" Margin="30,6,130,0" Text="" VerticalAlignment="Top" FontSize="16" IsReadOnly="True"/>
+                <Button Style="{StaticResource link_button}" Content="Copy details" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,8,30,0" FontSize="14" Foreground="DodgerBlue" ToolTip="Copy all the information on this page" Click="CopyDetails_Click"/>
                 <TextBlock Margin="271,227,0,0" TextWrapping="Wrap" Foreground="ForestGreen" FontSize="16" Text="Size:" VerticalAlignment="Top" HorizontalAlignment="Left"/>
                 <TextBlock Margin="271,116,0,0" TextWrapping="Wrap" Foreground="ForestGreen" FontSize="16" VerticalAlignment="Top" Text="Type:" HorizontalAlignment="Left"/>
                 <TextBlock x:Name="item_type_discriotion" Margin="290,166,0,0" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="ISO Standard File Type." HorizontalAlignment="Left"/>
                 <TextBlock x:Name="item_category" Margin="290,190,0,0" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="Disk Image." HorizontalAlignment="Left"/>
                 <TextBlock Margin="500,116,0,0" TextWrapping="Wrap" Foreground="ForestGreen" FontSize="16" VerticalAlignment="Top" Text="Apps can open this type:" HorizontalAlignment="Left"/>
-                <ListBox x:Name="app_can_open_this_type" Height="72" Margin="500,142,30,0" VerticalAlignment="Top"/>
+                <ListBox x:Name="app_can_open_this_type" MaxHeight="72" Margin="500,142,30,0" VerticalAlignment="Top" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled" KeyDown="AppsList_KeyDown"/>
                 <TextBlock x:Name="item_type" Margin="290,142,0,0"  Foreground="Black" FontSize="14" VerticalAlignment="Top" Text=".iso" HorizontalAlignment="Left"/>
                 <Rectangle Height="3" Margin="271,219,50,0" Stroke="#FF404040" VerticalAlignment="Top" StrokeThickness="0">
                     <Rectangle.Fill>
@@ -201,8 +232,8 @@
 
                 <TextBlock x:Name="item_ondisk_size" Margin="290,277,0,0" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="on disk: 3.42 GB  20% of used space on disk" HorizontalAlignment="Left"/>
                 <TextBlock Margin="271,34,0,0" TextWrapping="Wrap" Foreground="ForestGreen" FontSize="16" VerticalAlignment="Top" Text="Item:" HorizontalAlignment="Left"/>
-                <TextBlock x:Name="item_name" Margin="290,60,0,0" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="Name: cd.iso" HorizontalAlignment="Left"/>
-                <TextBlock x:Name="item_location" Margin="290,84,0,0" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="Location: &quot;C:\Users\pal\Desktop&quot;" HorizontalAlignment="Left"/>
+                <TextBlock x:Name="item_name" Margin="290,60,0,0" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="Name:" HorizontalAlignment="Left"/>
+                <TextBlock x:Name="item_location" Margin="290,84,0,0" Foreground="Black" FontSize="14" VerticalAlignment="Top" Text="Location:" HorizontalAlignment="Left"/>
                 <Rectangle Height="3" Margin="271,108,50,0" Stroke="#FF404040" VerticalAlignment="Top" StrokeThickness="0">
                     <Rectangle.Fill>
                         <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
@@ -227,12 +258,12 @@
                 <Expander x:Name="change_name_expander" Header="Change Name:" HorizontalAlignment="Left" Margin="10,307,0,0" VerticalAlignment="Top" Width="262" Foreground="YellowGreen" FontSize="16">
                     <Grid>
                         <TextBlock x:Name="name_error" FontSize="12" Margin="5,82,0,0" Visibility="Visible" TextWrapping="Wrap" VerticalAlignment="Top" Foreground="Red"  TextAlignment="Center"><Run Text="File name can't contain any of these characters:"/><LineBreak/><Run FontSize="16" Text=" '\' , '/' , ':' , '*' , '?' , '\' , '&lt;' , '&gt;' , '|'"/></TextBlock>
-                        <TextBox x:Name="rename_textbox" Margin="10,31,10,0" Text="cd.iso" VerticalAlignment="Top" FontSize="14" TextChanged="RenameTextbox_TextChanged"/>
+                        <TextBox x:Name="rename_textbox" Margin="10,31,10,0" Text="" VerticalAlignment="Top" FontSize="14" TextChanged="RenameTextbox_TextChanged"/>
                         <Button x:Name="rename_button" Content="Rename" FontSize="12" Margin="0,57,10,0" Visibility="Visible" Background="{x:Null}" BorderBrush="#FFFF8000" Foreground="Magenta" HorizontalAlignment="Right" VerticalAlignment="Top" Width="60" Height="20" Click="RenameButton_Click"/>
                         <TextBlock FontSize="12" HorizontalAlignment="Left" Margin="10,10,0,0" TextWrapping="Wrap" Text="Enter new name then click 'Rename'" VerticalAlignment="Top" Foreground="Black"/>
                     </Grid>
                 </Expander>
-                <Grid x:Name="size_flowshart" Height="116" Margin="0,222,10,0" VerticalAlignment="Top" HorizontalAlignment="Right" Width="134">
+                <Grid x:Name="size_flowshart" Visibility="Collapsed" Height="116" Margin="0,222,10,0" VerticalAlignment="Top" HorizontalAlignment="Right" Width="134">
                     <Ellipse HorizontalAlignment="Left" Height="100" Margin="25,15,0,0" Stroke="#FF34A41B" VerticalAlignment="Top" Width="100"/>
                     <Rectangle HorizontalAlignment="Left" Height="1" Margin="26,65,0,0" Stroke="#FF404040" VerticalAlignment="Top" Width="50" Fill="Black" StrokeThickness="0" RenderTransformOrigin="0.5,0.5"/>
                     <Rectangle HorizontalAlignment="Left" Height="1" Margin="51,40,0,0" Stroke="#FF404040" VerticalAlignment="Top" Width="50" Fill="Black" StrokeThickness="0" RenderTransformOrigin="0.5,0.5">
@@ -321,7 +352,7 @@
                         </LinearGradientBrush>
                     </Rectangle.Fill>
                 </Rectangle>
-                <Grid Margin="0,123,10,0" HorizontalAlignment="Right" Width="360" Height="75" VerticalAlignment="Top">
+                <Grid Margin="0,123,10,0" HorizontalAlignment="Right" Width="360" Height="75" VerticalAlignment="Top" IsEnabled="False" Background="Transparent" ToolTip="Shown only: compress or uncompress from the details panel of the main window" ToolTipService.ShowOnDisabled="True">
                     <RadioButton x:Name="compressed" Content="Compressed" HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="#FF404040" FontSize="16" Checked="AnyAttributes_Checked"/>
                     <RadioButton x:Name="encrypted" Content="Encrypted" HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="#FF404040" FontSize="16" Margin="0,25,0,0" Checked="AnyAttributes_Checked"/>
                     <RadioButton x:Name="not_encrypted_compressed" Content="Not compressed or encrypted" HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="#FF404040" FontSize="16" Margin="0,50,0,-25" Checked="AnyAttributes_Checked"/>
@@ -391,18 +422,60 @@
                     </Rectangle.Fill>
                 </Rectangle>
             </Grid>
-            <Grid Margin="2400,44,0,0" HorizontalAlignment="Left" Width="800">
-                <Button x:Name="apply_to_all_Copy" Content="Calculate" Margin="10,390,630,0" Background="{x:Null}" Foreground="#FF2AB048" FontSize="16" BorderBrush="#FF2AB048" Visibility="Visible" Height="32" VerticalAlignment="Top"/>
-                <TextBox Margin="86,49,10,0" TextWrapping="Wrap" Text="MD5" VerticalAlignment="Top" FontSize="24"/>
-                <TextBox Margin="86,10,10,0" TextWrapping="Wrap" Text="MD4" VerticalAlignment="Top" FontSize="24"/>
-                <TextBox Margin="86,147,10,0" TextWrapping="Wrap" Text="SHA1" VerticalAlignment="Top" FontSize="24"/>
-                <TextBox Margin="86,88,10,0" TextWrapping="Wrap" Text="MD6" VerticalAlignment="Top" FontSize="24"/>
-                <TextBox Margin="86,225,10,0" TextWrapping="Wrap" Text="SHA1 384" VerticalAlignment="Top" FontSize="24"/>
-                <TextBox Margin="86,264,10,0" TextWrapping="Wrap" Text="SHA1 512" VerticalAlignment="Top" FontSize="24"/>
-                <TextBox Margin="86,323,10,0" TextWrapping="Wrap" Text="CRC32" VerticalAlignment="Top" FontSize="24"/>
-                <TextBox Margin="86,186,10,0" TextWrapping="Wrap" Text="SHA1 256" VerticalAlignment="Top" FontSize="24"/>
+            <Grid x:Name="hash_grid" Margin="2400,44,0,0" HorizontalAlignment="Left" Width="800">
+                <TextBlock Margin="20,14,0,0" Text="Hashes of this file" Foreground="ForestGreen" FontSize="16" VerticalAlignment="Top" HorizontalAlignment="Left"/>
+                <Grid Margin="20,44,20,0" VerticalAlignment="Top">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="36"/>
+                        <RowDefinition Height="36"/>
+                        <RowDefinition Height="36"/>
+                        <RowDefinition Height="36"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="MD5" VerticalAlignment="Center" Foreground="#FF404040" FontSize="16"/>
+                    <TextBox x:Name="hash_md5" Grid.Row="0" Grid.Column="1" IsReadOnly="True" FontFamily="Consolas" FontSize="13" Height="28" VerticalContentAlignment="Center" VerticalAlignment="Center"/>
+                    <Button x:Name="hash_copy_md5" Grid.Row="0" Grid.Column="2" Style="{StaticResource link_button}" Content="Copy" Tag="md5" Foreground="DodgerBlue" FontSize="14" Margin="6,0,0,0" VerticalAlignment="Center" IsEnabled="False" ToolTip="Press Calculate first" Click="HashCopy_Click"/>
+                    <TextBlock Grid.Row="1" Text="SHA-1" VerticalAlignment="Center" Foreground="#FF404040" FontSize="16"/>
+                    <TextBox x:Name="hash_sha1" Grid.Row="1" Grid.Column="1" IsReadOnly="True" FontFamily="Consolas" FontSize="13" Height="28" VerticalContentAlignment="Center" VerticalAlignment="Center"/>
+                    <Button x:Name="hash_copy_sha1" Grid.Row="1" Grid.Column="2" Style="{StaticResource link_button}" Content="Copy" Tag="sha1" Foreground="DodgerBlue" FontSize="14" Margin="6,0,0,0" VerticalAlignment="Center" IsEnabled="False" ToolTip="Press Calculate first" Click="HashCopy_Click"/>
+                    <TextBlock Grid.Row="2" Text="SHA-256" VerticalAlignment="Center" Foreground="#FF404040" FontSize="16"/>
+                    <TextBox x:Name="hash_sha256" Grid.Row="2" Grid.Column="1" IsReadOnly="True" FontFamily="Consolas" FontSize="13" Height="28" VerticalContentAlignment="Center" VerticalAlignment="Center"/>
+                    <Button x:Name="hash_copy_sha256" Grid.Row="2" Grid.Column="2" Style="{StaticResource link_button}" Content="Copy" Tag="sha256" Foreground="DodgerBlue" FontSize="14" Margin="6,0,0,0" VerticalAlignment="Center" IsEnabled="False" ToolTip="Press Calculate first" Click="HashCopy_Click"/>
+                    <TextBlock Grid.Row="3" Text="SHA-512" VerticalAlignment="Center" Foreground="#FF404040" FontSize="16"/>
+                    <TextBox x:Name="hash_sha512" Grid.Row="3" Grid.Column="1" IsReadOnly="True" FontFamily="Consolas" FontSize="13" Height="28" VerticalContentAlignment="Center" VerticalAlignment="Center"/>
+                    <Button x:Name="hash_copy_sha512" Grid.Row="3" Grid.Column="2" Style="{StaticResource link_button}" Content="Copy" Tag="sha512" Foreground="DodgerBlue" FontSize="14" Margin="6,0,0,0" VerticalAlignment="Center" IsEnabled="False" ToolTip="Press Calculate first" Click="HashCopy_Click"/>
+                </Grid>
+                <TextBlock Margin="20,200,0,0" Text="Compare with:" Foreground="ForestGreen" FontSize="16" VerticalAlignment="Top" HorizontalAlignment="Left"/>
+                <TextBox x:Name="hash_compare" Margin="20,226,20,0" Height="28" FontFamily="Consolas" FontSize="13" VerticalContentAlignment="Center" VerticalAlignment="Top" ToolTip="Paste a hash here to check it against the results" TextChanged="HashCompare_TextChanged"/>
+                <TextBlock x:Name="hash_compare_result" Margin="20,260,20,0" VerticalAlignment="Top" FontSize="14"/>
+                <ProgressBar x:Name="hash_progress" Margin="20,300,20,0" Height="8" VerticalAlignment="Top" Maximum="100" Foreground="#FF2AB048" Visibility="Hidden"/>
+                <TextBlock x:Name="hash_status" Margin="20,312,20,0" VerticalAlignment="Top" FontSize="12" Foreground="Gray" TextWrapping="Wrap"/>
+                <StackPanel Orientation="Horizontal" Margin="20,350,0,0" VerticalAlignment="Top" HorizontalAlignment="Left">
+                    <Button x:Name="hash_calculate_btm" Content="Calculate" Width="110" Height="32" Background="{x:Null}" Foreground="#FF2AB048" FontSize="16" BorderBrush="#FF2AB048" ToolTipService.ShowOnDisabled="True" Click="HashCalculate_Click"/>
+                    <Button x:Name="hash_cancel_btm" Content="Cancel" Width="110" Height="32" Margin="10,0,0,0" Background="{x:Null}" Foreground="Tomato" FontSize="16" BorderBrush="Tomato" IsEnabled="False" ToolTip="Nothing is being calculated" ToolTipService.ShowOnDisabled="True" Click="HashCancel_Click"/>
+                </StackPanel>
             </Grid>
-            <Grid Margin="3200,44,0,0" HorizontalAlignment="Left" Width="800"/>
+            <Grid x:Name="security_grid" Margin="3200,44,0,0" HorizontalAlignment="Left" Width="800">
+                <TextBlock Margin="20,14,0,0" Text="Owner:" Foreground="ForestGreen" FontSize="16" VerticalAlignment="Top" HorizontalAlignment="Left"/>
+                <TextBlock x:Name="security_owner" Margin="80,16,20,0" FontSize="14" VerticalAlignment="Top" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Margin="20,44,0,0" Text="Permissions:" Foreground="ForestGreen" FontSize="16" VerticalAlignment="Top" HorizontalAlignment="Left"/>
+                <ListView x:Name="security_list" Margin="20,70,20,60" FontSize="13">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Name" Width="270" DisplayMemberBinding="{Binding Path=Identity}"/>
+                            <GridViewColumn Header="Type" Width="60" DisplayMemberBinding="{Binding Path=Type}"/>
+                            <GridViewColumn Header="Rights" Width="250" DisplayMemberBinding="{Binding Path=Rights}"/>
+                            <GridViewColumn Header="Inherited" Width="80" DisplayMemberBinding="{Binding Path=Inherited}"/>
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+                <TextBlock x:Name="security_error" Margin="30,90,30,0" VerticalAlignment="Top" FontSize="14" Foreground="Tomato" TextWrapping="Wrap" Visibility="Collapsed"/>
+                <Button Content="Advanced..." HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,20,15" Width="120" Height="32" Background="{x:Null}" Foreground="#FF2AB048" BorderBrush="#FF2AB048" FontSize="16" ToolTip="Opens the Windows security properties of this item" Click="SecurityAdvanced_Click"/>
+            </Grid>
             <Grid Margin="4000,44,0,0" HorizontalAlignment="Left" Width="800">
                 <Button x:Name="save_spitial_info" Content="Save" Margin="0,0,20,10" Background="{x:Null}" Foreground="#FF0F0A0A" FontSize="16" BorderBrush="#FF2AB048" Visibility="Visible" Height="32" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="100"/>
                 <StackPanel Margin="10,10,20,47"/>
@@ -476,7 +549,7 @@
                     <Button Background="{x:Null}" Template="{StaticResource appBarButton}" Click="LoadSubtitle_Click" Margin="0,0,0,20" Width="56" Height="56" Content="S" FontSize="26" Foreground="White"/>
                     <TextBlock Text="load subtitle" VerticalAlignment="Bottom" Margin="0,0,0,5" Foreground="White" FontSize="10" TextTrimming="CharacterEllipsis" TextAlignment="Center"/>
                 </Grid>
-                <Grid Height="76" x:Name="app_bar_button2" VerticalAlignment="Bottom" Margin="25,0,0,0" ToolTip="convert this media" Width="56" HorizontalAlignment="Left" >
+                <Grid Height="76" x:Name="app_bar_button2" VerticalAlignment="Bottom" Margin="25,0,0,0" ToolTip="convert this media" Width="56" HorizontalAlignment="Left" Visibility="Collapsed">
                     <Button Background="{x:Null}" Template="{StaticResource appBarButton}" Margin="0,0,0,20" Width="56" Height="56" Content="C" FontSize="26" Foreground="White"/>
                     <TextBlock Text="convert" VerticalAlignment="Bottom" Margin="0,0,0,5" Foreground="White" FontSize="10" TextTrimming="CharacterEllipsis" TextAlignment="Center"/>
                 </Grid>
@@ -484,7 +557,7 @@
                     <Button Background="{x:Null}" Template="{StaticResource appBarButton}" Margin="0,0,0,20" Width="56" Click="MuteVolume_Click" Height="56" Content="V" FontSize="26" Foreground="White"/>
                     <TextBlock Text="mute" VerticalAlignment="Bottom" Margin="0,0,0,5" Foreground="White" FontSize="10" TextTrimming="CharacterEllipsis" TextAlignment="Center"/>
                 </Grid>
-                <Grid Height="76" x:Name="app_bar_button4" VerticalAlignment="Bottom" Margin="25,0,0,0" ToolTip="go full screen" Width="56" HorizontalAlignment="Left" >
+                <Grid Height="76" x:Name="app_bar_button4" VerticalAlignment="Bottom" Margin="25,0,0,0" ToolTip="go full screen" Width="56" HorizontalAlignment="Left" Visibility="Collapsed">
                     <Button Background="{x:Null}" Template="{StaticResource appBarButton}" Margin="0,0,0,20" Width="56" Height="56" Content="F" FontSize="26" Foreground="White"/>
                     <TextBlock Text="fullscreen" VerticalAlignment="Bottom" Margin="0,0,0,5" Foreground="White" FontSize="10" TextTrimming="CharacterEllipsis" TextAlignment="Center"/>
                 </Grid>

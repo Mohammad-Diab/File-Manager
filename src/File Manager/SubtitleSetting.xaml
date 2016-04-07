@@ -160,8 +160,8 @@
         <Rectangle x:Name="rec" Fill="Red" HorizontalAlignment="Left" Height="4" Margin="0,32,0,0" VerticalAlignment="Top" Width="107"/>
         <Button x:Name="_Save" Content="save" HorizontalAlignment="Right" Margin="0,0,10,10" VerticalAlignment="Bottom" Width="75" Background="{x:Null}" Height="25" Click="Save_Setting" FontSize="16" BorderBrush="#FF6C4500" Foreground="#FF6C4500"/>
         <Button x:Name="_Cancel" Content="cancel" HorizontalAlignment="Right" Margin="0,0,90,10" VerticalAlignment="Bottom" Width="75" Background="{x:Null}" Click="Cancel" Height="25" FontSize="16" BorderBrush="#FF6C4500"/>
-        <Button x:Name="button" Content="Default" ToolTip="Get style from subtitle file (not working yet)" HorizontalAlignment="Right" Margin="0,0,170,10" VerticalAlignment="Bottom" Width="75" Background="{x:Null}" Height="25"/>
-        <Button ToolTip="About Subtitle Setting" HorizontalAlignment="Right" VerticalAlignment="Top" Width="36" Height="36" Background="{x:Null}" BorderBrush="{x:Null}" Click="AboutTool_Click">
+        <Button x:Name="button" Visibility="Collapsed" Content="Default" ToolTip="Get style from subtitle file (not working yet)" HorizontalAlignment="Right" Margin="0,0,170,10" VerticalAlignment="Bottom" Width="75" Background="{x:Null}" Height="25"/>
+        <Button ToolTip="About Subtitle Options" HorizontalAlignment="Right" VerticalAlignment="Top" Width="36" Height="36" Background="{x:Null}" BorderBrush="{x:Null}" Click="AboutTool_Click">
             <Button.Content>
                 <Image Stretch="Fill" Source="Images/Menu/about-tool.png"/>
             </Button.Content>

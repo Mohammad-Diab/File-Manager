@@ -26,7 +26,7 @@ namespace File_Manager
         ObservableCollection<ExistsItemsListView> ExistsItemsList_Copy;
         bool accept = false, user_active = false;
         string paste_in;
-        List<int> same, same_size, same_size_date;
+        List<int> same, same_size, same_size_date, unfinished;
         OperationTree root;
 
         public Exists_Files_Window(OperationTree root, string destination)
@@ -180,6 +180,19 @@ namespace File_Manager
                             ExistsItemsList.RemoveAt(same_size_date[i]);
                         }
                         break;
+                    case 5:
+                        if (unfinished != null || Messages.ShowMessage("This operation maybe take long time according to files size and amount of files, do you want to continue?", ModrenMessageButton.YesNo, ModrenMessageImage.Exclamation, ModrenMessageSound.Question, false, "") == MyMessageBoxResult.Yes)
+                        {
+                            FindUnfinished();
+                            for (int i = unfinished.Count - 1; i > -1; i--)
+                            {
+                                ExistsItemsList[unfinished[i]].source_item.user_option = OperationOption.Continue;
+                                ExistsItemsList.RemoveAt(unfinished[i]);
+                            }
+                        }
+                        else
+                            skip_items.SelectedIndex = 0;
+                        break;
                     case 4:
                         for (int i = 0; i < ExistsItemsList.Count; i++)
                             if (ExistsItemsList[i].source_item.item.LastWriteTime.Ticks > ExistsItemsList[i].TargetFile.LastWriteTime.Ticks)
@@ -224,6 +237,51 @@ namespace File_Manager
                 }
                 same_containt.Text = same.Count.ToString();
             }
+        }
+
+        private void FindUnfinished()
+        {
+            if (unfinished == null)
+            {
+                unfinished = new List<int>();
+                for (int i = 0; i < ExistsItemsList.Count; i++)
+                {
+                    long target_length = ExistsItemsList[i].TargetFile.Length;
+                    if (target_length > 0 && target_length < ExistsItemsList[i].source_item.size && IsStartOf(ExistsItemsList[i].TargetFile.FullName, ExistsItemsList[i].source_item.item.FullName, target_length))
+                        unfinished.Add(i);
+                }
+                unfinished_count.Text = unfinished.Count.ToString();
+            }
+        }
+
+        bool IsStartOf(string part_path, string full_path, long length)
+        {
+            try
+            {
+                using (FileStream part = new FileStream(part_path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                using (FileStream full = new FileStream(full_path, FileMode.Open, FileAccess.Read, FileShare.Read))
+                {
+                    byte[] first = new byte[65536], second = new byte[65536];
+                    long remain = length;
+                    while (remain > 0)
+                    {
+                        int count = (int)Math.Min(first.Length, remain);
+                        int read1 = 0, read2 = 0, k;
+                        while (read1 < count && (k = part.Read(first, read1, count - read1)) > 0)
+                            read1 += k;
+                        while (read2 < count && (k = full.Read(second, read2, count - read2)) > 0)
+                            read2 += k;
+                        if (read1 != count || read2 != count)
+                            return false;
+                        for (int i = 0; i < count; i++)
+                            if (first[i] != second[i])
+                                return false;
+                        remain -= count;
+                    }
+                    return true;
+                }
+            }
+            catch (Exception) { return false; }
         }
 
         private void RemoveSameSize()

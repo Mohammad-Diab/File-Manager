@@ -56,15 +56,7 @@
     <ApplicationIcon>App Icon.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Icons, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>bin\Debug\Icons.dll</HintPath>
-    </Reference>
     <Reference Include="ReachFramework" />
-    <Reference Include="SevenZipSharp, Version=0.64.3890.29348, Culture=neutral, PublicKeyToken=20de82c62b055c88, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>bin\Debug\SevenZipSharp.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
@@ -82,24 +74,19 @@
     <Reference Include="WindowsBase" />
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
-    <Reference Include="Xceed.Wpf.AvalonDock">
-      <HintPath>..\packages\Extended.Wpf.Toolkit.2.4\lib\net40\Xceed.Wpf.AvalonDock.dll</HintPath>
-    </Reference>
-    <Reference Include="Xceed.Wpf.AvalonDock.Themes.Aero">
-      <HintPath>..\packages\Extended.Wpf.Toolkit.2.4\lib\net40\Xceed.Wpf.AvalonDock.Themes.Aero.dll</HintPath>
-    </Reference>
-    <Reference Include="Xceed.Wpf.AvalonDock.Themes.Metro">
-      <HintPath>..\packages\Extended.Wpf.Toolkit.2.4\lib\net40\Xceed.Wpf.AvalonDock.Themes.Metro.dll</HintPath>
-    </Reference>
-    <Reference Include="Xceed.Wpf.AvalonDock.Themes.VS2010">
-      <HintPath>..\packages\Extended.Wpf.Toolkit.2.4\lib\net40\Xceed.Wpf.AvalonDock.Themes.VS2010.dll</HintPath>
-    </Reference>
-    <Reference Include="Xceed.Wpf.DataGrid">
-      <HintPath>..\packages\Extended.Wpf.Toolkit.2.4\lib\net40\Xceed.Wpf.DataGrid.dll</HintPath>
-    </Reference>
-    <Reference Include="Xceed.Wpf.Toolkit">
-      <HintPath>..\packages\Extended.Wpf.Toolkit.2.4\lib\net40\Xceed.Wpf.Toolkit.dll</HintPath>
-    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="SevenZipSharp" Version="0.64.0" />
+    <PackageReference Include="7z.Libs" Version="26.4.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Icons\Icons.csproj">
+      <Project>{3631A0F3-CCF6-4C7A-ABC3-AA2A8EA9D480}</Project>
+      <Name>Icons</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml">
@@ -108,6 +95,9 @@
     </ApplicationDefinition>
     <Compile Include="about app.xaml.cs">
       <DependentUpon>about app.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="About Panel.xaml.cs">
+      <DependentUpon>About Panel.xaml</DependentUpon>
     </Compile>
     <Compile Include="AboutTool.xaml.cs">
       <DependentUpon>AboutTool.xaml</DependentUpon>
@@ -154,6 +144,8 @@
       <DependentUpon>ModrenMessageBox.xaml</DependentUpon>
     </Compile>
     <Compile Include="My Classes.cs" />
+    <Compile Include="SafetyFileShredder.cs" />
+    <Compile Include="SafetyTools.cs" />
     <Compile Include="New Shortcut.xaml.cs">
       <DependentUpon>New Shortcut.xaml</DependentUpon>
     </Compile>
@@ -185,6 +177,10 @@
       <DependentUpon>Virtual Machine.xaml</DependentUpon>
     </Compile>
     <Page Include="about app.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="About Panel.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -371,7 +367,6 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
-    <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -380,6 +375,27 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="FileInfo.dat">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Media\dialog-error.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Media\dialog-information.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Media\dialog-question.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Media\dialog-warning.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\..\THIRD-PARTY-NOTICES.txt">
+      <Link>THIRD-PARTY-NOTICES.txt</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Images\Appearance\delete-icon.png" />
@@ -623,7 +639,6 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Images\App Icon.png" />
-    <Resource Include="Images\xbill.png" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Images\Appearance\warning-grey.png" />
@@ -663,6 +678,9 @@
     <Resource Include="Images\Explorer Interface\front.png" />
   </ItemGroup>
   <ItemGroup>
+    <Resource Include="Images\Explorer Interface\profile.png" />
+  </ItemGroup>
+  <ItemGroup>
     <Resource Include="Images\Explorer Interface\back.png" />
   </ItemGroup>
   <ItemGroup>
@@ -694,6 +712,9 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Images\Explorer Interface\help.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Explorer Interface\about.png" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Images\Explorer Interface\exit.png" />
@@ -818,6 +839,28 @@
   <ItemGroup>
     <Resource Include="Images\Explorer Interface\compress-files-manager.png" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Tools Icon\Window\CompressedFilesManager.ico" />
+    <Resource Include="Images\Tools Icon\Window\CompressFiles.ico" />
+    <Resource Include="Images\Tools Icon\Window\FilesEncrypter.ico" />
+    <Resource Include="Images\Tools Icon\Window\FileDestroyer.ico" />
+    <Resource Include="Images\Tools Icon\Window\DestroyDisk.ico" />
+    <Resource Include="Images\Tools Icon\Window\IdenticalFileRemover.ico" />
+    <Resource Include="Images\Tools Icon\Window\EmptyFolderRemover.ico" />
+    <Resource Include="Images\Tools Icon\Window\DirectoriesAnalyzer.ico" />
+    <Resource Include="Images\Tools Icon\Window\ExtensionChanger.ico" />
+    <Resource Include="Images\Tools Icon\Window\SystemMonitor.ico" />
+    <Resource Include="Images\Tools Icon\Window\VirtualMachine.ico" />
+    <Resource Include="Images\Tools Icon\Window\CreateVirtualHardDisk.ico" />
+    <Resource Include="Images\Tools Icon\Window\DesktopEnvironment.ico" />
+  </ItemGroup>
+  <PropertyGroup Condition="'$(NuGetPackageRoot)' == ''">
+    <NuGetPackageRoot Condition="'$(NUGET_PACKAGES)' != ''">$([MSBuild]::EnsureTrailingSlash('$(NUGET_PACKAGES)'))</NuGetPackageRoot>
+    <NuGetPackageRoot Condition="'$(NUGET_PACKAGES)' == ''">$(UserProfile)\.nuget\packages\</NuGetPackageRoot>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFrameworkRootPath)' == '' And Exists('$(NuGetPackageRoot)microsoft.netframework.referenceassemblies.net40\1.0.3\build\.NETFramework')">
+    <TargetFrameworkRootPath>$(NuGetPackageRoot)microsoft.netframework.referenceassemblies.net40\1.0.3\build\</TargetFrameworkRootPath>
+  </PropertyGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

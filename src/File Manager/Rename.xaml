@@ -8,7 +8,7 @@
         <TextBlock Text="Enter new name:" HorizontalAlignment="Left" Margin="55,10,0,0" VerticalAlignment="Top"/>
         <TextBox x:Name="name" Margin="55,28,51,0" Text="New Name" VerticalAlignment="Top" SpellCheck.IsEnabled="False" TabIndex="10" AutoWordSelection="True" MaxLines="1" MaxLength="255" TextChanged="Name_TextChanged" FontSize="14"/>
         <Image HorizontalAlignment="Left" Height="32" Margin="10,10,0,0" VerticalAlignment="Top" Width="32" Source="Images/Appearance/rename.png"/>
-        <Button ToolTip="Switch between arabic char and english" Content="S" HorizontalAlignment="Right" Margin="0,28,28,0" VerticalAlignment="Top" Width="24" Background="{x:Null}" Height="21" BorderBrush="#FFABADB3"/>
-        <Button ToolTip="Random file name" Content="R" HorizontalAlignment="Right" Margin="0,28,5,0" VerticalAlignment="Top" Width="24" Background="{x:Null}" Height="21" BorderBrush="#FFABADB3"/>
+        <Button ToolTip="Switch between arabic char and english" Content="S" HorizontalAlignment="Right" Margin="0,28,28,0" VerticalAlignment="Top" Width="24" Background="{x:Null}" Height="21" BorderBrush="#FFABADB3" Click="SwitchLanguage_Click"/>
+        <Button ToolTip="Random file name" Content="R" HorizontalAlignment="Right" Margin="0,28,5,0" VerticalAlignment="Top" Width="24" Background="{x:Null}" Height="21" BorderBrush="#FFABADB3" Click="RandomName_Click"/>
     </Grid>
 </Window>

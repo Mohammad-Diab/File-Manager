@@ -107,6 +107,15 @@
                 </ComboBoxItem.Content>
             </ComboBoxItem>
             <ComboBoxItem Content="Skip older files"/>
+            <ComboBoxItem ToolTip="The file in the target is smaller and is the beginning of the source file (an interrupted copy): copy only the rest">
+                <ComboBoxItem.Content>
+                    <TextBlock>
+                    <Run Text="Continue"/>
+                    <Run x:Name="unfinished_count" Text="????" Foreground="Green"/>
+                    <Run Text="unfinished copies."/>
+                    </TextBlock>
+                </ComboBoxItem.Content>
+            </ComboBoxItem>
         </ComboBox>
     </Grid>
 </Window>

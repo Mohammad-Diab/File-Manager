@@ -19,7 +19,8 @@ namespace File_Manager
     /// </summary>
     public partial class Rename : Window
     {
-        bool accept = false;
+        bool accept = false, is_file_name = false;
+        static string english_keys = "`qwertyuiop[]asdfghjkl;'zxcvnm,", arabic_keys = "ذضصثقفغعهخحجدشسيبلاتنمكطئءؤرىةو";
         public Rename()
         {
             InitializeComponent();
@@ -62,6 +63,7 @@ namespace File_Manager
 
         internal string ShowWindow(string name, bool is_file)
         {
+            is_file_name = is_file;
             if (is_file)
             {
                 this.name.Text = Path.GetFileName(name);
@@ -80,6 +82,43 @@ namespace File_Manager
                 return this.name.Text;
             else
                 return null;
+        }
+
+        private void SwitchLanguage_Click(object sender, RoutedEventArgs e)
+        {
+            string text = name.Text;
+            bool to_english = text.Any(x => arabic_keys.IndexOf(x) >= 0);
+            StringBuilder result = new StringBuilder();
+            for (int i = 0; i < text.Length; i++)
+            {
+                char c = text[i];
+                if (to_english)
+                {
+                    if (c == 'ل' && i + 1 < text.Length && text[i + 1] == 'ا')
+                    {
+                        result.Append('b');
+                        i++;
+                    }
+                    else
+                        result.Append(arabic_keys.IndexOf(c) >= 0 ? english_keys[arabic_keys.IndexOf(c)] : c);
+                }
+                else if (char.ToLower(c) == 'b')
+                    result.Append("لا");
+                else
+                    result.Append(english_keys.IndexOf(char.ToLower(c)) >= 0 ? arabic_keys[english_keys.IndexOf(char.ToLower(c))] : c);
+            }
+            name.Text = result.ToString();
+            name.Focus();
+            name.CaretIndex = name.Text.Length;
+        }
+
+        private void RandomName_Click(object sender, RoutedEventArgs e)
+        {
+            string random = Path.GetFileNameWithoutExtension(Path.GetRandomFileName());
+            int dot = is_file_name ? name.Text.LastIndexOf('.') : -1;
+            name.Text = random + (dot > 0 ? name.Text.Substring(dot) : "");
+            name.Focus();
+            name.Select(0, random.Length);
         }
 
         private void Window_PreviewKeyUp(object sender, KeyEventArgs e)

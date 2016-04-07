@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Management;
 using System.Numerics;
 using System.Runtime.InteropServices;
@@ -68,13 +69,32 @@ namespace File_Manager
 
         List<long> old = new List<long>();
         List<long> newnew = new List<long>();
+        List<double> speed_samples = new List<double>();
 
-        OperationTree root, already_exist, unsucsess, undeleted;
+        OperationTree root, already_exist, unsucsess;
         long progress_value, completed_count, old_progress_value;
-        int progress_rount = 1;
-        BinaryReader BR;
-        BinaryWriter BW;
-        bool sleep_thread = false, pause_copy = false, file_is_moved = false, CloseWindow = false;
+        int progress_rount = 1, skipped_count = 0;
+        bool sleep_thread = false, pause_copy = false, file_is_moved = false, CloseWindow = false, operation_finished = false, disk_destroy_busy = false;
+        internal List<string> result_errors = new List<string>();
+        internal List<string> result_notes = new List<string>();
+        internal List<FileInfo> verified_files = new List<FileInfo>();
+
+        internal long CompletedCount
+        {
+            get { return completed_count; }
+        }
+
+        internal int SkippedCount
+        {
+            get { return skipped_count; }
+        }
+
+        internal bool Stopped
+        {
+            get { return CloseWindow; }
+        }
+
+        internal const string WipeFolderName = "FileManager-Wipe";
         BackgroundWorker OpBW;
         Brush progress_brush = Brushes.DodgerBlue;
         Brush ProgressBrush
@@ -100,8 +120,15 @@ namespace File_Manager
         {
             OperationType = operation_type;
             root = new OperationTree(null, false, "", operation_type, null, false, "");
+            if (operation_type == OperationType.Copy)
+            {
+                ToCopyList = PrepareCopyList(ToCopyList, path_to_paste);
+                if (ToCopyList == null)
+                    return;
+                path_to_paste = Path.GetFullPath(path_to_paste).TrimEnd('\\');
+            }
             paste_in = path_to_paste;
-            operation.Text = Title = operation_type == OperationType.Copy ? "Copying" : operation_type == OperationType.Delete ? "Deleting" : operation_type == OperationType.Rename ? "Renaming" : operation_type == OperationType.Attributes ? "Applaying Attributes" : operation_type == OperationType.Extract ? "Extracting Files" : "";
+            operation.Text = Title = operation_type == OperationType.Copy ? (ToCopyList.TrueForAll(x => x.IsCut) ? "Moving" : "Copying") : operation_type == OperationType.Delete ? "Deleting" : operation_type == OperationType.Rename ? "Renaming" : operation_type == OperationType.Attributes ? "Applaying Attributes" : operation_type == OperationType.Extract ? "Extracting Files" : "";
             BackgroundWorker CollectFiles = new BackgroundWorker();
             if (operation_type != OperationType.Delete)
                 CollectFiles.DoWork += CollectFiles_DoWork;
@@ -129,17 +156,72 @@ namespace File_Manager
                 Show();
         }
 
+        List<FileOperationItem> PrepareCopyList(List<FileOperationItem> source_list, string path_to_paste)
+        {
+            string target;
+            try { target = Path.GetFullPath(path_to_paste).TrimEnd('\\'); }
+            catch (Exception ex)
+            {
+                Messages.ShowMessage("We can not paste here.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message);
+                return null;
+            }
+            List<FileOperationItem> list = new List<FileOperationItem>();
+            List<string> refused = new List<string>(), cut_items = new List<string>();
+            foreach (var i in source_list)
+            {
+                FileOperationItem item = i.Item is FileInfo ? new FileOperationItem((FileInfo)i.Item, i.IsCut, i.short_path) : new FileOperationItem((DirectoryInfo)i.Item, i.IsCut, i.short_path);
+                item.Item.Refresh();
+                string source = item.Item.FullName.TrimEnd('\\');
+                if (!item.Item.Exists)
+                {
+                    refused.Add(source + "\n    (it does not exist or the drive is not ready)");
+                    continue;
+                }
+                if (item.Item is DirectoryInfo && (string.Equals(source, target, StringComparison.OrdinalIgnoreCase) || target.StartsWith(source + "\\", StringComparison.OrdinalIgnoreCase)))
+                {
+                    refused.Add(source + "\n    (a directory can not be copied or moved into itself)");
+                    continue;
+                }
+                if (item.Item is DirectoryInfo && ((DirectoryInfo)item.Item).Parent == null)
+                    item.short_path = "Drive " + source.TrimEnd(':', '\\');
+                string parent = Path.GetDirectoryName(source);
+                if (parent != null && string.Equals(parent.TrimEnd('\\'), target, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (item.IsCut)
+                        continue;
+                    item.short_path = Functions.GetCopyName(target, item.Item.Name, item.Item is FileInfo);
+                }
+                if (item.IsCut)
+                    cut_items.Add(source);
+                list.Add(item);
+            }
+            if (refused.Count > 0)
+                Messages.ShowMessage(string.Format("{0} item{1} skipped.", refused.Count, refused.Count > 1 ? "s were" : " was"), ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, string.Join("\n", refused.ToArray()));
+            if (list.Count == 0 || !Functions.ConfirmRiskyItems(cut_items, "move"))
+                return null;
+            return list;
+        }
+
         private void CollectFiles_DoWork(object sender, DoWorkEventArgs e)
         {
             foreach (FileOperationItem i in (List<FileOperationItem>)e.Argument)
+            {
+                if (CloseWindow) return;
                 if (i.Item is FileInfo)
                     root.children.Add(new OperationTree((FileInfo)i.Item, i.IsCut, i.short_path, OperationType, root, ""));
                 else
                     root.children.Add(new OperationTree((DirectoryInfo)i.Item, i.IsCut, i.short_path, OperationType, root, OperationType == OperationType.Copy || OperationType == OperationType.Delete, ""));
+            }
         }
 
         void CompleteCollectFiles(long maximum_progress_bar_value, string title)
         {
+            if (CloseWindow)
+            {
+                operation_finished = true;
+                Close();
+                return;
+            }
             progress_bar.IsIndeterminate = false;
             progress_bar.Value = 0;
             progress_bar.Maximum = maximum_progress_bar_value;
@@ -155,11 +237,29 @@ namespace File_Manager
                 OpBW.DoWork += Renaming_DoWork;
             else if (OperationType == OperationType.Attributes)
                 OpBW.DoWork += ApplyingAttribute_DoWork;
-            //else if (operation_type == Op.Extract)
-            //    OpBW.DoWork += ExtractingFiles_DoWork;
             OpBW.RunWorkerCompleted += Operation_RunWorkerCompleted;
             OpBW.ProgressChanged += Operation_ProgressChanged;
             OpBW.RunWorkerAsync(root);
+        }
+
+        void StartProgressThread(BackgroundWorker worker)
+        {
+            Thread progress_thread = new Thread(() =>
+            {
+                while (true)
+                {
+                    if (!worker.IsBusy)
+                        break;
+                    try
+                    { worker.ReportProgress(0); }
+                    catch (Exception) { }
+                    while ((sleep_thread || pause_copy) && !CloseWindow)
+                        Thread.Sleep(100);
+                    Thread.Sleep(200);
+                }
+            });
+            progress_thread.IsBackground = true;
+            progress_thread.Start();
         }
 
         private void Operation_ProgressChanged(object sender, ProgressChangedEventArgs e)
@@ -210,15 +310,20 @@ namespace File_Manager
                     old.Add(old_progress_value);
                     newnew.Add(progress_value);
                     progress_rount = 1;
+                    double per_second = (progress_value - old_progress_value) / 4.0;
                     if (operation_type == OperationType.Copy)
-                        speed.Text = Functions.FileSize((progress_value - old_progress_value) / 4, 1) + " per second";
+                        speed.Text = Functions.FileSize(per_second, 1) + "/s";
                     else if (operation_type == OperationType.Delete || operation_type == OperationType.Attributes)
                     {
-                        double x = Math.Round((progress_value - old_progress_value) / 4.0, 1);
+                        double x = Math.Round(per_second, 1);
                         speed.Text = string.Format("{0} item{1} per {2}", x > 2 ? x : 60 * x, x > 2 ? "s" : x * 60 > 2 ? "s" : "", x > 2 ? "second" : "minute");
                     }
                     else if (operation_type == OperationType.Extract)
-                        speed.Text = Functions.FileSize((progress_value - old_progress_value) * root.size / 100.0, 1) + " per second";
+                    {
+                        per_second = (progress_value - old_progress_value) * root.size / 400.0;
+                        speed.Text = Functions.FileSize(per_second, 1) + "/s";
+                    }
+                    AddSpeedSample(per_second);
                     old_progress_value = progress_value;
                 }
                 else
@@ -228,8 +333,31 @@ namespace File_Manager
             }
         }
 
+        void AddSpeedSample(double value)
+        {
+            speed_samples.Add(Math.Max(0, value));
+            if (speed_samples.Count > 60)
+                speed_samples.RemoveAt(0);
+            double max = speed_samples.Max();
+            double width = speed_graph.ActualWidth, height = speed_graph.ActualHeight;
+            if (width <= 0 || height <= 0)
+                return;
+            PointCollection points = new PointCollection();
+            for (int i = 0; i < speed_samples.Count; i++)
+                points.Add(new Point(speed_samples.Count > 1 ? i * width / (speed_samples.Count - 1) : width, height - (max > 0 ? speed_samples[i] / max * (height - 2) : 0) - 1));
+            speed_line.Points = points;
+            speed_line.Stroke = ProgressBrush;
+            speed_graph.ToolTip = "Speed during the last " + speed_samples.Count * (operation_type == OperationType.Destroy || operation_type == OperationType.DiskDestroy || operation_type == OperationType.Encrypt || operation_type == OperationType.Decrypt ? 2 : 4) + " seconds";
+        }
+
         private void Operation_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
+            operation_finished = true;
+            if (e.Error != null)
+                Messages.ShowMessage("The operation has stopped because of an error.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, e.Error.Message);
+            List<string> unreadable = root != null ? root.unreadable : null;
+            if (unreadable != null && unreadable.Count > 0)
+                Messages.ShowMessage(string.Format("{0} director{1} could not be read and {2} skipped.", unreadable.Count, unreadable.Count > 1 ? "ies" : "y", unreadable.Count > 1 ? "were" : "was"), ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, string.Join("\n", unreadable.Take(50).ToArray()));
             Close();
         }
 
@@ -253,11 +381,11 @@ namespace File_Manager
                 queue.Add(i);
                 i = i.parent;
             }
+            OperationTree k = add_in;
+            bool continue_search = true;
             for (int j = queue.Count - 1; j > -1; j--)
             {
-                OperationTree k = add_in;
                 int index = 0;
-                bool continue_search = true;
                 if (continue_search && k.Contains(queue[j], out index))
                 {
                     k = k.children[index];
@@ -268,14 +396,21 @@ namespace File_Manager
                 {//////////////////ex_,dl_,mp_,wa_.....
                     OperationTree t;
                     if (queue[j].item is DirectoryInfo)
-                        t = new OperationTree((DirectoryInfo)queue[j].item, queue[j].is_cut, queue[j].short_path, queue[j].operation, queue[j].parent, false, queue[j].error_message);
+                        t = new OperationTree((DirectoryInfo)queue[j].item, queue[j].is_cut, queue[j].short_path, queue[j].operation, queue[j].parent, false, j == 0 ? queue[j].error_message : "");
                     else
                         t = new OperationTree((FileInfo)queue[j].item, queue[j].is_cut, queue[j].short_path, queue[j].operation, queue[j].parent, queue[j].error_message);
+                    t.size = queue[j].size;
                     k.children.Add(t);
                     k = t;
                     continue_search = false;
                 }
             }
+        }
+
+        static bool SameRoot(string first, string second)
+        {
+            try { return string.Equals(Path.GetPathRoot(first).TrimEnd('\\'), Path.GetPathRoot(second).TrimEnd('\\'), StringComparison.OrdinalIgnoreCase); }
+            catch (Exception) { return false; }
         }
 
         #region Copy and Move Region
@@ -289,29 +424,16 @@ namespace File_Manager
 
         private void Copying_DoWork(object sender, DoWorkEventArgs e)
         {
-            Thread progress_thread = new Thread(() => 
-            {
-                while (true)
-                {
-                    if (!OpBW.IsBusy)
-                        break;
-                    try
-                    { OpBW.ReportProgress(0); }
-                    catch (Exception) { }
-                    while (sleep_thread)
-                        Thread.Sleep(100);
-                    while (pause_copy)
-                        Thread.Sleep(100);
-                    Thread.Sleep(200);
-                }
-            });
-            progress_thread.Start();
+            StartProgressThread(OpBW);
             already_exist = new OperationTree(null, root.is_cut, "", operation_type, null, false, "File already exist");
             unsucsess = new OperationTree(null, root.is_cut, "", operation_type, null, false, "Some thing wrong");
             OperationTree temp;
             foreach (var i in root.children)
+            {
+                if (CloseWindow) return;
                 CopySun(i);
-            while (true)
+            }
+            while (!CloseWindow)
             {
                 if (already_exist.children.Count > 0)
                 {
@@ -325,11 +447,13 @@ namespace File_Manager
                     already_exist.children.Clear();
                     foreach (var i in temp.children)
                     {
+                        if (CloseWindow) return;
                         if (i.user_option == OperationOption.Skip)
                         {
                             i.Done = true;
                             progress_value += i.size;
                             completed_count++;
+                            skipped_count++;
                         }
                         else
                             CopySun(i);
@@ -346,14 +470,18 @@ namespace File_Manager
                         temp.children.Add(i);
                     unsucsess.children.Clear();
                     foreach (var i in temp.children)
+                    {
+                        if (CloseWindow) return;
                         if (i.user_option == OperationOption.Skip)
                         {
                             i.Done = true;
                             progress_value += i.size;
                             completed_count++;
+                            skipped_count++;
                         }
                         else
                             CopySun(i);
+                    }
                 }
                 if (unsucsess.children.Count == 0 && already_exist.children.Count == 0)
                     break;
@@ -362,6 +490,8 @@ namespace File_Manager
 
         private void CopySun(OperationTree i)
         {
+            if (CloseWindow)
+                return;
             if (!i.Done)
             {
                 if (i.children == null)
@@ -373,57 +503,106 @@ namespace File_Manager
                         i.Done = true;
                         progress_value += i.size;
                         completed_count++;
+                        skipped_count++;
                     }
                     else
                     {
-                        if (CreatePath(paste_in + "\\" + i.short_path, 1))
-                            if (File.Exists(paste_in + "\\" + i.short_path) && i.user_option == OperationOption.NoValue)
-                            {
-                                i.error_message = "File already existe.";
-                                AddError(i, already_exist);
-                            }
-                            else
-                            {
-                                DriveInfo target_drive = new DriveInfo(paste_in[0] + ":\\");
-                                if (target_drive.IsReady && target_drive.AvailableFreeSpace > i.size)
-                                    if (!((target_drive.DriveFormat.ToLower() == "fat" || target_drive.DriveFormat.ToLower() == "fat32") && (i.size > 4294967295)))
-                                        WriteFile(i);
-                                    else
-                                    {
-                                        i.error_message = "Target's drive's file format can't fit files more than 4 GB.";
-                                        AddError(i, unsucsess);
-                                    }
-                                else
-                                {
-                                    i.error_message = "Target drive's free space is less than file size";
-                                    AddError(i, unsucsess);
-                                }
-                            }
-                        else
+                        string target_path = paste_in + "\\" + i.short_path;
+                        if (File.Exists(target_path) && i.user_option == OperationOption.NoValue)
                         {
-                            i.error_message = "Can't write file on drive.";
+                            i.error_message = "File already existe.";
+                            AddError(i, already_exist);
+                        }
+                        else if (Directory.Exists(target_path))
+                        {
+                            i.error_message = "A directory with the same name already exists in the target.";
                             AddError(i, unsucsess);
                         }
+                        else
+                        {
+                            long free_space = -1;
+                            string drive_format = "";
+                            try
+                            {
+                                DriveInfo target_drive = new DriveInfo(Path.GetPathRoot(paste_in));
+                                if (target_drive.IsReady)
+                                {
+                                    free_space = target_drive.AvailableFreeSpace;
+                                    drive_format = target_drive.DriveFormat.ToLower();
+                                }
+                            }
+                            catch (Exception) { }
+                            bool same_drive_move = i.is_cut && SameRoot(i.item.FullName, paste_in);
+                            if (!same_drive_move && i.user_option != OperationOption.Continue && free_space >= 0 && free_space <= i.size)
+                            {
+                                i.error_message = "Target drive's free space is less than file size";
+                                AddError(i, unsucsess);
+                            }
+                            else if ((drive_format == "fat" || drive_format == "fat32") && i.size > 4294967295)
+                            {
+                                i.error_message = "Target's drive's file format can't fit files more than 4 GB.";
+                                AddError(i, unsucsess);
+                            }
+                            else
+                                WriteFile(i);
+                        }
+                    }
+                }
+                else if (i.is_link)
+                {
+                    current_file_name = i.item.FullName;
+                    string link_path = paste_in + "\\" + i.short_path;
+                    try
+                    {
+                        if (Directory.Exists(link_path) || File.Exists(link_path))
+                            throw new IOException("An item with the same name already exists in the target.");
+                        CreatePath(link_path, 1);
+                        if (i.is_cut && SameRoot(i.item.FullName, link_path))
+                            Directory.Move(i.item.FullName, link_path);
+                        else
+                        {
+                            Classes.JunctionPoint.Create(link_path, Classes.JunctionPoint.GetTarget(i.item.FullName), true);
+                            if (i.is_cut)
+                                Directory.Delete(i.item.FullName, false);
+                        }
+                        i.Done = true;
+                        completed_count++;
+                    }
+                    catch (Exception ex)
+                    {
+                        i.error_message = "This link was not copied (links are never followed): " + ex.Message;
+                        AddError(i, unsucsess);
                     }
                 }
                 else
                 {
-                    CreatePath(paste_in + "\\" + i.short_path, 0);
+                    if (!CreatePath(paste_in + "\\" + i.short_path, 0))
+                    {
+                        i.error_message = "Can't create directory in the target.";
+                        AddError(i, unsucsess);
+                        return;
+                    }
                     foreach (var j in i.children)
+                    {
+                        if (CloseWindow) return;
                         CopySun(j);
+                    }
                     if (i.children.Count == i.completed)
                     {
                         i.Done = true;
                         if (i.is_cut)
                         {
-                            if (((DirectoryInfo)i.item).GetFiles().Length + ((DirectoryInfo)i.item).GetDirectories().Length == 0)
-                                try { i.item.Delete(); }
-                                catch (Exception) { i.error_message = "Can't delete directory"; AddError(i, unsucsess); }
-                            else
+                            try
                             {
-                                i.error_message = "Can't delete directory, it is not empty.";
-                                AddError(i, unsucsess);
+                                if (((DirectoryInfo)i.item).GetFiles().Length + ((DirectoryInfo)i.item).GetDirectories().Length == 0)
+                                    i.item.Delete();
+                                else
+                                {
+                                    i.error_message = "Can't delete directory, it is not empty.";
+                                    AddError(i, unsucsess);
+                                }
                             }
+                            catch (Exception) { i.error_message = "Can't delete directory"; AddError(i, unsucsess); }
                         }
                     }
                 }
@@ -438,94 +617,116 @@ namespace File_Manager
 
         private bool CreatePath(string path, int to)
         {
-            //try
-            //{
-            //    Directory.CreateDirectory(path);
-            //    return true;
-            //}
-            //catch(Exception)
-            //{ return false; }
-            string[] s = path.Split(Functions.spliter, StringSplitOptions.RemoveEmptyEntries);
-            string pp = s[0];
-            for (int i = 1; i < s.Length - to; i++)
+            try
             {
-                pp += ("\\" + s[i]);
-                if (!Directory.Exists(pp))
-                    try { Directory.CreateDirectory(pp); }
-                    catch (Exception) { return false; }
+                string directory = to == 1 ? Path.GetDirectoryName(path) : path;
+                if (!string.IsNullOrEmpty(directory))
+                    Directory.CreateDirectory(directory);
+                return true;
             }
-            return true;
+            catch (Exception) { return false; }
         }
 
         void WriteFile(OperationTree i)
         {
-            //error while copying
             string new_path = paste_in + "\\" + i.short_path;
-            bool copy = true;
-            if (File.Exists(paste_in + "\\" + i.short_path))
-                if (i.user_option == OperationOption.Over)
-                    File.Delete(paste_in + "\\" + i.short_path);
-                else if (i.user_option == OperationOption.CopyWithNewName)
-                {
-                    FileInfo target_file = new FileInfo(new_path);
-                    string extention = target_file.Extension;
-                    string name;
-                    name = extention.Length > 0 ? target_file.Name.Remove(target_file.Name.Length - extention.Length) : target_file.Name;
-                    int num = 1;
-                    while (File.Exists(paste_in + "\\" + name + " (" + num + ")" + extention)) num++;
-                    new_path = paste_in + "\\" + name + " (" + num + ")" + extention;
-                }
-            if (copy && CreatePath(new_path, 1))
+            bool resume = false, created = false;
+            long done_bytes = 0;
+            try
             {
-                if (i.item.FullName[0] == paste_in[0] && i.is_cut)
+                if (File.Exists(new_path))
                 {
-                    try
+                    string source_id = Functions.GetFileId(i.item.FullName);
+                    if (string.Equals(Path.GetFullPath(new_path), Path.GetFullPath(i.item.FullName), StringComparison.OrdinalIgnoreCase) || (source_id != null && source_id == Functions.GetFileId(new_path)))
+                        throw new IOException("The source and the target are the same file.");
+                    if (i.user_option == OperationOption.Over)
                     {
-                        File.Move(i.item.FullName, new_path);
-                        progress_value += i.size;
-                        completed_count++;
+                        File.SetAttributes(new_path, FileAttributes.Normal);
+                        File.Delete(new_path);
                     }
-                    catch(Exception ex)
+                    else if (i.user_option == OperationOption.CopyWithNewName)
                     {
-                        i.error_message = ex.Message;
-                        unsucsess.children.Add(i);
+                        FileInfo target_file = new FileInfo(new_path);
+                        string extention = target_file.Extension;
+                        string name;
+                        name = extention.Length > 0 ? target_file.Name.Remove(target_file.Name.Length - extention.Length) : target_file.Name;
+                        int num = 1;
+                        while (File.Exists(Path.Combine(target_file.DirectoryName, name + " (" + num + ")" + extention))) num++;
+                        new_path = Path.Combine(target_file.DirectoryName, name + " (" + num + ")" + extention);
                     }
+                    else if (i.user_option == OperationOption.Continue)
+                        resume = true;
+                    else
+                        throw new IOException("The file already exists in the target.");
                 }
-                else
+                if (!CreatePath(new_path, 1))
+                    throw new IOException("Can't write file on drive.");
+                if (!resume && i.is_cut && SameRoot(i.item.FullName, new_path))
                 {
-                    BR = new BinaryReader(File.OpenRead(i.item.FullName));
-                    BW = new BinaryWriter(File.OpenWrite(new_path));
-                    long k;
-                    for (k = Functions.buffer; k <= i.size; k += Functions.buffer)
-                    {
-                        while (pause_copy)
-                            Thread.Sleep(250);
-                        BW.Write(BR.ReadBytes(Functions.buffer));
-                        progress_value += Functions.buffer;
-                    }
-                    long remain = (i.size - (k - Functions.buffer));
-                    BW.Write(BR.ReadBytes((int)remain));
-                    progress_value += remain;
-                    BW.Close();
-                    BR.Close();
-                    try
-                    {
-                        File.SetAttributes(new_path, File.GetAttributes(i.item.FullName));
-                        File.SetCreationTime(new_path, i.item.CreationTime);
-                        File.SetCreationTimeUtc(new_path, i.item.CreationTimeUtc);
-                        File.SetLastAccessTime(new_path, i.item.LastAccessTime);
-                        File.SetLastAccessTimeUtc(new_path, i.item.LastAccessTimeUtc);
-                        File.SetLastWriteTime(new_path, i.item.LastWriteTime);
-                        File.SetLastWriteTimeUtc(new_path, i.item.LastWriteTimeUtc);
-                    }
-                    catch (Exception) { }
-                    i.Done = true;
-                    if(i.is_cut)
-                        try
-                        { i.item.Delete(); }
-                        catch (Exception) { i.error_message = "Can't delete file"; AddError(i, unsucsess); }
+                    File.Move(i.item.FullName, new_path);
+                    progress_value += i.size;
                     completed_count++;
+                    i.Done = true;
+                    return;
                 }
+                using (FileStream source = new FileStream(i.item.FullName, FileMode.Open, FileAccess.Read, FileShare.Read))
+                using (FileStream target = new FileStream(new_path, resume ? FileMode.Append : FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                {
+                    created = !resume;
+                    if (resume)
+                    {
+                        if (target.Length > source.Length)
+                            throw new IOException("The file in the target is bigger than the source, it can not be continued.");
+                        source.Position = target.Length;
+                        done_bytes = target.Length;
+                        progress_value += done_bytes;
+                    }
+                    byte[] buffer = new byte[Functions.buffer];
+                    int read;
+                    while ((read = source.Read(buffer, 0, buffer.Length)) > 0)
+                    {
+                        while (pause_copy && !CloseWindow)
+                            Thread.Sleep(250);
+                        if (CloseWindow)
+                            throw new OperationCanceledException();
+                        target.Write(buffer, 0, read);
+                        progress_value += read;
+                        done_bytes += read;
+                    }
+                }
+                try
+                {
+                    File.SetAttributes(new_path, File.GetAttributes(i.item.FullName));
+                    File.SetCreationTimeUtc(new_path, i.item.CreationTimeUtc);
+                    File.SetLastAccessTimeUtc(new_path, i.item.LastAccessTimeUtc);
+                    File.SetLastWriteTimeUtc(new_path, i.item.LastWriteTimeUtc);
+                }
+                catch (Exception) { }
+                i.Done = true;
+                if (i.is_cut)
+                    try
+                    {
+                        File.SetAttributes(i.item.FullName, FileAttributes.Normal);
+                        i.item.Delete();
+                    }
+                    catch (Exception) { i.error_message = "Can't delete file"; AddError(i, unsucsess); }
+                completed_count++;
+            }
+            catch (OperationCanceledException)
+            {
+                progress_value -= done_bytes;
+                if (created)
+                    try { File.Delete(new_path); }
+                    catch (Exception) { }
+            }
+            catch (Exception ex)
+            {
+                progress_value -= done_bytes;
+                if (created)
+                    try { File.Delete(new_path); }
+                    catch (Exception) { }
+                i.error_message = ex.Message;
+                AddError(i, unsucsess);
             }
         }
 
@@ -536,21 +737,24 @@ namespace File_Manager
         private void CollectFilesToDelete_DoWork(object sender, DoWorkEventArgs e)
         {
             foreach (FileOperationItem i in (List<FileOperationItem>)e.Argument)
+            {
+                if (CloseWindow) return;
                 if (i.Item is FileInfo)
                     root.children.Add(new OperationTree((FileInfo)i.Item, false, i.short_path, OperationType.Delete, root, ""));
                 else
-                {
-                    if (Classes.JunctionPoint.Exists(i.Item.FullName))
-                        try
-                        { Classes.JunctionPoint.Delete(i.Item.FullName); }
-                        catch (Exception ex) { AddError(new OperationTree((DirectoryInfo)i.Item, true, i.short_path, operation_type, root, true, ex.Message), unsucsess); }
-                    else
-                        root.children.Add(new OperationTree((DirectoryInfo)i.Item, false, i.short_path, operation_type, root, true, ""));
-                }
+                    root.children.Add(new OperationTree((DirectoryInfo)i.Item, false, i.short_path, operation_type, root, true, ""));
+            }
         }
 
         private void CollectFilesToDelete_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
+            if (e.Error != null)
+            {
+                operation_finished = true;
+                Messages.ShowMessage("We could not collect the items to delete, nothing was deleted.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, e.Error.Message);
+                Close();
+                return;
+            }
             foreach (var i in root.children)
             {
                 root.directory_count += i.directory_count;
@@ -562,27 +766,16 @@ namespace File_Manager
 
         private void Deleting_DoWork(object sender, DoWorkEventArgs e)
         {
-            Thread progress_thread = new Thread(() =>
-            {
-                while (true)
-                {
-                    if (!OpBW.IsBusy)
-                        break;
-                    OpBW.ReportProgress(0);
-                    while (sleep_thread || pause_copy)
-                        Thread.Sleep(100);
-                    System.Threading.Thread.Sleep(200);
-                }
-            });
-            progress_thread.Start();
+            StartProgressThread(OpBW);
             OperationTree temp;
             foreach (var i in root.children)
             {
+                if (CloseWindow) return;
                 DeleteSun(i);
-                while (pause_copy)
+                while (pause_copy && !CloseWindow)
                     Thread.Sleep(100);
             }
-            while (true)
+            while (!CloseWindow)
             {
                 if (unsucsess.children.Count > 0)
                 {
@@ -595,14 +788,18 @@ namespace File_Manager
                         temp.children.Add(i);
                     unsucsess.children.Clear();
                     foreach (var i in temp.children)
+                    {
+                        if (CloseWindow) return;
                         if (i.user_option == OperationOption.Skip)
                         {
                             i.Done = true;
                             progress_value++;
                             completed_count++;
+                            skipped_count++;
                         }
                         else
                             DeleteSun(i);
+                    }
                 }
                 if (unsucsess.children.Count == 0)
                     break;
@@ -611,6 +808,8 @@ namespace File_Manager
 
         private void DeleteSun(OperationTree i)
         {
+            if (CloseWindow)
+                return;
             if (!i.Done)
             {
                 if (i.children == null)
@@ -621,12 +820,16 @@ namespace File_Manager
                         i.Done = true;
                         progress_value++;
                         completed_count++;
+                        skipped_count++;
                     }
                     else
                     {
+                        i.item.Refresh();
                         if (i.item.Exists)
                             try
                             {
+                                if (i.item.Attributes.HasFlag(FileAttributes.ReadOnly))
+                                    i.item.Attributes &= ~FileAttributes.ReadOnly;
                                 i.item.Delete();
                                 i.Done = true;
                                 progress_value++;
@@ -640,92 +843,69 @@ namespace File_Manager
                         }
                     }
                 }
+                else if (i.is_link)
+                {
+                    current_file_name = i.item.FullName;
+                    try
+                    {
+                        Directory.Delete(i.item.FullName, false);
+                        i.Done = true;
+                        progress_value++;
+                        completed_count++;
+                    }
+                    catch (Exception ex)
+                    {
+                        i.error_message = ex.Message;
+                        AddError(i, unsucsess);
+                    }
+                }
                 else
                 {
-                    if (i.is_cut)
+                    foreach (var j in i.children)
                     {
-                        if (Classes.JunctionPoint.Exists(i.item.FullName))
-                            try
-                            { Classes.JunctionPoint.Delete(i.item.FullName); }
-                            catch (Exception ex)
-                            {
-                                i.error_message = ex.Message;
-                                AddError(i, unsucsess);
-                            }
+                        if (CloseWindow) return;
+                        DeleteSun(j);
+                        while (pause_copy && !CloseWindow)
+                            Thread.Sleep(100);
                     }
-                    else
+                    if (i.children.Count == i.completed)
                     {
-                        foreach (var j in i.children)
+                        current_file_name = i.item.FullName;
+                        i.item.Refresh();
+                        if (i.item.Exists)
                         {
-                            DeleteSun(j);
-                            while (pause_copy)
-                                Thread.Sleep(100);
-                        }
-                        if (i.children.Count == i.completed)
-                        {
-                            if (i.item.Exists)
+                            long d = -1;
+                            try
+                            { d = ((DirectoryInfo)i.item).GetDirectories().Length + ((DirectoryInfo)i.item).GetFiles().Length; }
+                            catch (Exception) { }
+                            if (d == 0)
                             {
-                                long d = 0;
                                 try
-                                { d = ((DirectoryInfo)i.item).GetDirectories().Length + ((DirectoryInfo)i.item).GetFiles().Length; }
-                                catch (Exception) { }
-                                if (d == 0)
                                 {
-                                    try
-                                    {
-                                        i.item.Delete();
-                                        i.Done = true;
-                                        progress_value++;
-                                        completed_count++;
-                                    }
-                                    catch (Exception ex) { i.error_message = ex.Message; AddError(i, unsucsess); }
+                                    if (i.item.Attributes.HasFlag(FileAttributes.ReadOnly))
+                                        i.item.Attributes &= ~FileAttributes.ReadOnly;
+                                    i.item.Delete();
+                                    i.Done = true;
+                                    progress_value++;
+                                    completed_count++;
                                 }
-                                else
-                                {
-                                    i.error_message = "Can't delete directory, it is not empty.";
-                                    AddError(i, unsucsess);
-                                }
+                                catch (Exception ex) { i.error_message = ex.Message; AddError(i, unsucsess); }
                             }
                             else
                             {
-                                i.error_message = "Directory is not exist.";
+                                i.error_message = d < 0 ? "Can't read the directory content." : "Can't delete directory, it is not empty.";
                                 AddError(i, unsucsess);
                             }
+                        }
+                        else
+                        {
+                            i.error_message = "Directory is not exist.";
+                            AddError(i, unsucsess);
                         }
                     }
                 }
             }
         }
-
-        //private void Deleting_ProgressChanged(object sender, ProgressChangedEventArgs e)
-        //{
-        //    if (e.ProgressPercentage < 0)
-        //    {
-        //        if (((int)e.UserState) == 2)
-        //            new File_s_Transferring_Error(unsucsess, paste_in).ShowThisDialog();
-        //        sleep_thread = false;
-        //    }
-        //    else
-        //    {
-        //        progress_bar.Value = progress_value;
-                
-        //        double val = progress_bar.Value * 100 / root.files_count + root.directory_count;
-        //        percent.Text = Math.Round(val, 0) + "%";
-        //        TaskbarItemInfo.ProgressValue = val / 100;
-        //        completed.Text = completed_count.ToString();
-        //        ChangeRemain(root.size - progress_value, false);
-        //        if (progress_rount % 20 == 0)
-        //        {
-        //            progress_rount = 1;
-        //            if (old_progress_value != 0)
-        //                speed.Text = Math.Round(progress_value - old_progress_value / 2.0, 1) + " items per second";
-        //            old_progress_value = progress_value;
-        //        }
-        //        else
-        //            progress_rount++;
-        //        item_name.ToolTip = item_name.Text = current_file_name;
-        //    }
-        //}
 
         #endregion
 
@@ -733,30 +913,20 @@ namespace File_Manager
 
         private void CollectFilesToRename_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
-            CompleteCollectFiles(root.children.Count, root.children.Count + " item" + ((root.directory_count + root.files_count > 1) ? "s" : ""));
+            CompleteCollectFiles(root.children.Count, root.children.Count + " item" + ((root.children.Count > 1) ? "s" : ""));
         }
 
         private void Renaming_DoWork(object sender, DoWorkEventArgs e)
         {
-            Thread progress_thread = new Thread(() =>
-            {
-                while (true)
-                {
-                    if (!OpBW.IsBusy)
-                        break;
-                    try { OpBW.ReportProgress(0); }
-                    catch (Exception) { }
-                    while (sleep_thread || pause_copy)
-                        Thread.Sleep(100);
-                    System.Threading.Thread.Sleep(200);
-                }
-            });
-            progress_thread.Start();
+            StartProgressThread(OpBW);
             unsucsess = new OperationTree(null, false, "", operation_type, null, false, "Can't Rename item");
             OperationTree temp;
             foreach (var i in root.children)
+            {
+                if (CloseWindow) return;
                 RenameSun(i);
-            while (true)
+            }
+            while (!CloseWindow)
             {
                 if (unsucsess.children.Count > 0)
                 {
@@ -774,6 +944,7 @@ namespace File_Manager
                             i.Done = true;
                             progress_value++;
                             completed_count++;
+                            skipped_count++;
                         }
                         else
                             RenameSun(i);
@@ -785,11 +956,12 @@ namespace File_Manager
 
         private void RenameSun(OperationTree i)
         {
-            if (!i.Done)
+            if (!i.Done && !CloseWindow)
             {
-                //paste_in = "";
                 current_file_name = i.item.FullName;
-                if (i.user_option == OperationOption.Skip || i.item.FullName == i.item.FullName.Substring(0, i.item.FullName.LastIndexOf('\\')) + "\\" + i.short_path)
+                string folder = Path.GetDirectoryName(i.item.FullName.TrimEnd('\\'));
+                string target = Path.Combine(folder, i.short_path.ToString());
+                if (i.user_option == OperationOption.Skip || i.item.FullName == target)
                 {
                     i.Done = true;
                     progress_value++;
@@ -797,29 +969,53 @@ namespace File_Manager
                 }
                 else if (i.item.Exists)
                 {
-                    string new_name;
-                    if (File.Exists(i.item.FullName.Substring(0, i.item.FullName.LastIndexOf('\\')) + "\\" + i.short_path))
+                    string new_name = target;
+                    bool case_only = string.Equals(i.item.FullName, target, StringComparison.OrdinalIgnoreCase);
+                    if (!case_only && (File.Exists(target) || Directory.Exists(target)))
                     {
-                        FileInfo target_file = new FileInfo(i.item.FullName.Substring(0, i.item.FullName.LastIndexOf('\\')) + "\\" + i.short_path);
-                        string name;
-                        name = target_file.Extension.Length > 0 ? target_file.Name.Remove(target_file.Name.Length - target_file.Extension.Length) : target_file.Name;
+                        string name = i.children == null ? Path.GetFileNameWithoutExtension(target) : Path.GetFileName(target);
+                        string extention = i.children == null ? Path.GetExtension(target) : "";
                         int num = 1;
-                        while (File.Exists(name + i.short_path + "\\" + " (" + num + ")" + target_file.Extension)) num++;
-                        new_name = i.item.FullName.Substring(0, i.item.FullName.LastIndexOf('\\')) + "\\" + i.short_path + " (" + num + ")" + target_file.Extension;
+                        do new_name = Path.Combine(folder, name + " (" + num++ + ")" + extention);
+                        while (File.Exists(new_name) || Directory.Exists(new_name));
                     }
-                    else
-                        new_name = i.item.FullName.Substring(0, i.item.FullName.LastIndexOf('\\')) + "\\" + i.short_path;
+                    string temp_name = null;
                     try
                     {
-                        if (i.children == null)
-                            ((FileInfo)i.item).MoveTo(new_name);
+                        if (case_only)
+                        {
+                            temp_name = Path.Combine(folder, Guid.NewGuid().ToString("N"));
+                            if (i.children == null)
+                                File.Move(i.item.FullName, temp_name);
+                            else
+                                Directory.Move(i.item.FullName, temp_name);
+                            if (i.children == null)
+                                File.Move(temp_name, new_name);
+                            else
+                                Directory.Move(temp_name, new_name);
+                        }
+                        else if (i.children == null)
+                            File.Move(i.item.FullName, new_name);
                         else
-                            ((DirectoryInfo)i.item).MoveTo(new_name);
+                            Directory.Move(i.item.FullName, new_name);
                         i.Done = true;
                         progress_value++;
                         completed_count++;
                     }
-                    catch (Exception ex) { i.error_message = ex.Message; AddError(i, unsucsess); }
+                    catch (Exception ex)
+                    {
+                        if (temp_name != null)
+                            try
+                            {
+                                if (File.Exists(temp_name))
+                                    File.Move(temp_name, i.item.FullName);
+                                else if (Directory.Exists(temp_name))
+                                    Directory.Move(temp_name, i.item.FullName);
+                            }
+                            catch (Exception) { }
+                        i.error_message = ex.Message;
+                        AddError(i, unsucsess);
+                    }
                 }
                 else
                 {
@@ -846,26 +1042,15 @@ namespace File_Manager
 
         private void ApplyingAttribute_DoWork(object sender, DoWorkEventArgs e)
         {
-            Thread progress_thread = new Thread(() =>
-            {
-                while (true)
-                {
-                    if (!OpBW.IsBusy)
-                        break;
-                    try
-                    { OpBW.ReportProgress(0); }
-                    catch (Exception) { }
-                    while (sleep_thread || pause_copy)
-                        Thread.Sleep(100);
-                    Thread.Sleep(200);
-                }
-            });
-            progress_thread.Start();
+            StartProgressThread(OpBW);
             unsucsess = new OperationTree(null, false, "", operation_type, null, false, "Can't applying attribute to item");
             OperationTree temp;
             foreach (var i in root.children)
+            {
+                if (CloseWindow) return;
                 ApplyingAttributeToSun(i);
-            while (true)
+            }
+            while (!CloseWindow)
             {
                 if (unsucsess.children.Count > 0)
                 {
@@ -883,6 +1068,7 @@ namespace File_Manager
                             i.Done = true;
                             progress_value++;
                             completed_count++;
+                            skipped_count++;
                         }
                         else
                             ApplyingAttributeToSun(i);
@@ -894,7 +1080,7 @@ namespace File_Manager
 
         private void ApplyingAttributeToSun(OperationTree i)
         {
-            if (!i.Done)
+            if (!i.Done && !CloseWindow)
             {
                 if (i.children == null)
                 {
@@ -920,6 +1106,7 @@ namespace File_Manager
                 {
                     foreach (var j in i.children)
                         ApplyingAttributeToSun(j);
+                    current_file_name = i.item.FullName;
                     if (i.item.Exists)
                         ApplyAttribute(i);
                     else
@@ -938,27 +1125,18 @@ namespace File_Manager
             {
                 FileAttributes fa = (FileAttributes)i.short_path;
                 int result = -1;
-                if (!i.item.Attributes.HasFlag(FileAttributes.Compressed) && fa.HasFlag(FileAttributes.Compressed))
-                    result = (i.item is DirectoryInfo) ? DirectoryCompress(i.item) : FileCompress(i.item.FullName);
-                else if (!i.item.Attributes.HasFlag(FileAttributes.Encrypted) && fa.HasFlag(FileAttributes.Encrypted))
+                i.item.Refresh();
+                bool is_compressed = i.item.Attributes.HasFlag(FileAttributes.Compressed), is_encrypted = i.item.Attributes.HasFlag(FileAttributes.Encrypted);
+                if (!is_compressed && fa.HasFlag(FileAttributes.Compressed))
+                    result = (i.item is DirectoryInfo) ? DirectoryCompress(i.item, true) : FileCompress(i.item.FullName, true);
+                else if (is_compressed && !fa.HasFlag(FileAttributes.Compressed) && !fa.HasFlag(FileAttributes.Encrypted))
+                    result = (i.item is DirectoryInfo) ? DirectoryCompress(i.item, false) : FileCompress(i.item.FullName, false);
+                if (!is_encrypted && fa.HasFlag(FileAttributes.Encrypted))
                     File.Encrypt(i.item.FullName);
-                else if (i.item.Attributes.HasFlag(FileAttributes.Compressed) && !fa.HasFlag(FileAttributes.Compressed))
-                    result = (i.item is DirectoryInfo) ? DirectoryDecompress(i.item) : FileDecompress(i.item.FullName);
-                else if (i.item.Attributes.HasFlag(FileAttributes.Encrypted) && !fa.HasFlag(FileAttributes.Encrypted))
+                else if (is_encrypted && !fa.HasFlag(FileAttributes.Encrypted))
                     File.Decrypt(i.item.FullName);
-                //if (i.item.Attributes.HasFlag(FileAttributes.Compressed) != fa.HasFlag(FileAttributes.Compressed))
-                //{
-                //    if (fa.HasFlag(FileAttributes.Compressed))
-                //        result = (i.item is DirectoryInfo) ? DirectoryCompress(i.item) : FileCompress(i.item.FullName);
-                //    else
-                //        result = (i.item is DirectoryInfo) ? DirectoryDecompress(i.item) : FileDecompress(i.item.FullName);
-                //}
-                //if (i.item.Attributes.HasFlag(FileAttributes.Encrypted) != fa.HasFlag(FileAttributes.Encrypted))
-                //    if (fa.HasFlag(FileAttributes.Encrypted))
-                //        File.Encrypt(i.item.FullName);
-                //    else
-                //        File.Decrypt(i.item.FullName);
-                i.item.Attributes = fa;
+                FileAttributes simple = fa & (FileAttributes.ReadOnly | FileAttributes.Hidden | FileAttributes.System | FileAttributes.Archive | FileAttributes.Temporary | FileAttributes.Offline | FileAttributes.NotContentIndexed);
+                i.item.Attributes = simple == 0 ? FileAttributes.Normal : simple;
                 if (result == 0)
                 {
                     i.error_message = "Can't compress / decompress item.";
@@ -974,53 +1152,28 @@ namespace File_Manager
             catch (Exception ex) { i.error_message = ex.Message; AddError(i, unsucsess); }
         }
 
-        [DllImport("kernel32.dll")]
+        [DllImport("kernel32.dll", SetLastError = true)]
         public static extern int DeviceIoControl(IntPtr hDevice, int dwIoControlCode, ref short lpInBuffer, int nInBufferSize, IntPtr lpOutBuffer, int nOutBufferSize, ref int lpBytesReturned, IntPtr lpOverlapped);
-        int FileCompress(string file_name)
+        int FileCompress(string file_name, bool compress)
         {
             int lpBytesReturned = 0;
             int FSCTL_SET_COMPRESSION = 0x9C040;
-            short COMPRESSION_FORMAT_DEFAULT = 1;
-            FileStream stream = File.Open(file_name, System.IO.FileMode.Open, System.IO.FileAccess.ReadWrite, System.IO.FileShare.None);
-            int result = DeviceIoControl(stream.Handle, FSCTL_SET_COMPRESSION, ref COMPRESSION_FORMAT_DEFAULT, 2, IntPtr.Zero, 0, ref lpBytesReturned, IntPtr.Zero);
-            return result;
+            short COMPRESSION_FORMAT = (short)(compress ? 1 : 0);
+            using (FileStream stream = File.Open(file_name, System.IO.FileMode.Open, System.IO.FileAccess.ReadWrite, System.IO.FileShare.None))
+                return DeviceIoControl(stream.SafeFileHandle.DangerousGetHandle(), FSCTL_SET_COMPRESSION, ref COMPRESSION_FORMAT, 2, IntPtr.Zero, 0, ref lpBytesReturned, IntPtr.Zero) != 0 ? 1 : 0;
         }
 
-        int FileDecompress(string file_name)
-        {
-            //int lpBytesReturned = 0;
-            //int FSCTL_SET_COMPRESSION = 0x9C040;
-            //short COMPRESSION_FORMAT_DEFAULT = 1;
-            //FileStream stream = File.Open(file_name, System.IO.FileMode.Open, System.IO.FileAccess.ReadWrite, System.IO.FileShare.None);
-            //int result = DeviceIoControl(stream.Handle, FSCTL_SET_COMPRESSION, ref COMPRESSION_FORMAT_DEFAULT, 2, IntPtr.Zero, 0, ref lpBytesReturned, IntPtr.Zero);
-            //return result;
-            return 0;
-        }
-
-        int DirectoryCompress(FileSystemInfo dir)
+        int DirectoryCompress(FileSystemInfo dir, bool compress)
         {
             try
             {
-                string objPath = "Win32_Directory.Name=" + "'" + dir.FullName.Replace("\\", @"\\").TrimEnd('\\') + "'";
+                string objPath = "Win32_Directory.Name=" + "'" + dir.FullName.Replace("\\", @"\\").Replace("'", @"\'").TrimEnd('\\') + "'";
                 using (ManagementObject obj = new ManagementObject(objPath))
-                { using (obj.InvokeMethod("Compress", null, null)) { return 1; } }
-
+                using (ManagementBaseObject result = obj.InvokeMethod(compress ? "Compress" : "Uncompress", null, null))
+                    return Convert.ToInt32(result["ReturnValue"]) == 0 ? 1 : 0;
             }
             catch (Exception ex)
-            { System.Diagnostics.Trace.WriteLine("Cannot enable compression for folder '" + dir.FullName + "': " + ex.Message, "WMI"); return 0; }
-        }
-
-        int DirectoryDecompress(FileSystemInfo dir)
-        {
-            //try
-            //{
-            //    string objPath = "Win32_Directory.Name=" + "'" + dir.FullName.Replace("\\", @"\\").TrimEnd('\\') + "'";
-            //    using (ManagementObject obj = new ManagementObject(objPath))
-            //    { using (obj.InvokeMethod("DeCompress", null, null)) { } }
-            //}
-            //catch (Exception ex)
-            //{ System.Diagnostics.Trace.WriteLine("Cannot enable compression for folder '" + dir.FullName + "': " + ex.Message, "WMI"); }
-            return 0;
+            { System.Diagnostics.Trace.WriteLine("Cannot change compression for folder '" + dir.FullName + "': " + ex.Message, "WMI"); return 0; }
         }
 
         #endregion
@@ -1313,300 +1466,32 @@ namespace File_Manager
 
         Dictionary<string, string> drives_format = new Dictionary<string, string>();
         char[] Chars = { '$', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '&', '#', '%', '^', '(', ')', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0' };
+        Random name_random = new Random();
 
-        internal void StartDestroyFiles(List<FileInfo> files_list, DestroyMethod method, int repeat, bool delete, bool show_dialog)
+        internal static void CleanWipeFolders()
         {
-            operation_type = OperationType.Destroy;
-            undeleted = new OperationTree(null, false, null, OperationType.Destroy, null, false, "Can not delete file.");
-            unsucsess = new OperationTree(null, false, "", operation_type, null, false, "can not destroy file.");
-            Title = string.Format("Destroying {0} {1}", files_list.Count, files_list.Count > 1 ? "items" : "item");
-            double max_value = 0;
-            foreach (FileInfo i in files_list)
+            try
             {
-                max_value += i.Length;
-                while (pause_copy)
-                {
-                    Thread.Sleep(50);
-                    if (CloseWindow)
-                        return;
-                }
-            }
-            max_value *= repeat;
-            if (method == DestroyMethod.Secure)
-                max_value *= 35;
-            progress_bar.Maximum = max_value;
-            BackgroundWorker destroy_files_BackgroundWorker = new BackgroundWorker();
-            destroy_files_BackgroundWorker.WorkerReportsProgress = true;
-
-            destroy_files_BackgroundWorker.DoWork += (object sender, DoWorkEventArgs e) =>
-            {
-                BackgroundWorker bw = (BackgroundWorker)sender;
-                Thread process_thread = new Thread(() =>
-                {
-                    while (bw.IsBusy)
-                    {
-                        try
-                        { bw.ReportProgress(1); }
-                        catch (Exception) { }
-                        Thread.Sleep(100);
-                        while (pause_copy)
-                        {
-                            Thread.Sleep(50);
-                            if (CloseWindow)
-                                return;
-                        }
-                    }
-                });
-                process_thread.Start();
-
-                for (int index = 0; index < files_list.Count; index++)
-                {
-                    if (CloseWindow) return;
-                    while (pause_copy)
-                    {
-                        Thread.Sleep(50);
-                        if (CloseWindow)
-                            return;
-                    }
-                    DestroyFile(files_list[index], method, repeat, delete);
-                }
-
-                while (unsucsess.children.Count > 0)
-                {
-
-                    sleep_thread = true;
-                    destroy_files_BackgroundWorker.ReportProgress(-1);
-                    while (sleep_thread)
-                        Thread.Sleep(50);
-                    OperationTree temp = new OperationTree(null, false, "", operation_type, null, false, "");
-                    double rem = max_value;
-                    foreach (var i in unsucsess.children)
-                    {
-                        temp.children.Add(i);
-                        //rem -= i.size;
-                    }
-                    //old_progress_value = progress_value = Convert.ToInt64(rem);
-                    unsucsess.children.Clear();
-                    foreach (var i in temp.children)
-                    {
-                        while (pause_copy)
-                        {
-                            Thread.Sleep(50);
-                            if (CloseWindow)
-                                return;
-                        }
-                        if (i.user_option == OperationOption.Skip)
-                        {
-                            i.Done = true;
-                            progress_value += (i.size * repeat * (method == DestroyMethod.Secure ? 35 : 1));
-                        }
-                        else
-                        {
-                            if (CloseWindow) return;
-                            DestroyFile((FileInfo)i.item, method, repeat, delete);
-                        }
-                    }
-                }
-
-                while (undeleted.children.Count > 0)
-                {
-                    sleep_thread = true;
-                    destroy_files_BackgroundWorker.ReportProgress(-2);
-                    while (sleep_thread)
-                        Thread.Sleep(50);
-                    OperationTree temp = new OperationTree(null, false, "", operation_type, null, false, "");
-                    foreach (var i in undeleted.children)
-                        temp.children.Add(i);
-                    undeleted.children.Clear();
-                    foreach (var i in temp.children)
-                    {
-                        while (pause_copy)
-                        {
-                            Thread.Sleep(50);
-                            if (CloseWindow)
-                                return;
-                        }
-                        if (i.user_option == OperationOption.Skip)
-                            i.Done = true;
-                        else
-                        {
-                            if (CloseWindow) return;
-                            try { i.item.Delete(); }
-                            catch (Exception) { undeleted.children.Add(i); }
-                        }
-                    }
-                }
-            };
-
-            destroy_files_BackgroundWorker.ProgressChanged += Destroy_ProgressChanged;
-
-            destroy_files_BackgroundWorker.RunWorkerCompleted += (object sender, RunWorkerCompletedEventArgs e) => { Close(); };
-            progress_bar.IsIndeterminate = false;
-            destroy_files_BackgroundWorker.RunWorkerAsync();
-            if (show_dialog)
-                ShowDialog();
-            else
-                Show();
-        }
-
-        internal void StartDestroyDisk(DriveInfo drive, DestroyMethod method, int repeat, bool delete, bool show_dialog)
-        {
-            operation_type = OperationType.DiskDestroy;
-            undeleted = new OperationTree(null, false, null, OperationType.Destroy, null, false, "Can not delete file.");
-            operation.Text = Title = string.Format("Destroying {0}", drive.Name);
-            ProgressBrush = Brushes.Maroon;
-            progress_bar.Maximum = drive.AvailableFreeSpace * repeat * (method == DestroyMethod.Secure ? 35 : 1);
-            BackgroundWorker destroy_disk_BackgroundWorker = new BackgroundWorker();
-            destroy_disk_BackgroundWorker.WorkerReportsProgress = true;
-
-            destroy_disk_BackgroundWorker.DoWork += (object sender, DoWorkEventArgs e) =>
-            {
-                BackgroundWorker bw = (BackgroundWorker)sender;
-                Thread process_thread = new Thread(() =>
-                {
-                    while (bw.IsBusy)
-                    {
-                        bw.ReportProgress(1);
-                        Thread.Sleep(100);
-                        while (pause_copy)
-                        {
-                            Thread.Sleep(50);
-                            if (CloseWindow)
-                                return;
-                        }
-                    }
-                });
-                process_thread.Start();
-
-                int file_creating_error = 0;
-                List<string> files_name = new List<string>();
-                long max_file_size = 2147483648;
-                switch (drive.DriveFormat.ToLower())
-                {
-                    case "ntfs":
-                        max_file_size = 17592186044416;
-                        break;
-                    case "fat16":
-                        max_file_size = 2147483648;
-                        break;
-                    case "fat32":
-                        max_file_size = 4294967294;
-                        break;
-                    case "exfat":
-                        max_file_size = long.MaxValue;
-                        break;
-                    case "fat":
-                        max_file_size = 2147483648;
-                        break;
-                    case "fat12":
-                        max_file_size = 16777216;
-                        break;
-                }
-                while (drive.IsReady && drive.TotalFreeSpace > max_file_size && file_creating_error < 3)
-                {
-                    if (CloseWindow) return;
-                    while (pause_copy)
-                    {
-                        Thread.Sleep(50);
-                        if (CloseWindow)
-                            return;
-                    }
-                    PrepareAndWriteFile(drive, files_name, max_file_size, method, bw, ref file_creating_error);
-                }
-
-                while (drive.IsReady && drive.TotalFreeSpace > 0 && drive.AvailableFreeSpace > 1 && file_creating_error < 3)
-                {
-                    if (CloseWindow) return;
-                    while (pause_copy)
-                    {
-                        Thread.Sleep(50);
-                        if (CloseWindow)
-                            return;
-                    }
-                    PrepareAndWriteFile(drive, files_name, drive.AvailableFreeSpace - 1, method, bw, ref file_creating_error);
-                }
-
-                while (true)
-                {
+                foreach (var i in DriveInfo.GetDrives())
                     try
                     {
-                        while (pause_copy)
-                        {
-                            Thread.Sleep(50);
-                            if (CloseWindow)
-                                return;
-                        }
-                        if (CloseWindow) return;
-                        string path;
-                        File.Create(path = GetFileName(drive.Name)).Close();
-                        files_name.Add(path);
+                        if ((i.DriveType == DriveType.Fixed || i.DriveType == DriveType.Removable) && i.IsReady)
+                            DeleteWipeFolder(Path.Combine(i.Name, WipeFolderName));
                     }
-                    catch (Exception ex) { string f = ex.Message; break; }
-                }
+                    catch (Exception) { }
+            }
+            catch (Exception) { }
+        }
 
-                if (file_creating_error > 2)
-                {
-                    sleep_thread = true;
-                    destroy_disk_BackgroundWorker.ReportProgress(-3, "Can not destrory deleted files on this drive" + (delete ? ", try to cleaning up..." : "."));
-                    while (sleep_thread)
-                        Thread.Sleep(100);
-                }
-                StringBuilder message = new StringBuilder();
-                message.AppendLine("Some files have not deleted successfull you can delete them manually:");
-                if (delete)
-                {
-                    for (int i = files_name.Count - 1; i >= 0; i--)
-                        try
-                        { File.Delete(files_name[i]); }
-                        catch (Exception ex)
-                        { undeleted.children.Add(new OperationTree(new FileInfo(files_name[i]), false, "", OperationType.DiskDestroy, root, ex.Message)); }
-                }
-
-                while (undeleted.children.Count > 0)
-                {
-                    while (pause_copy)
-                    {
-                        Thread.Sleep(50);
-                        if (CloseWindow)
-                            return;
-                    }
-                    sleep_thread = true;
-                    destroy_disk_BackgroundWorker.ReportProgress(-2);
-                    while (sleep_thread)
-                        Thread.Sleep(200);
-                    OperationTree temp = new OperationTree(null, false, "", operation_type, null, false, "");
-                    foreach (var i in undeleted.children)
-                        temp.children.Add(i);
-                    undeleted.children.Clear();
-                    foreach (var i in temp.children)
-                    {
-                        while (pause_copy)
-                        {
-                            Thread.Sleep(50);
-                            if (CloseWindow)
-                                return;
-                        }
-                        if (i.user_option == OperationOption.Skip)
-                            i.Done = true;
-                        else
-                        {
-                            if (CloseWindow) return;
-                            try { i.item.Delete(); }
-                            catch (Exception) { undeleted.children.Add(i); }
-                        }
-                    }
-                }
-            };
-
-            destroy_disk_BackgroundWorker.ProgressChanged += Destroy_ProgressChanged;
-
-            destroy_disk_BackgroundWorker.RunWorkerCompleted += (object sender, RunWorkerCompletedEventArgs e) => { Close(); };
-            progress_bar.IsIndeterminate = false;
-            destroy_disk_BackgroundWorker.RunWorkerAsync();
-            if (show_dialog)
-                ShowDialog();
-            else
-                Show();
+        static void DeleteWipeFolder(string folder)
+        {
+            if (Directory.Exists(folder) && !Functions.IsLink(new DirectoryInfo(folder)))
+            {
+                foreach (var i in Directory.GetFiles(folder))
+                    DeleteQuietly(i);
+                try { Directory.Delete(folder, false); }
+                catch (Exception) { }
+            }
         }
 
         private void Destroy_ProgressChanged(object sender, ProgressChangedEventArgs e)
@@ -1617,27 +1502,25 @@ namespace File_Manager
                 TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.Error;
                 if (e.ProgressPercentage == -1)
                     new File_s_Transferring_Error(unsucsess, "We can not destroy these files, what do you want to do with them?").ShowThisDialog();
-                else if (e.ProgressPercentage == -2)
-                    new File_s_Transferring_Error(undeleted, "We destroy these files but they can not been deleted, what do you want to do with them?").ShowThisDialog();
-                else if (e.ProgressPercentage == -3)
-                    Messages.ShowMessage(e.UserState.ToString(), ModrenMessageButton.OK, e.UserState is StringBuilder ? ModrenMessageImage.Exclamation : ModrenMessageImage.Stop, e.UserState is StringBuilder ? ModrenMessageSound.Exclamation : ModrenMessageSound.Stop, false, "");
                 progress_bar.Foreground = ProgressBrush;
                 TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.Normal;
                 sleep_thread = false;
             }
             else
             {
-                progress_bar.Value = progress_value;
+                progress_bar.Value = Math.Min(progress_value, progress_bar.Maximum);
                 double val = 0;
                 val = progress_bar.Value * 100.0 / (progress_bar.Maximum + double.Epsilon);
-                ChangeRemain(progress_bar.Maximum - progress_value, false);
+                ChangeRemain(Math.Max(0, progress_bar.Maximum - progress_value), false);
                 percent.Text = Math.Round(val, 0) + "%";
                 TaskbarItemInfo.ProgressValue = val / 100;
                 completed.Text = completed_count.ToString();
                 if (progress_rount % 20 == 0)
                 {
                     progress_rount = 1;
-                    speed.Text = Functions.FileSize((progress_value - old_progress_value) / 2, 1) + " per second";
+                    double per_second = (progress_value - old_progress_value) / 2.0;
+                    speed.Text = Functions.FileSize(per_second, 1) + "/s";
+                    AddSpeedSample(per_second);
                     old_progress_value = progress_value;
                 }
                 else
@@ -1648,224 +1531,19 @@ namespace File_Manager
             }
         }
 
-        private void DestroyFile(FileInfo fileInfo, DestroyMethod method, int repeat, bool delete)
-        {
-            current_file_name = fileInfo.FullName;
-            try
-            {
-                string new_name = GetFileName(fileInfo.DirectoryName);
-                fileInfo.MoveTo(new_name);
-            }
-            catch (Exception ex)
-            {
-                unsucsess.children.Add(new OperationTree(fileInfo, false, null, OperationType.Destroy, null, ex.Message));
-                return;
-            }
-            int dones = 0;
-            if (method == DestroyMethod.FastOne || method == DestroyMethod.FastZero || method == DestroyMethod.FastRandom)
-            {
-                for (int i = 0; i < repeat; i++)
-                {
-                    while (pause_copy)
-                    {
-                        Thread.Sleep(50);
-                        if (CloseWindow)
-                            return;
-                    }
-                    if (WriteFile(fileInfo, GetBuffer(method, 0), fileInfo.Length) == 1)
-                    {
-                        dones += 35;
-                        if (CloseWindow) return;
-                    }
-                }
-            }
-            else if (method == DestroyMethod.Secure)
-            {
-                for (int i = 0; i < repeat; i++)
-                    for (int j = 0; j < 35; j++)
-                    {
-                        dones += WriteFile(fileInfo, GetBuffer(method, j), fileInfo.Length);
-                        if (CloseWindow) return;
-                        while (pause_copy)
-                        {
-                            Thread.Sleep(50);
-                            if (CloseWindow)
-                                return;
-                        }
-                    }
-            }
-            try
-            {
-                if (dones > 30 * repeat)
-                {
-                    if (delete)
-                        fileInfo.Delete();
-                }
-                else
-                {
-                    old_progress_value = progress_value = progress_value - (method == DestroyMethod.Secure ? dones * fileInfo.Length : Convert.ToInt64((dones / 35.0) * fileInfo.Length));
-                    undeleted.children.Add(new OperationTree(fileInfo, false, null, OperationType.Destroy, null, "Some operations have failed."));
-                }
-                    completed_count++;
-            }
-            catch (Exception ex)
-            { undeleted.children.Add(new OperationTree(fileInfo, false, null, OperationType.Destroy, null, ex.Message)); }
-        }
-
-        byte[] GetBuffer(DestroyMethod method, int case_number)
-        {
-            byte[] buffer = new byte[Functions.buffer];
-            if (method == DestroyMethod.Secure)
-            {
-                switch (case_number)
-                {
-                    case 0:
-                    case 1:
-                    case 2:
-                    case 3:
-                    case 31:
-                    case 32:
-                    case 33:
-                    case 34:
-                        Random rand = new Random((int)DateTime.Now.Ticks);
-                        rand.NextBytes(buffer);
-                        break;
-                    case 4:
-                        for (int k = 0; k < Functions.buffer; k++)
-                            buffer[k] = 0x55;
-                        break;
-                    case 5:
-                        for (int k = 0; k < Functions.buffer; k++)
-                            buffer[k] = 0xAA;
-                        break;
-                    case 6:
-                    case 25:
-                        for (int k = 2; k < Functions.buffer; k += 3)
-                        { buffer[k] = 0x92; buffer[k - 1] = 0x49; buffer[k - 2] = 0x24; }
-                        break;
-                    case 7:
-                    case 26:
-                        for (int k = 2; k < Functions.buffer; k += 3)
-                        { buffer[k] = 0x49; buffer[k - 1] = 0x24; buffer[k - 2] = 0x92; }
-                        break;
-                    case 8:
-                    case 27:
-                        for (int k = 2; k < Functions.buffer; k += 3)
-                        { buffer[k] = 0x24; buffer[k - 1] = 0x92; buffer[k - 2] = 0x49; }
-                        break;
-                    case 9:
-                    case 10:
-                    case 11:
-                    case 12:
-                    case 13:
-                    case 14:
-                    case 15:
-                    case 16:
-                    case 17:
-                    case 18:
-                    case 19:
-                    case 20:
-                    case 21:
-                    case 22:
-                    case 23:
-                    case 24:
-                        for (int k = 0; k < Functions.buffer; k++)
-                            buffer[k] = (byte)(0x11 * (k - 9));
-                        break;
-                    case 28:
-                        for (int k = 2; k < Functions.buffer; k += 3)
-                        { buffer[k] = 0x6D; buffer[k - 1] = 0xB6; buffer[k - 2] = 0xDB; }
-                        break;
-                    case 29:
-                        for (int k = 2; k < Functions.buffer; k += 3)
-                        { buffer[k] = 0xB6; buffer[k - 1] = 0xDB; buffer[k - 2] = 0x6D; }
-                        break;
-                    case 30:
-                        for (int k = 2; k < Functions.buffer; k += 3)
-                        { buffer[k] = 0xDB; buffer[k - 1] = 0x6d; buffer[k - 2] = 0xB6; }
-                        break;
-                }
-            }
-            else if (method == DestroyMethod.FastRandom)
-            {
-                Random rand = new Random((int)(DateTime.Now.Ticks / 34553786873));
-                rand.NextBytes(buffer);
-            }
-            else
-            {
-                byte values;
-                switch (method)
-                {
-                    case DestroyMethod.FastOne:
-                        values = 0xFF;
-                        break;
-                    default:
-                        values = 0x00;
-                        break;
-                }
-                for (int j = 0; j < Functions.buffer; j++)
-                    buffer[j] = values;
-            }
-
-            return buffer;
-        }
-
-        byte WriteFile(FileInfo file, byte[] buffer, long size)
-        {
-            if (CloseWindow) return 0;
-            long k = 0;
-            try
-            {
-                BinaryWriter BW = new BinaryWriter(file.OpenWrite());
-                for (k = buffer.Length; k <= size; k += buffer.Length)
-                {
-                    while (pause_copy)
-                    {
-                        Thread.Sleep(50);
-                        if (CloseWindow)
-                        {
-                            BW.Close();
-                            return 0;
-                        }
-                    }
-                    if (CloseWindow)
-                    {
-                        BW.Close();
-                        return 0;
-                    }
-                    BW.Write(buffer);
-                    progress_value += buffer.Length;
-                }
-                long remain = (size - (k - buffer.Length));
-                if (CloseWindow)
-                {
-                    BW.Close();
-                    return 0;
-                }
-                BW.Write(buffer, 0, (int)remain);
-                progress_value += remain;
-                BW.Close();
-                return 1;
-            }
-            catch (Exception)
-            {
-                progress_value -= k;
-                return 0;
-            }
-        }
-
         string GetFileName(string parent)
         {
             string drive_name = Path.GetPathRoot(parent).ToLower();
             if (!drives_format.ContainsKey(drive_name))
-                drives_format.Add(drive_name, new DriveInfo(drive_name).DriveFormat.ToLower());
+                try { drives_format.Add(drive_name, new DriveInfo(drive_name).DriveFormat.ToLower()); }
+                catch (Exception) { drives_format.Add(drive_name, ""); }
 
             StringBuilder name = new StringBuilder(string.Empty);
             while (true)
             {
-                name.Append(parent);
+                name.Clear();
+                name.Append(parent.TrimEnd('\\'));
                 name.Append("\\$");
-                Random rand = new Random((int)DateTime.Now.Ticks);
                 int max_file_name = 8;
                 switch (drives_format[drive_name])
                 {
@@ -1874,23 +1552,22 @@ namespace File_Manager
                     case "fat32":
                     case "exfat":
                         if (parent.Length > 15)
-                            max_file_name = 253 - parent.Length;
+                            max_file_name = 240 - parent.Length;
                         else
-                            max_file_name = 238;
+                            max_file_name = 220;
                         break;
                     case "fat":
                     case "fat12":
-                        if (parent.Length > 15)
-                            max_file_name = 248 - parent.Length;
-                        else
-                            max_file_name = 238;
+                        max_file_name = 8;
                         break;
                 }
+                if (max_file_name < 8)
+                    max_file_name = 8;
                 for (int i = 0; i < max_file_name - 1; i++)
-                    name.Append(Chars[rand.Next(Chars.Length - 1)]);
+                    name.Append(Chars[name_random.Next(Chars.Length - 1)]);
                 name.Append(".");
                 for (int i = 0; i < 3; i++)
-                    name.Append(Chars[rand.Next(Chars.Length - 1)]);
+                    name.Append(Chars[name_random.Next(Chars.Length - 1)]);
                 if (!File.Exists(name.ToString()) && !Directory.Exists(name.ToString()))
                     break;
             }
@@ -1920,25 +1597,21 @@ namespace File_Manager
             speed.Foreground = Brushes.Gray;
         }
 
-        private void PrepareAndWriteFile(DriveInfo drive, List<string> files_name, long size, DestroyMethod method, BackgroundWorker bw, ref int file_creating_error)
+        private void Window_Closing(object sender, CancelEventArgs e)
         {
-            FileInfo fi = new FileInfo(GetFileName(drive.Name));
-            if (method == DestroyMethod.Secure)
+            if (!operation_finished && !CloseWindow)
             {
-                int count = 0;
-                for (int k = 0; k < 35; k++)
-                    count += WriteFile(fi, GetBuffer(method, k), size);
-                if (count > 30)
-                    files_name.Add(fi.FullName);
-                else
-                { bw.ReportProgress(-100, "Something wronge while creating file \"" + fi.FullName + "\""); file_creating_error++; }
+                if (Messages.ShowMessage("Stop this operation?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "") != MyMessageBoxResult.Yes)
+                {
+                    e.Cancel = true;
+                    return;
+                }
+                StopOperation();
             }
-            else
+            if (disk_destroy_busy)
             {
-                if (WriteFile(fi, GetBuffer(method, 0), size) == 1)
-                    files_name.Add(fi.FullName);
-                else
-                { bw.ReportProgress(-100, "Something wronge while creating file \"" + fi.FullName + "\""); file_creating_error++; }
+                e.Cancel = true;
+                operation.Text = operation_type == OperationType.DiskDestroy ? "Cleaning up, please wait..." : "Stopping, please wait...";
             }
         }
 
@@ -1946,294 +1619,490 @@ namespace File_Manager
 
         #region Encrypt Files
 
-        byte[] file_imprint = { 0x46, 0x4D, 0x45, 0x3A, 0x20, 0x65, 0x46, 0x69, 0x6C, 0x20, 0x4D, 0x61, 0x6E, 0x61, 0x67, 0x65, 0x72, 0x20, 0x45, 0x6E, 0x63, 0x72, 0x79, 0x70, 0x74, 0x65, 0x64, 0x20, 0x46, 0x69, 0x6C, 0x65, 0x2E, 0x42, 0x79, 0x20, 0x44, 0x72, 0x2E, 0x4D, 0x6F, 0x68, 0x61, 0x6D, 0x6D, 0x61, 0x64 };//FME: File Manager Encrypted File.By Dr.Mohammad
+        static byte[] file_imprint = { 0x46, 0x4D, 0x45, 0x3A, 0x20, 0x65, 0x46, 0x69, 0x6C, 0x20, 0x4D, 0x61, 0x6E, 0x61, 0x67, 0x65, 0x72, 0x20, 0x45, 0x6E, 0x63, 0x72, 0x79, 0x70, 0x74, 0x65, 0x64, 0x20, 0x46, 0x69, 0x6C, 0x65, 0x2E, 0x42, 0x79, 0x20, 0x44, 0x72, 0x2E, 0x4D, 0x6F, 0x68, 0x61, 0x6D, 0x6D, 0x61, 0x64 };//FME: File Manager Encrypted File.By Dr.Mohammad
 
-        internal void StartEncrept(List<FileInfo> files_list, byte[] EncPassword, bool delete_files, bool overwrite_files, string save_in, bool encrypt_files_name, bool is_package, bool show_dialog)
+        static byte[] fme_signature = { 16, 191, 91, 144, 31, 2, 70, 73, 76, 69, 32, 77, 65, 78, 65, 71, 69, 82, 32, 101, 110, 99, 114, 121, 112, 116, 101, 100, 32, 102, 105, 108, 101, 44, 32, 118, 101, 114, 115, 105, 111, 110, 58, 32 };
+        const int fme_iterations = 200000, fme_header_length = 122;
+        static RNGCryptoServiceProvider random_generator = new RNGCryptoServiceProvider();
+
+        static byte[] RandomBytes(int length)
         {
-            operation_type = OperationType.Encrypt;
-            //already_exist = new OperationTree(null, false, "", operation_type, null, false, "this file already exist.");
-            unsucsess = new OperationTree(null, false, "", operation_type, null, false, "can not encrypt file.");
-            Title = string.Format("Encrypting {0} {1}", files_list.Count, files_list.Count > 1 ? "items" : "item");
-            byte[] general_encrypter = Files_Encrepter.PreparePassword(Files_Encrepter.general_password, Files_Encrepter.general_secret_number, 128);
-            double max_value = 0;
-            foreach (FileInfo i in files_list)
-            {
-                max_value += i.Length;
-                while (pause_copy)
-                {
-                    Thread.Sleep(50);
-                    if (CloseWindow)
-                        return;
-                }
-            }
-            progress_bar.Maximum = max_value;
-            BackgroundWorker encrypt_files_BackgroundWorker = new BackgroundWorker();
-            encrypt_files_BackgroundWorker.WorkerReportsProgress = true;
-
-            encrypt_files_BackgroundWorker.DoWork += (object sender, DoWorkEventArgs e) =>
-            {
-                BackgroundWorker bw = (BackgroundWorker)sender;
-                Thread process_thread = new Thread(() =>
-                {
-                    while (bw.IsBusy)
-                    {
-                        try { bw.ReportProgress(1); }
-                        catch (Exception) { }
-                        Thread.Sleep(100);
-                        while (pause_copy)
-                        {
-                            Thread.Sleep(50);
-                            if (CloseWindow)
-                                return;
-                        }
-                    }
-                });
-                process_thread.Start();
-
-                if (is_package)
-                {
-                    byte[] user_secret_number = Files_Encrepter.GetSecretNumber(128);
-                    EncryptFileHeader header = new EncryptFileHeader(is_package, encrypt_files_name, 3, Files_Encrepter.EncryptBytes(user_secret_number, general_encrypter), Files_Encrepter.HashBytes(EncPassword, 128), files_list.Count);
-                    byte[] user_encrypter = Files_Encrepter.PreparePassword(EncPassword, user_secret_number, 128);
-                    string zeroz = "0000000000";
-                    int num = 1;
-                    string file_name = "file" + zeroz.Substring(0, 10 - num.ToString().Length) + num.ToString() + ".enp";
-                    if (save_in[save_in.Length - 1] != '\\') save_in += '\\';
-                    while (File.Exists(save_in + file_name))
-                    {
-                        num++;
-                        file_name = "file" + zeroz.Substring(0, 10 - num.ToString().Length) + num.ToString() + ".enp";
-                    }
-                    BinaryWriter BW = new BinaryWriter(File.OpenWrite(save_in + file_name));
-                    int id_counter = 0;
-                    foreach (var file in files_list)
-                    {
-                        id_counter++;
-                        header.indices.Add(new EncryptFileHeaderIndex(id_counter, file, encrypt_files_name ? user_encrypter: general_encrypter));
-                    }
-                    BW.BaseStream.Position = 0;
-                    for (int i = 0; i < files_list.Count; i++)
-                    {
-                        if (CloseWindow) return;
-                        while (pause_copy)
-                        {
-                            Thread.Sleep(50);
-                            if (CloseWindow)
-                                return;
-                        }
-                        EncryptFile(files_list[i], user_encrypter, BW, i == 0 ? header.GetFirstFileIndex() : 0, header.indices[i]);
-                        byte[] buf = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x06, 0x05, 0x07 };
-                        BW.Write(buf);
-                    }
-                    header.SetFirstFileInfo(header.indices[0].start_index, header.indices[0].length);
-                    WriteHeader(BW, header);
-                    BW.Close();
-                }
-
-                else
-                {
-                    foreach (var i in files_list)
-                    {
-                        byte[] user_secret_number = Files_Encrepter.GetSecretNumber(128);
-                        EncryptFileHeader header = new EncryptFileHeader(is_package, encrypt_files_name, 3, Files_Encrepter.EncryptBytes(user_secret_number, general_encrypter), Files_Encrepter.HashBytes(EncPassword, 128), 1);
-                        byte[] user_encrypter = Files_Encrepter.PreparePassword(EncPassword, user_secret_number, 128);
-                        string zeroz = "0000000000";
-                        int num = 1;
-                        string file_name = "file" + zeroz.Substring(0, 10 - num.ToString().Length) + num.ToString() + ".enf";
-                        if (save_in[save_in.Length - 1] != '\\') save_in += '\\';
-                        while (File.Exists(save_in + file_name))
-                        {
-                            num++;
-                            file_name = "file" + zeroz.Substring(0, 10 - num.ToString().Length) + num.ToString() + ".enf";
-                        }
-                        BinaryWriter BW = new BinaryWriter(File.OpenWrite(save_in + file_name));
-                        header.indices.Add(new EncryptFileHeaderIndex(1, i, encrypt_files_name ? user_encrypter : general_encrypter));
-                        EncryptFile(i, user_encrypter, BW, header.GetFirstFileIndex(), header.indices[0]);
-                        if (CloseWindow) return;
-                        while (pause_copy)
-                        {
-                            Thread.Sleep(50);
-                            if (CloseWindow)
-                                return;
-                        }
-                        WriteHeader(BW, header);
-                        BW.Close();
-                    }
-                }
-                
-                //for (int index = 0; index < files_list.Count; index++)
-                //{
-                //    if (CloseWindow) return;
-                //    while (pause_copy)
-                //    {
-                //        Thread.Sleep(50);
-                //        if (CloseWindow)
-                //            return;
-                //    }
-                //    EncryptFile(files_list[index], EncPassword, save_in);
-                //}
-
-                //while (unsucsess.children.Count > 0)
-                //{
-
-                //    sleep_thread = true;
-                //    encrypt_files_BackgroundWorker.ReportProgress(-1);
-                //    while (sleep_thread)
-                //        Thread.Sleep(50);
-                //    OperationTree temp = new OperationTree(null, false, "", operation_type, null, false, "");
-                //    double rem = max_value;
-                //    foreach (var i in unsucsess.children)
-                //    {
-                //        temp.children.Add(i);
-                //        //rem -= i.size;
-                //    }
-                //    //old_progress_value = progress_value = Convert.ToInt64(rem);
-                //    unsucsess.children.Clear();
-                //    foreach (var i in temp.children)
-                //    {
-                //        while (pause_copy)
-                //        {
-                //            Thread.Sleep(50);
-                //            if (CloseWindow)
-                //                return;
-                //        }
-                //        if (i.user_option == OperationOption.Skip)
-                //        {
-                //            i.Done = true;
-                //            progress_value += i.size;
-                //        }
-                //        else
-                //        {
-                //            if (CloseWindow) return;
-                //            EncryptFile((FileInfo)i.item, EncPassword, save_in);
-                //        }
-                //    }
-                //}
-            };
-
-            encrypt_files_BackgroundWorker.ProgressChanged += Destroy_ProgressChanged;
-
-            encrypt_files_BackgroundWorker.RunWorkerCompleted += (object sender, RunWorkerCompletedEventArgs e) =>
-            {
-                if (delete_files)
-                    new File_Destroyer(files_list, true).Show();
-                Close();
-            };
-            progress_bar.IsIndeterminate = false;
-            encrypt_files_BackgroundWorker.RunWorkerAsync();
-            if (show_dialog)
-                ShowDialog();
-            else
-                Show();
+            byte[] bytes = new byte[length];
+            lock (random_generator)
+                random_generator.GetBytes(bytes);
+            return bytes;
         }
 
-        void WriteHeader(BinaryWriter bw, EncryptFileHeader header)
+        internal static byte[] LegacyPassword(string password)
         {
-            bw.BaseStream.Position = 0;
-            //8 byte then "FILE MANAGER encrypted file, version: "
-            if (header.is_package) bw.Write((byte)205); else bw.Write((byte)204);
-            if (header.encrypt_files_name) bw.Write((byte)140); else bw.Write((byte)139);
-            byte[] fileb = { 16, 191, 91, 144, 31, 2, 70, 73, 76, 69, 32, 77, 65, 78, 65, 71, 69, 82, 32, 101, 110, 99, 114, 121, 112, 116, 101, 100, 32, 102, 105, 108, 101, 44, 32, 118, 101, 114, 115, 105, 111, 110, 58, 32 };
-            bw.Write(fileb);
-            bw.Write(header.version);
-            bw.Write(header.secret_number);
-            bw.Write(header.password_hash);
-            bw.Write(header.GetFirstFileIndex());
-            bw.Write(header.first_file_length);
-            bw.Write(header.indices.Count);
-            foreach(var i in header.indices)
+            byte[] bytes = new byte[password.Length * sizeof(char)];
+            Buffer.BlockCopy(password.ToCharArray(), 0, bytes, 0, bytes.Length);
+            using (MD5 md5 = new MD5Cng())
+                return md5.ComputeHash(bytes);
+        }
+
+        static void DeriveKeys(string password, byte[] salt, int iterations, out byte[] encryption_key, out byte[] mac_key)
+        {
+            using (Rfc2898DeriveBytes derive = new Rfc2898DeriveBytes(Encoding.UTF8.GetBytes(password), salt, iterations))
             {
-                bw.Write(i.id);
-                bw.Write(i.file_name_length);
-                bw.Write(i.fileName);
-                bw.Write(i.start_index);
-                bw.Write(i.length);
-                bw.Write(i.crc);
+                encryption_key = derive.GetBytes(32);
+                mac_key = derive.GetBytes(32);
             }
         }
 
-        private byte EncryptFile(FileInfo file, byte[] encryption_code, BinaryWriter bw, long start_index, EncryptFileHeaderIndex index)
+        static bool SameBytes(byte[] first, byte[] second)
         {
-            BinaryReader br = null;
+            if (first == null || second == null || first.Length != second.Length)
+                return false;
+            int difference = 0;
+            for (int i = 0; i < first.Length; i++)
+                difference |= first[i] ^ second[i];
+            return difference == 0;
+        }
+
+        static string SafeFileName(string name)
+        {
+            name = Path.GetFileName((name ?? "").Replace('/', '\\'));
+            foreach (char i in Path.GetInvalidFileNameChars())
+                name = name.Replace(i, '_');
+            name = name.Trim().TrimEnd('.');
+            return name.Length == 0 ? "file" : name;
+        }
+
+        static string UniqueFilePath(string folder, string name)
+        {
+            string path = Path.Combine(folder, name);
+            if (!File.Exists(path) && !Directory.Exists(path) && !File.Exists(path + ".partial"))
+                return path;
+            string extention = Path.GetExtension(name), base_name = Path.GetFileNameWithoutExtension(name);
+            int num = 1;
+            do path = Path.Combine(folder, base_name + " (" + num++ + ")" + extention);
+            while (File.Exists(path) || Directory.Exists(path) || File.Exists(path + ".partial"));
+            return path;
+        }
+
+        static string OutputFileName(string folder, string extention)
+        {
+            string zeroz = "0000000000";
+            int num = 1;
+            string file_name = "file" + zeroz.Substring(0, 10 - num.ToString().Length) + num.ToString() + extention;
+            while (File.Exists(Path.Combine(folder, file_name)) || File.Exists(Path.Combine(folder, file_name + ".partial")))
+            {
+                num++;
+                file_name = "file" + zeroz.Substring(0, 10 - num.ToString().Length) + num.ToString() + extention;
+            }
+            return Path.Combine(folder, file_name);
+        }
+
+        static void DeleteQuietly(string path)
+        {
             try
             {
-                bw.BaseStream.Position += start_index;
-                long position = bw.BaseStream.Position;
-                br = new BinaryReader(file.OpenRead());
-                long k;
-                for (k = Functions.buffer; k <= file.Length; k += Functions.buffer)
+                if (File.Exists(path))
                 {
-                    while (pause_copy)
+                    File.SetAttributes(path, FileAttributes.Normal);
+                    File.Delete(path);
+                }
+            }
+            catch (Exception) { }
+        }
+
+        void EncryptToFile(List<FileInfo> files, string password, string output_path, bool encrypt_files_name, bool is_package)
+        {
+            string temp_path = output_path + ".partial";
+            List<FmeItem> items = new List<FmeItem>();
+            foreach (var i in files)
+                items.Add(new FmeItem() { name = i.Name, iv = new byte[16], mac = new byte[32], plain_hash = new byte[32] });
+            bool done = false;
+            try
+            {
+                byte[] salt = RandomBytes(16), index_iv = RandomBytes(16), encryption_key, mac_key;
+                DeriveKeys(password, salt, fme_iterations, out encryption_key, out mac_key);
+                int index_length = StoredIndexLength(items, encrypt_files_name);
+                using (FileStream output = new FileStream(temp_path, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None))
+                {
+                    output.Position = fme_header_length + index_length;
+                    for (int i = 0; i < files.Count; i++)
                     {
-                        Thread.Sleep(50);
-                        if (CloseWindow)
+                        current_file_name = files[i].FullName;
+                        string error = EncryptStream(files[i], output, encryption_key, mac_key, items[i]);
+                        if (error != null)
                         {
-                            bw.Close();
-                            return 0;
+                            result_errors.Add(files[i].FullName + "\n    (" + error + ")");
+                            if (is_package && !CloseWindow)
+                                result_errors.Add(output_path + "\n    (the package was not created because a file failed)");
+                            throw new OperationCanceledException();
                         }
                     }
-                    if (CloseWindow)
+                    byte[] stored_index = StoreIndex(items, encrypt_files_name, encryption_key, index_iv);
+                    byte[] header = new byte[fme_header_length - 32];
+                    using (MemoryStream header_stream = new MemoryStream(header))
+                    using (BinaryWriter header_writer = new BinaryWriter(header_stream))
                     {
-                        bw.Close();
-                        return 0;
+                        header_writer.Write(is_package ? (byte)205 : (byte)204);
+                        header_writer.Write(encrypt_files_name ? (byte)140 : (byte)139);
+                        header_writer.Write(fme_signature);
+                        header_writer.Write(4f);
+                        header_writer.Write(salt);
+                        header_writer.Write(fme_iterations);
+                        header_writer.Write(index_iv);
+                        header_writer.Write(stored_index.Length);
                     }
-                    bw.Write(Files_Encrepter.EncryptBytes(br.ReadBytes(Functions.buffer), encryption_code));
-                    progress_value += Functions.buffer;
+                    byte[] index_mac;
+                    using (HMACSHA256 hmac = new HMACSHA256(mac_key))
+                    {
+                        hmac.TransformBlock(header, 0, header.Length, null, 0);
+                        hmac.TransformFinalBlock(stored_index, 0, stored_index.Length);
+                        index_mac = hmac.Hash;
+                    }
+                    output.Position = 0;
+                    output.Write(header, 0, header.Length);
+                    output.Write(index_mac, 0, index_mac.Length);
+                    output.Write(stored_index, 0, stored_index.Length);
+                    output.Flush(true);
                 }
-                long remain = (file.Length - (k - Functions.buffer));
-                if (CloseWindow)
+                for (int i = 0; i < files.Count; i++)
                 {
-                    bw.Close();
-                    return 0;
+                    if (CloseWindow)
+                        throw new OperationCanceledException();
+                    current_file_name = output_path;
+                    string error;
+                    if (!VerifyEncryptedItem(temp_path, items[i], encryption_key, mac_key, out error) || files[i].Length != items[i].plain_length)
+                    {
+                        result_errors.Add(files[i].FullName + "\n    (the encrypted copy could not be verified" + (error == null ? "" : ": " + error) + ")");
+                        throw new OperationCanceledException();
+                    }
                 }
-                bw.Write(Files_Encrepter.EncryptBytes(br.ReadBytes((int)remain), encryption_code));
-                progress_value += remain;
-                br.Close();
-                index.start_index = position;
-                index.length = file.Length;
-                return 1;
+                File.Move(temp_path, output_path);
+                done = true;
+                verified_files.AddRange(files);
+                completed_count += files.Count;
+                result_notes.Add(output_path);
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            { result_errors.Add(output_path + "\n    (" + ex.Message + ")"); }
+            if (!done)
+                DeleteQuietly(temp_path);
+        }
+
+        string EncryptStream(FileInfo file, Stream output, byte[] encryption_key, byte[] mac_key, FmeItem item)
+        {
+            try
+            {
+                item.iv = RandomBytes(16);
+                item.data_offset = output.Position;
+                using (FileStream input = new FileStream(file.FullName, FileMode.Open, FileAccess.Read, FileShare.Read))
+                using (AesCryptoServiceProvider aes = new AesCryptoServiceProvider())
+                using (HMACSHA256 hmac = new HMACSHA256(mac_key))
+                using (SHA256 hasher = new SHA256Cng())
+                {
+                    aes.KeySize = 256;
+                    aes.Mode = CipherMode.CBC;
+                    aes.Padding = PaddingMode.PKCS7;
+                    aes.Key = encryption_key;
+                    aes.IV = item.iv;
+                    hmac.TransformBlock(item.iv, 0, item.iv.Length, null, 0);
+                    using (ICryptoTransform encryptor = aes.CreateEncryptor())
+                    using (CryptoStream crypto = new CryptoStream(new HashStream(hmac, output), encryptor, CryptoStreamMode.Write))
+                    {
+                        byte[] buffer = new byte[Functions.buffer];
+                        int read;
+                        while ((read = input.Read(buffer, 0, buffer.Length)) > 0)
+                        {
+                            while (pause_copy && !CloseWindow)
+                                Thread.Sleep(50);
+                            if (CloseWindow)
+                                return "stopped";
+                            hasher.TransformBlock(buffer, 0, read, null, 0);
+                            crypto.Write(buffer, 0, read);
+                            item.plain_length += read;
+                            progress_value += read;
+                        }
+                        crypto.FlushFinalBlock();
+                    }
+                    hasher.TransformFinalBlock(new byte[0], 0, 0);
+                    hmac.TransformFinalBlock(new byte[0], 0, 0);
+                    item.plain_hash = hasher.Hash;
+                    item.mac = hmac.Hash;
+                    item.data_length = output.Position - item.data_offset;
+                }
+                return null;
+            }
+            catch (Exception ex) { return ex.Message; }
+        }
+
+        bool VerifyEncryptedItem(string path, FmeItem item, byte[] encryption_key, byte[] mac_key, out string error)
+        {
+            error = null;
+            try
+            {
+                using (FileStream input = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+                {
+                    if (!CheckItemMac(input, item, mac_key))
+                    {
+                        error = "the data is damaged";
+                        return false;
+                    }
+                    using (SHA256 hasher = new SHA256Cng())
+                    {
+                        using (CryptoStream crypto = new CryptoStream(new HashStream(hasher), CreateDecryptor(encryption_key, item.iv), CryptoStreamMode.Write))
+                        {
+                            if (!CopyRegion(input, item.data_offset, item.data_length, crypto, true))
+                            {
+                                error = "stopped";
+                                return false;
+                            }
+                            crypto.FlushFinalBlock();
+                        }
+                        hasher.TransformFinalBlock(new byte[0], 0, 0);
+                        return SameBytes(hasher.Hash, item.plain_hash);
+                    }
+                }
             }
             catch (Exception ex)
             {
-                try { if (br != null) br.Close(); }
-                catch (Exception) { }
-                unsucsess.children.Add(new OperationTree(file, false, "", OperationType.Encrypt, root, ex.Message));
-                return 0;
+                error = ex.Message;
+                return false;
             }
         }
 
-        private byte[] GetRandomNumber(SHA256Cng sha1, MD5 md5)
+        static ICryptoTransform CreateDecryptor(byte[] encryption_key, byte[] iv)
         {
-            Random ran = new Random((int)(DateTime.Now.Ticks / 34553786873));
-            byte[] num = new byte[512];
-            ran.NextBytes(num);
-            for (int i = 0; i < num.Length; i++)
-                num[i] = (byte)(num[i] / 2 + 5);
-            num = sha1.ComputeHash(num);
-            for (int i = 0; i < num.Length; i++)
-                num[i] = (byte)~num[i];
-            num = md5.ComputeHash(num);
-            return num;
+            using (AesCryptoServiceProvider aes = new AesCryptoServiceProvider())
+            {
+                aes.KeySize = 256;
+                aes.Mode = CipherMode.CBC;
+                aes.Padding = PaddingMode.PKCS7;
+                return aes.CreateDecryptor(encryption_key, iv);
+            }
         }
 
-        internal void StartDecrept(List<FileInfo> files_list, byte[] DecPassword, string save_in, bool show_dialog)
+        bool CopyRegion(Stream input, long start, long length, Stream output, bool count_progress)
         {
-            operation_type = OperationType.Decrypt;
-            unsucsess = new OperationTree(null, false, "", operation_type, null, false, "can not decrypt file.");
-            Title = string.Format("Decrypting {0} {1}", files_list.Count, files_list.Count > 1 ? "items" : "item");
-            byte[] general_decrypter = Files_Encrepter.PreparePassword(Files_Encrepter.general_password, Files_Encrepter.general_secret_number, 128);
-            double max_value = 0;
-            foreach (FileInfo i in files_list)
+            input.Position = start;
+            byte[] buffer = new byte[Functions.buffer];
+            long remain = length;
+            while (remain > 0)
             {
-                max_value += i.Length;
-                while (pause_copy)
-                {
+                while (pause_copy && !CloseWindow)
                     Thread.Sleep(50);
-                    if (CloseWindow)
-                        return;
+                if (CloseWindow)
+                    return false;
+                int read = input.Read(buffer, 0, (int)Math.Min(buffer.Length, remain));
+                if (read <= 0)
+                    throw new EndOfStreamException("The encrypted file is shorter than expected.");
+                output.Write(buffer, 0, read);
+                remain -= read;
+                if (count_progress)
+                    progress_value += read;
+            }
+            return true;
+        }
+
+        bool CheckItemMac(Stream input, FmeItem item, byte[] mac_key)
+        {
+            using (HMACSHA256 hmac = new HMACSHA256(mac_key))
+            {
+                hmac.TransformBlock(item.iv, 0, item.iv.Length, null, 0);
+                if (!CopyRegion(input, item.data_offset, item.data_length, new HashStream(hmac), false))
+                    return false;
+                hmac.TransformFinalBlock(new byte[0], 0, 0);
+                return SameBytes(hmac.Hash, item.mac);
+            }
+        }
+
+        static byte[] SerializeIndex(List<FmeItem> items)
+        {
+            using (MemoryStream stream = new MemoryStream())
+            using (BinaryWriter writer = new BinaryWriter(stream, Encoding.UTF8))
+            {
+                writer.Write(items.Count);
+                foreach (var i in items)
+                {
+                    writer.Write(i.name);
+                    writer.Write(i.plain_length);
+                    writer.Write(i.data_offset);
+                    writer.Write(i.data_length);
+                    writer.Write(i.iv);
+                    writer.Write(i.mac);
+                    writer.Write(i.plain_hash);
+                }
+                writer.Flush();
+                return stream.ToArray();
+            }
+        }
+
+        static List<FmeItem> DeserializeIndex(byte[] index)
+        {
+            List<FmeItem> items = new List<FmeItem>();
+            using (MemoryStream stream = new MemoryStream(index))
+            using (BinaryReader reader = new BinaryReader(stream, Encoding.UTF8))
+            {
+                int count = reader.ReadInt32();
+                if (count < 0 || count > 1000000)
+                    throw new InvalidDataException("The file index is damaged.");
+                for (int i = 0; i < count; i++)
+                    items.Add(new FmeItem() { name = reader.ReadString(), plain_length = reader.ReadInt64(), data_offset = reader.ReadInt64(), data_length = reader.ReadInt64(), iv = reader.ReadBytes(16), mac = reader.ReadBytes(32), plain_hash = reader.ReadBytes(32) });
+            }
+            return items;
+        }
+
+        static int StoredIndexLength(List<FmeItem> items, bool encrypt_files_name)
+        {
+            int length = SerializeIndex(items).Length;
+            return encrypt_files_name ? (length / 16 + 1) * 16 : length;
+        }
+
+        static byte[] StoreIndex(List<FmeItem> items, bool encrypt_files_name, byte[] encryption_key, byte[] index_iv)
+        {
+            byte[] index = SerializeIndex(items);
+            if (!encrypt_files_name)
+                return index;
+            using (AesCryptoServiceProvider aes = new AesCryptoServiceProvider())
+            {
+                aes.KeySize = 256;
+                aes.Mode = CipherMode.CBC;
+                aes.Padding = PaddingMode.PKCS7;
+                using (ICryptoTransform encryptor = aes.CreateEncryptor(encryption_key, index_iv))
+                    return encryptor.TransformFinalBlock(index, 0, index.Length);
+            }
+        }
+
+        internal static FmeFileInfo ReadFmeHeader(Stream input, string password)
+        {
+            FmeFileInfo info = new FmeFileInfo();
+            byte[] start = new byte[47];
+            input.Position = 0;
+            int count = input.Read(start, 0, start.Length);
+            if (count == start.Length && SameBytes(start, file_imprint))
+            {
+                info.version = 1;
+                return info;
+            }
+            input.Position = 0;
+            BinaryReader reader = new BinaryReader(input);
+            if (input.Length < 50)
+                return info;
+            byte b0 = reader.ReadByte(), b1 = reader.ReadByte();
+            if ((b0 != 204 && b0 != 205) || (b1 != 139 && b1 != 140) || !SameBytes(reader.ReadBytes(44), fme_signature))
+                return info;
+            info.is_package = b0 == 205;
+            info.encrypt_files_name = b1 == 140;
+            float version = reader.ReadSingle();
+            if (version != 4f)
+            {
+                info.version = 3;
+                return info;
+            }
+            info.version = 4;
+            info.salt = reader.ReadBytes(16);
+            info.iterations = reader.ReadInt32();
+            info.index_iv = reader.ReadBytes(16);
+            int index_length = reader.ReadInt32();
+            byte[] index_mac = reader.ReadBytes(32);
+            if (info.iterations < 1 || index_length < 0 || index_length > input.Length)
+                throw new InvalidDataException("The file header is damaged.");
+            byte[] stored_index = reader.ReadBytes(index_length);
+            if (!info.encrypt_files_name)
+                info.items = DeserializeIndex(stored_index);
+            if (password == null)
+                return info;
+            DeriveKeys(password, info.salt, info.iterations, out info.encryption_key, out info.mac_key);
+            byte[] header = new byte[fme_header_length - 32];
+            input.Position = 0;
+            input.Read(header, 0, header.Length);
+            using (HMACSHA256 hmac = new HMACSHA256(info.mac_key))
+            {
+                hmac.TransformBlock(header, 0, header.Length, null, 0);
+                hmac.TransformFinalBlock(stored_index, 0, stored_index.Length);
+                info.password_is_correct = SameBytes(hmac.Hash, index_mac);
+            }
+            if (info.password_is_correct && info.encrypt_files_name)
+                using (ICryptoTransform decryptor = CreateDecryptor(info.encryption_key, info.index_iv))
+                    info.items = DeserializeIndex(decryptor.TransformFinalBlock(stored_index, 0, stored_index.Length));
+            return info;
+        }
+
+        internal static List<string> ReadPlainNames(string path)
+        {
+            try
+            {
+                using (FileStream input = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+                {
+                    FmeFileInfo info = ReadFmeHeader(input, null);
+                    List<string> names = new List<string>();
+                    if (info.version == 4 && info.items != null)
+                        foreach (var i in info.items)
+                            names.Add(i.name);
+                    else if (info.version == 3 && !info.encrypt_files_name)
+                    {
+                        EncryptFileHeader header;
+                        if (ReadHeader(new BinaryReader(input), Files_Encrepter.PreparePassword(Files_Encrepter.general_password, Files_Encrepter.general_secret_number, 128), null, out header) == 0)
+                            foreach (var i in header.indices)
+                                names.Add(i.file_name);
+                    }
+                    return names.Count > 0 ? names : null;
                 }
             }
-            progress_bar.Maximum = max_value;
+            catch (Exception) { return null; }
+        }
+
+        internal static List<FmeItem> ReadPackageContent(string path, string password, out string error)
+        {
+            error = null;
+            try
+            {
+                using (FileStream input = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+                {
+                    FmeFileInfo info = ReadFmeHeader(input, password);
+                    if (info.version == 4)
+                    {
+                        if (!info.password_is_correct)
+                            error = "Wrong password or the file is damaged.";
+                        else
+                        {
+                            for (int i = 0; i < info.items.Count; i++)
+                                info.items[i].id = i + 1;
+                            return info.items;
+                        }
+                    }
+                    else if (info.version == 3)
+                    {
+                        EncryptFileHeader header;
+                        int result = ReadHeader(new BinaryReader(input), Files_Encrepter.PreparePassword(Files_Encrepter.general_password, Files_Encrepter.general_secret_number, 128), LegacyPassword(password), out header);
+                        if (result == -1)
+                            error = "Wrong password.";
+                        else if (result == 0)
+                        {
+                            List<FmeItem> items = new List<FmeItem>();
+                            foreach (var i in header.indices)
+                                items.Add(new FmeItem() { id = i.id, name = i.file_name, plain_length = i.length });
+                            return items;
+                        }
+                        else
+                            error = "This is not a File Manager encrypted file.";
+                    }
+                    else if (info.version == 1)
+                        error = "This file was encrypted by File Manager 0.8.1 and holds one file only, decrypt it from the 'DE-ENCRYPT FILES' tab.";
+                    else
+                        error = "This is not a File Manager encrypted file.";
+                }
+            }
+            catch (Exception ex) { error = ex.Message; }
+            return null;
+        }
+
+        internal void StartDecrept(List<FileInfo> files_list, string password, string save_in, bool package_in_directory, List<int> only_ids, bool show_dialog)
+        {
+            operation_type = OperationType.Decrypt;
+            ProgressBrush = Brushes.LimeGreen;
+            Title = operation.Text = string.Format("Decrypting {0} {1}", files_list.Count, files_list.Count > 1 ? "items" : "item");
+            double max_value = 0;
+            foreach (FileInfo i in files_list)
+                try { max_value += i.Length; }
+                catch (Exception) { }
+            progress_bar.Maximum = max_value + 1;
             BackgroundWorker decrypt_files_BackgroundWorker = new BackgroundWorker();
             decrypt_files_BackgroundWorker.WorkerReportsProgress = true;
 
@@ -2245,56 +2114,52 @@ namespace File_Manager
                     while (bw.IsBusy)
                     {
                         try { bw.ReportProgress(1); }
-                        catch (Exception ex) { }
+                        catch (Exception) { }
                         Thread.Sleep(100);
-                        while (pause_copy)
-                        {
-                            Thread.Sleep(50);
-                            if (CloseWindow)
-                                return;
-                        }
                     }
                 });
+                process_thread.IsBackground = true;
                 process_thread.Start();
 
                 foreach (var file in files_list)
                 {
-                    BinaryReader BR = new BinaryReader(file.OpenRead());
-                    EncryptFileHeader header;
+                    if (CloseWindow) break;
+                    current_file_name = file.FullName;
                     try
                     {
-                        switch (ReadHeader(BR, general_decrypter, DecPassword, out header))
+                        using (FileStream input = new FileStream(file.FullName, FileMode.Open, FileAccess.Read, FileShare.Read))
                         {
-                            case 0:
-                                if (save_in[save_in.Length - 1] != '\\')
-                                    save_in += '\\';
-                                foreach (var catalog in header.indices)
-                                {
-                                    if (CloseWindow) return;
-                                    while (pause_copy)
-                                    {
-                                        Thread.Sleep(50);
-                                        if (CloseWindow)
-                                            return;
-                                    }
-                                    DecryptFile(new FileInfo(save_in + catalog.file_name), Files_Encrepter.PreparePassword(DecPassword, header.secret_number, 128), BR, catalog);
-                                    if (header.is_package)
-                                        BR.BaseStream.Position += 8;
-                                }
-                                break;
-                            case 1:
-                                break;
-                            case -1:
-                                break;
+                            FmeFileInfo info = ReadFmeHeader(input, null);
+                            string folder = save_in;
+                            if (package_in_directory && info.is_package)
+                            {
+                                folder = UniqueFilePath(save_in, Path.GetFileNameWithoutExtension(file.Name));
+                                Directory.CreateDirectory(folder);
+                            }
+                            if (info.version == 4)
+                                DecryptVersion4(input, file, password, folder, only_ids);
+                            else if (info.version == 3)
+                                DecryptVersion3(input, file, password, folder, only_ids);
+                            else if (info.version == 1)
+                                DecryptLegacyFile(input, file, password, folder);
+                            else
+                                result_errors.Add(file.FullName + "\n    (this is not a File Manager encrypted file)");
                         }
                     }
-                    catch (Exception) { }
+                    catch (Exception ex)
+                    { result_errors.Add(file.FullName + "\n    (" + ex.Message + ")"); }
                 }
             };
 
             decrypt_files_BackgroundWorker.ProgressChanged += Destroy_ProgressChanged;
 
-            decrypt_files_BackgroundWorker.RunWorkerCompleted += (object sender, RunWorkerCompletedEventArgs e) => { Close(); };
+            decrypt_files_BackgroundWorker.RunWorkerCompleted += (object sender, RunWorkerCompletedEventArgs e) =>
+            {
+                if (e.Error != null)
+                    result_errors.Add(e.Error.Message);
+                operation_finished = true;
+                Close();
+            };
             progress_bar.IsIndeterminate = false;
             decrypt_files_BackgroundWorker.RunWorkerAsync();
             if (show_dialog)
@@ -2303,59 +2168,136 @@ namespace File_Manager
                 Show();
         }
 
-        private byte DecryptFile(FileInfo output_file, byte[] decryption_code, BinaryReader br, EncryptFileHeaderIndex catalog)
+        void DecryptVersion4(FileStream input, FileInfo file, string password, string save_in, List<int> only_ids)
         {
-            BinaryWriter bw = null;
-            try
+            FmeFileInfo info = ReadFmeHeader(input, password);
+            if (!info.password_is_correct)
             {
-                br.BaseStream.Position = catalog.start_index;
-                bw = new BinaryWriter(output_file.OpenWrite());
-                long k;
-                for (k = Functions.buffer; k <= catalog.length; k += Functions.buffer)
-                {
-                    while (pause_copy)
-                    {
-                        Thread.Sleep(50);
-                        if (CloseWindow)
-                        {
-                            bw.Close();
-                            return 0;
-                        }
-                    }
-                    if (CloseWindow)
-                    {
-                        bw.Close();
-                        return 0;
-                    }
-                    bw.Write(Files_Encrepter.DecryptBytes(br.ReadBytes(Functions.buffer), decryption_code));
-                    progress_value += Functions.buffer;
-                }
-                long remain = (catalog.length - (k - Functions.buffer));
-                if (CloseWindow)
-                {
-                    bw.Close();
-                    return 0;
-                }
-                bw.Write(Files_Encrepter.DecryptBytes(br.ReadBytes((int)remain), decryption_code));
-                progress_value += remain;
-                bw.Close();
-                return 1;
+                result_errors.Add(file.FullName + "\n    (wrong password or the file is damaged, nothing was written)");
+                return;
             }
-            catch (Exception ex)
+            for (int i = 0; i < info.items.Count; i++)
             {
-                try { if (br != null) br.Close(); }
-                catch (Exception) { }
-                ////unsucsess.children.Add(new OperationTree(catalog, false, "", OperationType.Encrypt, root, ex.Message));
-                return 0;
+                if (CloseWindow) return;
+                if (only_ids != null && !only_ids.Contains(i + 1))
+                    continue;
+                FmeItem item = info.items[i];
+                if (!CheckItemMac(input, item, info.mac_key))
+                {
+                    if (!CloseWindow)
+                        result_errors.Add(file.FullName + " : " + item.name + "\n    (the data is damaged, nothing was written)");
+                    continue;
+                }
+                string target = UniqueFilePath(save_in, SafeFileName(item.name)), temp_path = target + ".partial";
+                bool done = false;
+                try
+                {
+                    using (SHA256 hasher = new SHA256Cng())
+                    {
+                        using (FileStream output = new FileStream(temp_path, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                        using (CryptoStream crypto = new CryptoStream(new HashStream(hasher, output), CreateDecryptor(info.encryption_key, item.iv), CryptoStreamMode.Write))
+                        {
+                            if (!CopyRegion(input, item.data_offset, item.data_length, crypto, true))
+                                throw new OperationCanceledException();
+                            crypto.FlushFinalBlock();
+                        }
+                        hasher.TransformFinalBlock(new byte[0], 0, 0);
+                        if (!SameBytes(hasher.Hash, item.plain_hash))
+                            throw new InvalidDataException("the decrypted data does not match the original");
+                    }
+                    File.Move(temp_path, target);
+                    done = true;
+                    completed_count++;
+                    if (!string.Equals(Path.GetFileName(target), item.name, StringComparison.OrdinalIgnoreCase))
+                        result_notes.Add(item.name + " -> " + target);
+                }
+                catch (OperationCanceledException) { }
+                catch (Exception ex)
+                { result_errors.Add(file.FullName + " : " + item.name + "\n    (" + ex.Message + ")"); }
+                if (!done)
+                    DeleteQuietly(temp_path);
             }
         }
 
-        private int ReadHeader(BinaryReader BR, byte[] general_code, byte[] user_password, out EncryptFileHeader header)
+        void DecryptVersion3(FileStream input, FileInfo file, string password, string save_in, List<int> only_ids)
         {
-            //1 is incurrect file 
+            byte[] general_decrypter = Files_Encrepter.PreparePassword(Files_Encrepter.general_password, Files_Encrepter.general_secret_number, 128);
+            byte[] dec_password = LegacyPassword(password);
+            BinaryReader reader = new BinaryReader(input);
+            input.Position = 0;
+            EncryptFileHeader header;
+            switch (ReadHeader(reader, general_decrypter, dec_password, out header))
+            {
+                case 0:
+                    foreach (var catalog in header.indices)
+                    {
+                        if (CloseWindow) return;
+                        if (only_ids != null && !only_ids.Contains(catalog.id))
+                            continue;
+                        string target = UniqueFilePath(save_in, SafeFileName(catalog.file_name)), temp_path = target + ".partial";
+                        string error = DecryptFile(temp_path, Files_Encrepter.PreparePassword(dec_password, header.secret_number, 128), reader, catalog);
+                        if (error == null)
+                            try
+                            {
+                                File.Move(temp_path, target);
+                                completed_count++;
+                                if (!string.Equals(Path.GetFileName(target), catalog.file_name, StringComparison.OrdinalIgnoreCase))
+                                    result_notes.Add(catalog.file_name + " -> " + target);
+                                continue;
+                            }
+                            catch (Exception ex) { error = ex.Message; }
+                        DeleteQuietly(temp_path);
+                        if (!CloseWindow)
+                            result_errors.Add(file.FullName + " : " + catalog.file_name + "\n    (" + error + ")");
+                    }
+                    break;
+                case -1:
+                    result_errors.Add(file.FullName + "\n    (wrong password, nothing was written)");
+                    break;
+                default:
+                    result_errors.Add(file.FullName + "\n    (this is not a File Manager encrypted file)");
+                    break;
+            }
+        }
+
+        string DecryptFile(string output_path, byte[] decryption_code, BinaryReader br, EncryptFileHeaderIndex catalog)
+        {
+            try
+            {
+                if (catalog.start_index < 0 || catalog.length < 0 || catalog.start_index + catalog.length > br.BaseStream.Length)
+                    return "the file index is damaged";
+                br.BaseStream.Position = catalog.start_index;
+                using (FileStream output = new FileStream(output_path, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                {
+                    long position = 0;
+                    while (position < catalog.length)
+                    {
+                        while (pause_copy && !CloseWindow)
+                            Thread.Sleep(50);
+                        if (CloseWindow)
+                            return "stopped";
+                        byte[] part = br.ReadBytes((int)Math.Min(Functions.buffer, catalog.length - position));
+                        if (part.Length == 0)
+                            return "the encrypted file is shorter than expected";
+                        for (int i = 0; i < part.Length; i++)
+                            part[i] = (byte)((byte)(part[i] + 1) ^ decryption_code[(position + i) % decryption_code.Length]);
+                        output.Write(part, 0, part.Length);
+                        position += part.Length;
+                        progress_value += part.Length;
+                    }
+                }
+                return null;
+            }
+            catch (Exception ex) { return ex.Message; }
+        }
+
+        static int ReadHeader(BinaryReader BR, byte[] general_code, byte[] user_password, out EncryptFileHeader header)
+        {
+            //1 is incurrect file
             //0 everything OK
             //-1 invalid Password
             bool is_package, encrypt_files_name;
+            BR.BaseStream.Position = 0;
             byte b0 = BR.ReadByte();
             if (b0 == 204) is_package = false;
             else if (b0 == 205) is_package = true;
@@ -2372,19 +2314,22 @@ namespace File_Manager
                 header = null;
                 return 1;
             }
-            byte[] orginal = { 16, 191, 91, 144, 31, 2, 70, 73, 76, 69, 32, 77, 65, 78, 65, 71, 69, 82, 32, 101, 110, 99, 114, 121, 112, 116, 101, 100, 32, 102, 105, 108, 101, 44, 32, 118, 101, 114, 115, 105, 111, 110, 58, 32 };
             byte[] file_bytes = BR.ReadBytes(44);
-            for (int i = 0; i < file_bytes.Length; i++)
-                if (orginal[i] != file_bytes[i])
-                {
-                    header = null;
-                    return 1;
-                }
+            if (!SameBytes(file_bytes, fme_signature))
+            {
+                header = null;
+                return 1;
+            }
             var ver = BR.ReadBytes(4);
             float version = BitConverter.ToSingle(ver, 0);
             var secret_number = Files_Encrepter.DecryptBytes(BR.ReadBytes(128), general_code);
             var file_password = BR.ReadBytes(128);
-            if (ComparePasswoeds(user_password, file_password))
+            if (user_password == null && encrypt_files_name)
+            {
+                header = null;
+                return -1;
+            }
+            if (user_password == null || ComparePasswoeds(user_password, file_password))
             {
                 var b2 = BR.ReadBytes(8);
                 long first_file_index = BitConverter.ToInt64(b2, 0);
@@ -2392,6 +2337,11 @@ namespace File_Manager
                 long first_file_length = BitConverter.ToInt64(b3, 0);
                 var b4 = BR.ReadBytes(4);
                 int files_count = BitConverter.ToInt32(b4, 0);
+                if (files_count < 0 || files_count > 100000)
+                {
+                    header = null;
+                    return 1;
+                }
                 header = new EncryptFileHeader(is_package, encrypt_files_name, version, secret_number, user_password, files_count);
                 header.SetFirstFileInfo(first_file_index, first_file_length);
                 byte[] decrypter = encrypt_files_name ? Files_Encrepter.PreparePassword(user_password, secret_number, 128) : general_code;
@@ -2414,13 +2364,73 @@ namespace File_Manager
             }
         }
 
-        private bool ComparePasswoeds(byte[] user_password, byte[] password_in_file)
+        static bool ComparePasswoeds(byte[] user_password, byte[] password_in_file)
         {
             user_password = Files_Encrepter.HashBytes(user_password, 128);
             for (int i = 0; i < 128; i++)
                 if (user_password[i] != password_in_file[i])
                     return false;
             return true;
+        }
+
+        void DecryptLegacyFile(FileStream input, FileInfo file, string password, string save_in)
+        {
+            byte[] dec_password = LegacyPassword(password);
+            input.Position = file_imprint.Length;
+            byte[] random_numbers = new byte[16], secret_code = new byte[16];
+            if (input.Read(random_numbers, 0, 16) != 16 || input.Read(secret_code, 0, 16) != 16)
+            {
+                result_errors.Add(file.FullName + "\n    (the file is damaged)");
+                return;
+            }
+            for (int i = 0; i < 16; i++)
+                if (secret_code[i] != (byte)(random_numbers[i] ^ dec_password[i]))
+                {
+                    result_errors.Add(file.FullName + "\n    (wrong password, nothing was written)");
+                    return;
+                }
+            byte[] password_hash;
+            using (MD5 md5 = new MD5Cng())
+            using (SHA256 sha = new SHA256Cng())
+                password_hash = sha.ComputeHash(md5.ComputeHash(dec_password));
+            byte[] decrypt_phrase = new byte[Functions.buffer];
+            for (int i = 0; i < decrypt_phrase.Length; i++)
+                if (i % 3 == 0)
+                    decrypt_phrase[i] = secret_code[(i / 3) % 16];
+                else
+                    decrypt_phrase[i] = password_hash[(i - (i / 3)) % 32];
+            string name = file.Extension.ToLower().Equals(".fme") ? Path.GetFileNameWithoutExtension(file.Name) : file.Name;
+            string target = UniqueFilePath(save_in, SafeFileName(name)), temp_path = target + ".partial";
+            bool done = false;
+            try
+            {
+                using (FileStream output = new FileStream(temp_path, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                {
+                    long position = 0;
+                    byte[] buffer = new byte[Functions.buffer];
+                    int read;
+                    while ((read = input.Read(buffer, 0, buffer.Length)) > 0)
+                    {
+                        while (pause_copy && !CloseWindow)
+                            Thread.Sleep(50);
+                        if (CloseWindow)
+                            throw new OperationCanceledException();
+                        for (int i = 0; i < read; i++)
+                            buffer[i] = (byte)((byte)(buffer[i] + 1) ^ decrypt_phrase[(position + i) % decrypt_phrase.Length]);
+                        output.Write(buffer, 0, read);
+                        position += read;
+                        progress_value += read;
+                    }
+                }
+                File.Move(temp_path, target);
+                done = true;
+                completed_count++;
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            { result_errors.Add(file.FullName + "\n    (" + ex.Message + ")"); }
+            if (!done)
+                DeleteQuietly(temp_path);
         }
 
         #endregion Encrypt Files
@@ -2437,7 +2447,7 @@ namespace File_Manager
             name_textblock.Margin = new Thickness(10, 30, 10, 0);
             progress_bar.Margin = new Thickness(10, 54, 50, 0);
             Height = 120;
-            speed_textblock.Visibility = complete_textblock.Visibility = remain.Visibility = remain_unit.Visibility = remain_title.Visibility = Visibility.Collapsed;
+            speed_graph.Visibility = speed_textblock.Visibility = complete_textblock.Visibility = remain.Visibility = remain_unit.Visibility = remain_title.Visibility = Visibility.Collapsed;
             name_textblock.Text = File.FullName;
             progress_bar.IsIndeterminate = false;
             ConvertToISO(File, "");
@@ -2482,7 +2492,7 @@ namespace File_Manager
                 });
                 progress.Start();
 
-                ProcessStartInfo psi = new ProcessStartInfo(Environment.CurrentDirectory + "\\Tools\\compress\\iso\\unisz.exe", " \"" + file.FullName + "\" " + password);
+                ProcessStartInfo psi = new ProcessStartInfo(Functions.AppPath("Tools\\compress\\iso\\unisz.exe"), " \"" + file.FullName + "\" " + password);
                 psi.CreateNoWindow = true;
                 psi.RedirectStandardOutput = true;
                 psi.UseShellExecute = false;
@@ -2584,6 +2594,7 @@ namespace File_Manager
                 else
                 {
                     progress_bar.Value = 100;
+                    operation_finished = true;
                     Close();
                 }
             };
@@ -2634,30 +2645,15 @@ namespace File_Manager
             }
         }
 
+        void StopOperation()
+        {
+            CloseWindow = true;
+            pause_copy = false;
+        }
+
         private void Stop()
         {
-            if (operation_type == OperationType.Copy)
-            {
-                try
-                {
-                    if (BW != null)
-                        BW.Close();
-                }
-                catch (Exception) { }
-                try
-                {
-                    if (BR != null)
-                        BR.Close();
-                }
-                catch (Exception) { }
-            }
-            try
-            {
-                if (OpBW != null && OpBW.IsBusy)
-                    OpBW.CancelAsync();
-            }
-            catch (Exception) { }
-            CloseWindow = true;
+            StopOperation();
             Close();
         }
 
@@ -2687,7 +2683,8 @@ namespace File_Manager
         public string  error_message;
         public object short_path;
         public OperationType operation;
-        public bool is_cut;
+        public bool is_cut, is_link;
+        public List<string> unreadable;
 
         bool done;
         public Boolean Done
@@ -2695,7 +2692,7 @@ namespace File_Manager
             get { return done; }
             set
             {
-                if (value && parent != null)
+                if (value && !done && parent != null)
                     parent.completed++;
                 done = value;
             }
@@ -2710,8 +2707,12 @@ namespace File_Manager
             completed = 0;
             done = false;
             if (file != null)
-                if (file.Exists)
-                    size = file.Length;
+                try
+                {
+                    if (file.Exists)
+                        size = file.Length;
+                }
+                catch (Exception) { }
             this.operation = operation;
             this.short_path = short_path;
             this.is_cut = is_cut;
@@ -2733,7 +2734,8 @@ namespace File_Manager
             user_option = OperationOption.NoValue;
             children = new List<OperationTree>();
             directory_count = 1;
-            if (get_files)
+            is_link = directory != null && Functions.IsLink(directory);
+            if (get_files && !is_link)
                 GetSuns(directory, this);
             foreach (var i in children)
             {
@@ -2741,6 +2743,19 @@ namespace File_Manager
                 directory_count += i.directory_count;
             }
             error_message = error;
+        }
+
+        void AddUnreadable(string path, string message)
+        {
+            OperationTree top = this;
+            while (top.parent != null)
+                top = top.parent;
+            lock (top)
+            {
+                if (top.unreadable == null)
+                    top.unreadable = new List<string>();
+                top.unreadable.Add(path + "\n    (" + message + ")");
+            }
         }
 
         void GetSuns(DirectoryInfo directory, OperationTree operationTree)
@@ -2755,16 +2770,16 @@ namespace File_Manager
                     size += sun.size;
                 }
             }
-            catch (Exception) { }
+            catch (Exception ex) { AddUnreadable(directory.FullName, ex.Message); }
             try
             {
                 var files = directory.GetFiles();
                 foreach (var i in files)
                     try
                     { children.Add(new OperationTree(i, is_cut, short_path + "\\" + i.Name, operation, operationTree, "")); size += i.Length; }
-                    catch (Exception) { }
+                    catch (Exception ex) { AddUnreadable(i.FullName, ex.Message); }
             }
-            catch (Exception) { }
+            catch (Exception ex) { AddUnreadable(directory.FullName, ex.Message); }
         }
 
         internal bool Contains(OperationTree operationTree, out int index)
@@ -2780,13 +2795,103 @@ namespace File_Manager
         }
     }
 
+    class FmeItem
+    {
+        internal int id;
+        internal string name;
+        internal long plain_length, data_offset, data_length;
+        internal byte[] iv, mac, plain_hash;
+    }
+
+    class FmeFileInfo
+    {
+        internal int version;
+        internal bool is_package, encrypt_files_name, password_is_correct;
+        internal byte[] salt, index_iv, encryption_key, mac_key;
+        internal int iterations;
+        internal List<FmeItem> items;
+    }
+
+    class HashStream : Stream
+    {
+        HashAlgorithm hasher;
+        Stream inner;
+
+        public HashStream(HashAlgorithm hasher)
+        {
+            this.hasher = hasher;
+        }
+
+        public HashStream(HashAlgorithm hasher, Stream inner)
+        {
+            this.hasher = hasher;
+            this.inner = inner;
+        }
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            if (count > 0)
+                hasher.TransformBlock(buffer, offset, count, null, 0);
+            if (inner != null)
+                inner.Write(buffer, offset, count);
+        }
+
+        public override void Flush()
+        {
+            if (inner != null)
+                inner.Flush();
+        }
+
+        public override bool CanRead
+        {
+            get { return false; }
+        }
+
+        public override bool CanSeek
+        {
+            get { return false; }
+        }
+
+        public override bool CanWrite
+        {
+            get { return true; }
+        }
+
+        public override long Length
+        {
+            get { throw new NotSupportedException(); }
+        }
+
+        public override long Position
+        {
+            get { throw new NotSupportedException(); }
+            set { throw new NotSupportedException(); }
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override long Seek(long offset, SeekOrigin origin)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override void SetLength(long value)
+        {
+            throw new NotSupportedException();
+        }
+    }
+
     public enum OperationOption
     {
         NoValue = 0,
         Over = 1,
         Skip = 2,
         CopyWithNewName = 3,
-        Retry = 4
+        Retry = 4,
+        Continue = 5
     }
 
     public enum OperationType

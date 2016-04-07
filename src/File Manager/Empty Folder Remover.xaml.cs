@@ -26,27 +26,148 @@ namespace File_Manager
         int progress_value = 0;
         List<EmptyDirectoriesFilesListView> worker_list = new List<EmptyDirectoriesFilesListView>();
         List<EmptyDirectoriesFilesListView> list_to_view = new List<EmptyDirectoriesFilesListView>();
-        bool CloseWindow = false;
+        bool CloseWindow = false, stop_search = false, searching = false;
+        List<string> last_roots = new List<string>(), denied = new List<string>(), unreadable_other = new List<string>();
+
+        bool Stopping
+        {
+            get { return CloseWindow || stop_search; }
+        }
         //ObservableCollection<EmptyDirectoriesFilesListView> list_to_view = new ObservableCollection<EmptyDirectoriesFilesListView>();
 
         public Empty_Folder_Remover()
         {
             InitializeComponent();
+            PrepareMenu();
+            UpdateButtons();
         }
 
         public Empty_Folder_Remover(string path)
         {
             InitializeComponent();
-            BegainSearch(path);
+            PrepareMenu();
+            BegainSearch(new List<string>() { path });
+        }
+
+        public Empty_Folder_Remover(List<string> paths)
+        {
+            InitializeComponent();
+            PrepareMenu();
+            BegainSearch(paths);
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            if (Functions.IsRunningAsAdmin())
+            UpdateButtons();
+        }
+
+        void PrepareMenu()
+        {
+            ContextMenu menu = new ContextMenu();
+            MenuItem open = new MenuItem() { Header = "Open", InputGestureText = "Enter" };
+            MenuItem open_location = new MenuItem() { Header = "Open location" };
+            MenuItem preview = new MenuItem() { Header = "Preview", InputGestureText = "Space" };
+            MenuItem remove = new MenuItem() { Header = "Remove from list" };
+            MenuItem copy_path = new MenuItem() { Header = "Copy path" };
+            MenuItem delete = new MenuItem() { Header = "Delete", InputGestureText = "Del" };
+            open.Click += (object sender, RoutedEventArgs e) => { Item_MouseDoubleClick(null, null); };
+            open_location.Click += (object sender, RoutedEventArgs e) => { if (SelectedItem() != null) SafetyTools.OpenLocation(SelectedItem().FullPath); };
+            preview.Click += (object sender, RoutedEventArgs e) => { if (SelectedItem() != null) SafetyTools.PreviewItem(SelectedItem().FullPath); };
+            remove.Click += (object sender, RoutedEventArgs e) =>
             {
-                items_list.Margin = new Thickness(10, 41, 10, 10);
-                caution.Visibility = Visibility.Collapsed;
+                HashSet<EmptyDirectoriesFilesListView> selected = new HashSet<EmptyDirectoriesFilesListView>(items_list.SelectedItems.Cast<EmptyDirectoriesFilesListView>());
+                worker_list.RemoveAll(x => selected.Contains(x));
+                items_list.Items.Refresh();
+                UpdateButtons();
+            };
+            copy_path.Click += (object sender, RoutedEventArgs e) => { if (items_list.SelectedItems.Count > 0) SafetyTools.CopyPaths(items_list.SelectedItems.Cast<EmptyDirectoriesFilesListView>().Select(x => x.FullPath)); };
+            delete.Click += (object sender, RoutedEventArgs e) => { DeleteItems_Click(delete_items, null); };
+            menu.Items.Add(open);
+            menu.Items.Add(open_location);
+            menu.Items.Add(preview);
+            menu.Items.Add(new Separator());
+            menu.Items.Add(remove);
+            menu.Items.Add(copy_path);
+            menu.Items.Add(new Separator());
+            menu.Items.Add(delete);
+            menu.Opened += (object sender, RoutedEventArgs e) =>
+            {
+                int selected = items_list.SelectedItems.Count;
+                string one = selected == 0 ? "Select an item first." : selected > 1 ? "Select only one item." : null;
+                SafetyTools.SetState(open, one == null, one);
+                SafetyTools.SetState(open_location, one == null, one);
+                SafetyTools.SetState(preview, one == null, one);
+                SafetyTools.SetState(remove, selected > 0 && !searching, searching ? "Please wait, the search is running." : "Select an item first.");
+                SafetyTools.SetState(copy_path, selected > 0, "Select an item first.");
+                SafetyTools.SetState(delete, selected > 0 && !searching, searching ? "Please wait, the search is running." : "Select an item first.");
+            };
+            items_list.ContextMenu = menu;
+        }
+
+        EmptyDirectoriesFilesListView SelectedItem()
+        {
+            return items_list.SelectedItems.Count == 1 ? items_list.SelectedItem as EmptyDirectoriesFilesListView : null;
+        }
+
+        void UpdateButtons()
+        {
+            string wait = searching ? "Please wait, the search is running." : null;
+            bool any = worker_list.Count > 0;
+            int selected = items_list.SelectedItems.Count;
+            SafetyTools.SetState(find_button, !searching, wait);
+            SafetyTools.SetState(delete_items, selected > 0 && !searching, wait ?? (any ? "Select the items you want to delete first." : "The list is empty."));
+            SafetyTools.SetState(select_all, any && !searching && worker_list.Any(x => x.isDirectory), wait ?? (any ? "There is no empty folder in the list (empty files are not selected by 'Select all')." : "The list is empty."));
+            SafetyTools.SetState(select_none, selected > 0 && !searching, wait ?? (any ? "Nothing is selected." : "The list is empty."));
+            SafetyTools.SetState(clear_list, any && !searching, wait ?? "The list is empty.");
+        }
+
+        void ShowInfoBar()
+        {
+            int skipped = denied.Count + unreadable_other.Count;
+            if (skipped == 0)
+            {
+                info_bar.Visibility = Visibility.Collapsed;
+                items_list.Margin = new Thickness(5, 47, 5, 5);
+                return;
             }
+            string text;
+            if (denied.Count > 0)
+                text = string.Format("{0} folder{1} skipped (no permission).", denied.Count, denied.Count > 1 ? "s were" : " was") + (unreadable_other.Count > 0 ? string.Format(" {0} could not be read.", unreadable_other.Count) : "") + (App.IsAdmin ? "" : " Run as administrator to include them.");
+            else
+                text = string.Format("{0} folder{1} could not be read and {2} skipped.", unreadable_other.Count, unreadable_other.Count > 1 ? "s" : "", unreadable_other.Count > 1 ? "were" : "was");
+            info_text.Text = text;
+            restart_admin.Visibility = denied.Count > 0 && !App.IsAdmin ? Visibility.Visible : Visibility.Collapsed;
+            info_bar.Visibility = Visibility.Visible;
+            items_list.Margin = new Thickness(5, 47, 5, 34);
+        }
+
+        private void ShowSkipped_Click(object sender, RoutedEventArgs e)
+        {
+            List<string> all = denied.Concat(unreadable_other).ToList();
+            Messages.ShowMessage(string.Format("{0} folder{1} skipped, they and the folders that contain them are not counted as empty.", all.Count, all.Count > 1 ? "s were" : " was"), ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, true, string.Join("\n", all.Take(200).ToArray()) + (all.Count > 200 ? string.Format("\n... and {0} more.", all.Count - 200) : ""));
+        }
+
+        private void RestartAdmin_Click(object sender, RoutedEventArgs e)
+        {
+            if (SafetyTools.RestartAsAdmin("--empty-folder-remover", last_roots))
+                Close();
+        }
+
+        private void StopSearch_Click(object sender, RoutedEventArgs e)
+        {
+            stop_search = true;
+            stop_button.IsEnabled = false;
+        }
+
+        private void SelectNone_Click(object sender, RoutedEventArgs e)
+        {
+            items_list.SelectedItems.Clear();
+            UpdateButtons();
+        }
+
+        private void ItemsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            UpdateButtons();
         }
 
         private void FindEmptey_Click(object sender, RoutedEventArgs e)
@@ -54,21 +175,41 @@ namespace File_Manager
             SelectFileDialog sfd = new SelectFileDialog();
             sfd.dialogMode = SelectFileDialogMode.SelectDirectory;
             sfd.CreateFolderEnable = false;
+            sfd.MultiSelect = true;
             sfd.DialogTitle = "Searching for empty directories in...";
             sfd.AddExtension = false;
             if (sfd.ShowWindow() == MyMessageBoxResult.OK)
-                BegainSearch(sfd.SelectedItem);
+                BegainSearch(sfd.SelectedItems.Count > 0 ? sfd.SelectedItems.ToList() : new List<string>() { sfd.SelectedItem });
         }
 
-        private void BegainSearch(string path)
+        private void BegainSearch(List<string> paths)
         {
-            if (Directory.Exists(path))
+            if (searching)
+                return;
+            List<string> roots = new List<string>();
+            foreach (var i in paths)
+                if (i != null && Directory.Exists(i) && !roots.Any(x => string.Equals(x.TrimEnd('\\'), i.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase)))
+                    roots.Add(i);
+            roots.RemoveAll(x => roots.Any(y => !string.Equals(x.TrimEnd('\\'), y.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase) && x.TrimEnd('\\').StartsWith(y.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase)));
+            if (roots.Count > 0)
             {
                 list_to_view = new List<EmptyDirectoriesFilesListView>();
                 if (worker_list.Count > 0)
                     if (Messages.ShowMessage("Clear list?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "") == MyMessageBoxResult.Yes)
                         ClearList_Click(clear_list, null);
+                progress_value = 0;
+                progressbar.Value = 0;
                 progressbar.Visibility = Visibility.Visible;
+                last_roots = roots;
+                denied.Clear();
+                unreadable_other.Clear();
+                ShowInfoBar();
+                stop_search = false;
+                searching = true;
+                stop_button.IsEnabled = true;
+                stop_button.Visibility = Visibility.Visible;
+                UpdateButtons();
+                List<EmptyDirectoriesFilesListView> empty_directories = new List<EmptyDirectoriesFilesListView>(), empty_files = new List<EmptyDirectoriesFilesListView>();
                 BackgroundWorker find_emptey_BackgroundWorker = new BackgroundWorker();
                 find_emptey_BackgroundWorker.WorkerSupportsCancellation = find_emptey_BackgroundWorker.WorkerReportsProgress = true;
                 find_emptey_BackgroundWorker.DoWork += (object sender, DoWorkEventArgs e) =>
@@ -77,7 +218,7 @@ namespace File_Manager
                     {
                         for (int i = 1; i < 5000 && progress_value < 5100; i++)
                         {
-                            if (CloseWindow) break;
+                            if (Stopping) break;
                             int sleep_time = i < 4500 ? i / 500 : i / 200;
                             if (!find_emptey_BackgroundWorker.IsBusy)
                                 break;
@@ -88,100 +229,154 @@ namespace File_Manager
                             Thread.Sleep(sleep_time);
                         }
                     });
+                    progress_thread.IsBackground = true;
                     progress_thread.Start();
-                    try
-                    { EmptyDirectoriesFilesListView root = new EmptyDirectoriesFilesListView(new DirectoryInfo(path), null, worker_list, ref CloseWindow); }
-                    catch (Exception ex) { find_emptey_BackgroundWorker.ReportProgress(0, ex); }
+                    foreach (var i in roots)
+                        FindEmpty(new DirectoryInfo(i), empty_directories, empty_files, denied, unreadable_other);
                 };
                 find_emptey_BackgroundWorker.ProgressChanged += (object sender, ProgressChangedEventArgs e) =>
                 {
                     if (CloseWindow) return;
-                    if (e.ProgressPercentage == 0)
-                        //{
-                        //ClearList_Click(clear_list, null);
-                        Messages.ShowMessage("Something went wrong", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, e.UserState.ToString());
-                    //}
-                    else if (progressbar.Value < 5100)
+                    if (progressbar.Value < 5100)
                         progressbar.Value = progress_value = e.ProgressPercentage;
-
                 };
                 find_emptey_BackgroundWorker.RunWorkerCompleted += (object sender, RunWorkerCompletedEventArgs e) =>
                 {
                     if (!CloseWindow)
                     {
+                        bool stopped = stop_search;
+                        searching = false;
+                        stop_search = false;
+                        stop_button.Visibility = Visibility.Collapsed;
+                        foreach (var i in empty_directories.Concat(empty_files))
+                            if (!worker_list.Any(x => string.Equals(x.FullPath, i.FullPath, StringComparison.OrdinalIgnoreCase)))
+                                worker_list.Add(i);
+                        worker_list.Sort((x, y) => x.isDirectory == y.isDirectory ? string.Compare(x.FullPath, y.FullPath, StringComparison.OrdinalIgnoreCase) : x.isDirectory ? -1 : 1);
                         list_to_view = worker_list;
                         items_list.DataContext = list_to_view;
-                        
-                        //if (worker_list != null)
-                        //    foreach (var i in worker_list)
-                        //        list_to_view.Add(i);
                         items_list.Items.Refresh();
                         progressbar.Value = 5100;
                         progress_value = 5100;
-                        if (worker_list.Count > 0)
-                            delete_items.IsEnabled = select_all.IsEnabled = clear_list.IsEnabled = true;
-                        else
+                        if (e.Error != null)
+                            Messages.ShowMessage("Something went wrong", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, e.Error.Message);
+                        else if (stopped)
+                            Messages.ShowMessage(string.Format("The search was stopped, {0} empty director{1} and {2} empty file{3} found until then.", empty_directories.Count, empty_directories.Count == 1 ? "y" : "ies", empty_files.Count, empty_files.Count == 1 ? "" : "s"), ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, true, "Only folders that were searched completely are listed.");
+                        else if (worker_list.Count == 0)
                             Messages.ShowMessage("No empty files or directories here.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
-                        Thread.Sleep(5);
                         progressbar.Visibility = Visibility.Hidden;
+                        ShowInfoBar();
+                        SelectAll_Click(null, null);
                     }
                 };
                 find_emptey_BackgroundWorker.RunWorkerAsync();
             }
             else
-                Messages.ShowMessage("We can not find directory '" + path + "'", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
+                Messages.ShowMessage("We can not find directory '" + string.Join("', '", paths.ToArray()) + "'", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
+        }
+
+        bool FindEmpty(DirectoryInfo directory, List<EmptyDirectoriesFilesListView> empty_directories, List<EmptyDirectoriesFilesListView> empty_files, List<string> denied, List<string> unreadable)
+        {
+            if (Stopping || Functions.IsLink(directory))
+                return false;
+            DirectoryInfo[] dirs;
+            FileInfo[] files;
+            try
+            {
+                dirs = directory.GetDirectories();
+                files = directory.GetFiles();
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                denied.Add(directory.FullName + "\n    (" + ex.Message + ")");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                unreadable.Add(directory.FullName + "\n    (" + ex.Message + ")");
+                return false;
+            }
+            bool empty = files.Length == 0;
+            if (empty_files != null)
+                foreach (var i in files)
+                    try
+                    {
+                        if (i.Length == 0)
+                            empty_files.Add(new EmptyDirectoriesFilesListView(i.FullName, false));
+                    }
+                    catch (Exception) { }
+            int first_child = empty_directories.Count;
+            foreach (var i in dirs)
+                if (!FindEmpty(i, empty_directories, empty_files, denied, unreadable))
+                    empty = false;
+            if (empty && !Stopping)
+            {
+                empty_directories.RemoveRange(first_child, empty_directories.Count - first_child);
+                empty_directories.Add(new EmptyDirectoriesFilesListView(directory.FullName, true));
+            }
+            return empty && !Stopping;
         }
 
         private void DeleteItems_Click(object sender, RoutedEventArgs e)
         {
-            List<FileOperationItem> files = new List<FileOperationItem>();
-            StringBuilder items_name = new StringBuilder();
+            bool permanent = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
+            List<FileSystemInfo> items = new List<FileSystemInfo>();
+            List<string> changed = new List<string>();
             foreach (EmptyDirectoriesFilesListView i in items_list.SelectedItems)
             {
                 if (i.isDirectory)
-                    files.Add(new FileOperationItem(new DirectoryInfo(i.FullPath), false, ""));
+                {
+                    List<EmptyDirectoriesFilesListView> check = new List<EmptyDirectoriesFilesListView>();
+                    if (Directory.Exists(i.FullPath) && FindEmpty(new DirectoryInfo(i.FullPath), check, null, new List<string>(), new List<string>()))
+                        items.Add(new DirectoryInfo(i.FullPath));
+                    else
+                        changed.Add(i.FullPath);
+                }
                 else
-                    files.Add(new FileOperationItem(new FileInfo(i.FullPath), false, ""));
-                items_name.AppendLine(i.FullPath);
+                {
+                    FileInfo file = new FileInfo(i.FullPath);
+                    if (file.Exists && file.Length == 0)
+                        items.Add(file);
+                    else
+                        changed.Add(i.FullPath);
+                }
             }
-            if (files.Count > 0)
+            if (changed.Count > 0)
+                Messages.ShowMessage(string.Format("{0} item{1} not empty any more (or not found) and will not be deleted.", changed.Count, changed.Count > 1 ? "s are" : " is"), ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, string.Join("\n", changed.ToArray()));
+            if (items.Count > 0)
             {
-                bool delete = false;
-                if (files.Count > 1)
+                if (Functions.ConfirmDelete(items, permanent) && Functions.DeleteItems(items, permanent, this))
                 {
-                    if (Messages.ShowMessage(string.Format("Are you sure you want to permanently delete these {0} items", files.Count), ModrenMessageButton.YesNo, ModrenMessageImage.Delete, ModrenMessageSound.Question, true, items_name.ToString()) == MyMessageBoxResult.Yes)
-                        delete = true;
-                }
-                else if (Messages.ShowMessage("Are you sure you want to permanently delete these item", ModrenMessageButton.YesNo, ModrenMessageImage.Delete, ModrenMessageSound.Question, true, Messages.GetItemInfo(files[0].Item)) == MyMessageBoxResult.Yes)
-                    delete = true;
-                if (delete)
-                {
-                    new Operation().CopyDialogShow(files, OperationType.Delete, "", true);
-                    for (int i = items_list.SelectedItems.Count - 1; i > 0; i--)
-                    {
-                        EmptyDirectoriesFilesListView current_item = items_list.SelectedItems[i] as EmptyDirectoriesFilesListView;
-                        if ((!current_item.isDirectory && !File.Exists(current_item.FullPath)) || (current_item.isDirectory && !Directory.Exists(current_item.FullPath)))
-                            worker_list.Remove(current_item);
-                    }
+                    worker_list.RemoveAll(x => (x.isDirectory && !Directory.Exists(x.FullPath)) || (!x.isDirectory && !File.Exists(x.FullPath)));
                     items_list.Items.Refresh();
-                    Messages.ShowMessage("Files deleted done.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
+                    UpdateButtons();
                 }
             }
-            else
+            else if (changed.Count == 0)
                 Messages.ShowMessage("You have not selected any file to delete.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
         }
 
         private void ClearList_Click(object sender, RoutedEventArgs e)
         {
             worker_list.Clear();
+            items_list.Items.Refresh();
             progress_value = 0;
             progressbar.Value = 0;
-            delete_items.IsEnabled = select_all.IsEnabled = clear_list.IsEnabled = false;
+            if (sender != null && !searching)
+            {
+                denied.Clear();
+                unreadable_other.Clear();
+                ShowInfoBar();
+            }
+            UpdateButtons();
         }
 
         private void SelectAll_Click(object sender, RoutedEventArgs e)
         {
-            items_list.SelectAll();
+            items_list.SelectedItems.Clear();
+            foreach (var i in worker_list)
+                if (i.isDirectory)
+                    items_list.SelectedItems.Add(i);
+            UpdateButtons();
         }
 
         private void Window_Closing(object sender, CancelEventArgs e)
@@ -202,109 +397,51 @@ namespace File_Manager
             //  not relese// 2:
             //  find empty from multi pathes whether files or folders
             //
-
+            AboutTool window = new AboutTool();
+            window.tool_vertion.Text = "Version: 2";
+            window.tool_date.Text = "";
+            window.tool_name.Text = "Empty Folders Remover";
+            window.tool_image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Tools Icon/empty-directory-remover.png"));
+            window.ShowDialog();
         }
 
         private void Item_PreviewKeyUp(object sender, KeyEventArgs e)
         {
-            if (items_list.SelectedItems.Count == 1)
+            if (SelectedItem() != null)
             {
                 if (e.Key == Key.Space)
-                {
-                    if (File.Exists(worker_list[items_list.SelectedIndex].FullPath))
-                        new Preview().ShowDialog(new FileInfo(worker_list[items_list.SelectedIndex].FullPath), ItemType.File);
-                    else if (Directory.Exists(worker_list[items_list.SelectedIndex].FullPath))
-                        new Preview().ShowDialog(new DirectoryInfo(worker_list[items_list.SelectedIndex].FullPath), ItemType.Directory);
-                    if (MainWindow.GoToPath)
-                    {
-                        MainWindow.GoToPath = false;
-                        new MainWindow(MainWindow.to_go_path).ShowDialog();
-                    }
-                }
+                    SafetyTools.PreviewItem(SelectedItem().FullPath);
                 else if (e.Key == Key.Enter)
                     Item_MouseDoubleClick(null, null);
             }
-            if (items_list.SelectedItems.Count > 0)
+            if (items_list.SelectedItems.Count > 0 && !searching)
                 if (e.Key == Key.Delete)
                     DeleteItems_Click(delete_items, null);
         }
 
         private void Item_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            if (File.Exists(worker_list[items_list.SelectedIndex].FullPath))
-            {
-                try { System.Diagnostics.Process.Start(worker_list[items_list.SelectedIndex].FullPath); }
-                catch (Exception ex)
-                { Messages.ShowMessage("We can not open '"+ worker_list[items_list.SelectedIndex].FullPath + "'.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
-            }
-            else if (Directory.Exists(worker_list[items_list.SelectedIndex].FullPath))
-                new MainWindow(worker_list[items_list.SelectedIndex].FullPath).Show();
+            EmptyDirectoriesFilesListView item = SelectedItem();
+            if (item != null)
+                SafetyTools.OpenItem(item.FullPath);
         }
     }
     class EmptyDirectoriesFilesListView : GeneralPurpose
     {
-        public EmptyDirectoriesFilesListView parent;
-        public long size;
         public bool isDirectory;
 
-        public EmptyDirectoriesFilesListView(FileSystemInfo file, EmptyDirectoriesFilesListView parent, List<EmptyDirectoriesFilesListView> empty_list, ref bool Cancel)
+        public EmptyDirectoriesFilesListView(string path, bool is_directory)
         {
-            this.parent = parent;
-            FullPath = file.FullName;
-            Image = Functions.GetFileImage24(file is FileInfo ? file.Extension : "directory");
-            isDirectory = file is FileInfo ? false : true;
-            if (file is FileInfo)
-                size = ((FileInfo)file).Length;
-            else
-                size = GetAllChidren((DirectoryInfo)file, empty_list, ref Cancel);
+            FullPath = path;
+            isDirectory = is_directory;
+            Image = Functions.GetFileImage24(is_directory ? "directory" : System.IO.Path.GetExtension(path));
+            Kind = is_directory ? "empty directory" : "empty file (0 bytes), not selected by 'Select all'";
+            Tip = path + "\n" + Kind;
         }
 
-        private long GetAllChidren(DirectoryInfo di, List<EmptyDirectoriesFilesListView> empty_list, ref bool Cancel)
-        {
-            long size = 0;
-            DirectoryInfo[] dirs = null;
-            FileInfo[] files = null;
-            try
-            {
-                dirs = di.GetDirectories();
-                foreach (var i in dirs)
-                {
-                    if (Cancel) return 0;
-                    EmptyDirectoriesFilesListView sun = new EmptyDirectoriesFilesListView(i, this, empty_list, ref Cancel);
-                    if (sun.size != 0)
-                        size += sun.size;
-                }
-            }
-            catch (Exception) { }
-            try
-            {
-                files = di.GetFiles();
-                foreach (var i in files)
-                    try
-                    {
-                        if (Cancel) return 0;
-                        EmptyDirectoriesFilesListView sun = new EmptyDirectoriesFilesListView(i, this, empty_list, ref Cancel);
-                        if (sun.size == 0)
-                            empty_list.Add(sun);
-                        else
-                            size += sun.size;
-                    }
-                    catch (Exception) { }
-            }
-            catch (Exception) { }
-            if (size == 0 && dirs != null && files != null)
-            {
-                int i = empty_list.Count - 1;
-                while (i >= 0 && empty_list[i].parent == this)
-                {
-                    if (Cancel) return 0;
-                    empty_list.RemoveAt(i);
-                    i--;
-                }
-                empty_list.Add(this);
-            }
-            return size;
-        }
+        public string Kind { get; set; }
+
+        public string Tip { get; set; }
     }
 }
 

@@ -150,16 +150,16 @@ namespace File_Manager
             switch (sound)
             {
                 case ModrenMessageSound.Exclamation:
-                    sound_player.Source = new Uri(Environment.CurrentDirectory + @"\Media\dialog-warning.wav");
+                    sound_player.Source = new Uri(Functions.AppPath(@"Media\dialog-warning.wav"));
                     break;
                 case ModrenMessageSound.Information:
-                    sound_player.Source = new Uri(Environment.CurrentDirectory + @"\Media\dialog-information.wav");
+                    sound_player.Source = new Uri(Functions.AppPath(@"Media\dialog-information.wav"));
                     break;
                 case ModrenMessageSound.Question:
-                    sound_player.Source = new Uri(Environment.CurrentDirectory + @"\Media\dialog-question.wav");
+                    sound_player.Source = new Uri(Functions.AppPath(@"Media\dialog-question.wav"));
                     break;
                 case ModrenMessageSound.Stop:
-                    sound_player.Source = new Uri(Environment.CurrentDirectory + @"\Media\dialog-error.wav");
+                    sound_player.Source = new Uri(Functions.AppPath(@"Media\dialog-error.wav"));
                     break;
             }
         }

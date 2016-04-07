@@ -80,18 +80,26 @@ namespace File_Manager
                     return (y.Size * y.Dublicats.Count).CompareTo(x.Size * x.Dublicats.Count);
 
                 case DublicateSortBy.Type:
-                    return x.FileType.CompareTo(y.FileType);
+                    return string.Compare(x.FileType, y.FileType);
                 case DublicateSortBy.DecType:
-                    return y.FileType.CompareTo(x.FileType);
+                    return string.Compare(y.FileType, x.FileType);
 
                 default:
                     return 0;
             }
         }
 
-        SHA1 Hasher = new SHA1Cng();
+        SHA256 Hasher = new SHA256Managed();
+        int unreadable_count = 0;
         //int files_count = 0;
-        bool sun_bridle = true, bridle_father = true, show_message_again = true, CloseWindow = false, starting_window = true;
+        bool CloseWindow = false, starting_window = true, stop_search = false, searching = false, comparing = false;
+        List<string> last_roots = new List<string>(), skipped_items = new List<string>();
+        int denied_count = 0;
+
+        bool Stopping
+        {
+            get { return CloseWindow || stop_search; }
+        }
         double dublicate_size = 0;
         double deleted_size = 0;
         double total_size = 0;
@@ -102,11 +110,14 @@ namespace File_Manager
         public Identical_File_Remover()
         {
             InitializeComponent();
+            PrepareMenus();
+            UpdateButtons();
         }
 
         public Identical_File_Remover(List<string> items)
         {
             InitializeComponent();
+            PrepareMenus();
             FindDuplicate(items);
         }
 
@@ -115,6 +126,179 @@ namespace File_Manager
             rec.Width = label1.ActualWidth;
             item_group_viewer.DataContext = dublicate_data;
             starting_window = false;
+            UpdateCompareButton();
+            if (!searching)
+                Recompute();
+        }
+
+        void PrepareMenus()
+        {
+            ContextMenu file_menu = new ContextMenu();
+            MenuItem open = new MenuItem() { Header = "Open", InputGestureText = "Enter" };
+            MenuItem open_location = new MenuItem() { Header = "Open location" };
+            MenuItem preview = new MenuItem() { Header = "Preview", InputGestureText = "Space" };
+            MenuItem keep_only = new MenuItem() { Header = "Keep only this copy" };
+            MenuItem copy_path = new MenuItem() { Header = "Copy path" };
+            open.Click += (object sender, RoutedEventArgs e) => { if (SelectedCopy() != null) SafetyTools.OpenItem(SelectedCopy().FullPath); };
+            open_location.Click += (object sender, RoutedEventArgs e) => { if (SelectedCopy() != null) SafetyTools.OpenLocation(SelectedCopy().FullPath); };
+            preview.Click += (object sender, RoutedEventArgs e) => { if (SelectedCopy() != null) SafetyTools.PreviewItem(SelectedCopy().FullPath); };
+            keep_only.Click += (object sender, RoutedEventArgs e) =>
+            {
+                FilePath_ListView item = SelectedCopy();
+                DublicateFiles_ListView group = GroupOf(item);
+                if (group == null)
+                    return;
+                foreach (var i in group.Dublicats)
+                    i.IsChecked = i != item;
+                Recompute();
+            };
+            copy_path.Click += (object sender, RoutedEventArgs e) => { if (item_viewer.SelectedItems.Count > 0) SafetyTools.CopyPaths(item_viewer.SelectedItems.Cast<FilePath_ListView>().Select(x => x.FullPath)); };
+            file_menu.Items.Add(open);
+            file_menu.Items.Add(open_location);
+            file_menu.Items.Add(preview);
+            file_menu.Items.Add(new Separator());
+            file_menu.Items.Add(keep_only);
+            file_menu.Items.Add(new Separator());
+            file_menu.Items.Add(copy_path);
+            file_menu.Opened += (object sender, RoutedEventArgs e) =>
+            {
+                string one = item_viewer.SelectedItems.Count == 0 ? "Select a file first." : item_viewer.SelectedItems.Count > 1 ? "Select only one file." : null;
+                SafetyTools.SetState(open, one == null, one);
+                SafetyTools.SetState(open_location, one == null, one);
+                SafetyTools.SetState(preview, one == null, one);
+                SafetyTools.SetState(keep_only, one == null, one);
+                SafetyTools.SetState(copy_path, item_viewer.SelectedItems.Count > 0, "Select a file first.");
+            };
+            item_viewer.ContextMenu = file_menu;
+
+            ContextMenu group_menu = new ContextMenu();
+            MenuItem keep_oldest = new MenuItem() { Header = "Keep oldest only" };
+            MenuItem untick = new MenuItem() { Header = "Untick all" };
+            keep_oldest.Click += (object sender, RoutedEventArgs e) =>
+            {
+                DublicateFiles_ListView group = item_group_viewer.SelectedItem as DublicateFiles_ListView;
+                if (group != null)
+                {
+                    group.IsChecked = true;
+                    Recompute();
+                }
+            };
+            untick.Click += (object sender, RoutedEventArgs e) =>
+            {
+                DublicateFiles_ListView group = item_group_viewer.SelectedItem as DublicateFiles_ListView;
+                if (group != null)
+                {
+                    group.IsChecked = false;
+                    Recompute();
+                }
+            };
+            group_menu.Items.Add(keep_oldest);
+            group_menu.Items.Add(untick);
+            group_menu.Opened += (object sender, RoutedEventArgs e) =>
+            {
+                DublicateFiles_ListView group = item_group_viewer.SelectedItem as DublicateFiles_ListView;
+                SafetyTools.SetState(keep_oldest, group != null, "Select a group first.");
+                SafetyTools.SetState(untick, group != null && group.Dublicats.Any(x => x.IsChecked), group == null ? "Select a group first." : "No copy of this group is ticked.");
+            };
+            keep_oldest.Tag = "Tick every copy of this group except the oldest one";
+            item_group_viewer.ContextMenu = group_menu;
+        }
+
+        FilePath_ListView SelectedCopy()
+        {
+            return item_viewer.SelectedItems.Count == 1 ? item_viewer.SelectedItem as FilePath_ListView : null;
+        }
+
+        DublicateFiles_ListView GroupOf(FilePath_ListView item)
+        {
+            return item == null ? null : dublicate_data.FirstOrDefault(x => x.Dublicats.Contains(item));
+        }
+
+        void UpdateButtons()
+        {
+            string wait = searching ? "Please wait, the search is running." : null;
+            bool any = dublicate_data.Count > 0;
+            int ticked = dublicate_data.Sum(x => x.Dublicats.Count(y => y.IsChecked));
+            SafetyTools.SetState(find_dublicate, !searching, wait);
+            SafetyTools.SetState(delete, ticked > 0 && !searching, wait ?? (any ? "Tick the copies you want to delete first." : "The list is empty."));
+            SafetyTools.SetState(select_all, any && !searching && dublicate_data.Any(x => x.IsChecked != true), wait ?? (any ? "Every group already has all copies but one ticked." : "The list is empty."));
+            SafetyTools.SetState(select_none, ticked > 0 && !searching, wait ?? (any ? "No copy is ticked." : "The list is empty."));
+            SafetyTools.SetState(clear_list, any && !searching, wait ?? "The list is empty.");
+            SafetyTools.SetState(sort_button, dublicate_data.Count > 1 && !searching, wait ?? "There is nothing to sort.");
+        }
+
+        void Recompute()
+        {
+            total_size = dublicate_size = deleted_size = 0;
+            foreach (var i in dublicate_data)
+            {
+                int count = i.Dublicats.Count(x => x.IsChecked);
+                total_size += (double)i.Size * i.Dublicats.Count;
+                dublicate_size += (double)i.Size * (i.Dublicats.Count - 1);
+                deleted_size += (double)i.Size * count;
+                i.FullPath = i.Dublicats.Count + (i.Dublicats.Count > 1 ? " copies" : " copy");
+                i.TotalFileSize = Functions.FileSize(i.Size * i.Dublicats.Count, 2);
+            }
+            double width = Math.Max(0, total.ActualWidth);
+            duplicate.Width = total_size > 0 ? Math.Max(0, dublicate_size / total_size * width - 2) : 0;
+            deleted_grid.Width = total_size > 0 ? deleted_size / total_size * width + 4 : 4;
+            deleted_text.Text = Functions.FileSize(deleted_size, 2) + " will be deleted";
+            deleted_grid.ToolTip = deleted_text.Text + "\nThe pink part is the space used by the extra copies.";
+            flow_shart.Visibility = dublicate_data.Count > 0 ? Visibility.Visible : Visibility.Hidden;
+            number.Text = dublicate_data.Count.ToString();
+            items_label.Text = dublicate_data.Count == 1 ? "item" : "items";
+            item_group_viewer.Items.Refresh();
+            item_viewer.Items.Refresh();
+            UpdateButtons();
+        }
+
+        void AddSkipped(string path, Exception ex)
+        {
+            if (!searching)
+                return;
+            lock (skipped_items)
+            {
+                if (ex is UnauthorizedAccessException)
+                    denied_count++;
+                skipped_items.Add(path + "\n    (" + ex.Message + ")");
+            }
+        }
+
+        void ShowInfoBar()
+        {
+            if (skipped_items.Count == 0)
+            {
+                info_bar.Visibility = Visibility.Collapsed;
+                lists_grid.Margin = new Thickness(10, 79, 15, 33);
+                return;
+            }
+            int other = skipped_items.Count - denied_count;
+            string text;
+            if (denied_count > 0)
+                text = string.Format("{0} item{1} skipped (no permission).", denied_count, denied_count > 1 ? "s were" : " was") + (other > 0 ? string.Format(" {0} could not be read.", other) : "") + (App.IsAdmin ? "" : " Run as administrator to include them.");
+            else
+                text = string.Format("{0} item{1} could not be read and {2} skipped.", other, other > 1 ? "s" : "", other > 1 ? "were" : "was");
+            info_text.Text = text;
+            restart_admin.Visibility = denied_count > 0 && !App.IsAdmin ? Visibility.Visible : Visibility.Collapsed;
+            info_bar.Visibility = Visibility.Visible;
+            lists_grid.Margin = new Thickness(10, 107, 15, 33);
+        }
+
+        private void ShowSkipped_Click(object sender, RoutedEventArgs e)
+        {
+            Messages.ShowMessage(string.Format("{0} item{1} skipped.", skipped_items.Count, skipped_items.Count > 1 ? "s were" : " was"), ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, true, string.Join("\n", skipped_items.Take(200).ToArray()) + (skipped_items.Count > 200 ? string.Format("\n... and {0} more.", skipped_items.Count - 200) : ""));
+        }
+
+        private void RestartAdmin_Click(object sender, RoutedEventArgs e)
+        {
+            if (SafetyTools.RestartAsAdmin("--identical-file-remover", last_roots))
+                Close();
+        }
+
+        private void StopSearch_Click(object sender, RoutedEventArgs e)
+        {
+            stop_search = true;
+            stop_search_button.IsEnabled = false;
         }
 
         private void FindDuplicate_Click(object sender, RoutedEventArgs e)
@@ -135,130 +319,100 @@ namespace File_Manager
         {
             List<string> paths = new List<string>();
             foreach (string i in _paths)
-                paths.Add(i);
+                try
+                {
+                    string full = Path.GetFullPath(i).TrimEnd('\\');
+                    if (full.EndsWith(":"))
+                        full += "\\";
+                    if (!paths.Any(x => string.Equals(x, full, StringComparison.OrdinalIgnoreCase)))
+                        paths.Add(full);
+                }
+                catch (Exception) { }
+            paths.RemoveAll(x => paths.Any(y => !string.Equals(x, y, StringComparison.OrdinalIgnoreCase) && x.StartsWith(y.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase)));
+            if (paths.Count == 0)
+                return;
             ClearList_Click(null, null);
+            unreadable_count = 0;
+            denied_count = 0;
+            skipped_items.Clear();
+            last_roots = paths;
+            stop_search = false;
+            searching = true;
+            ShowInfoBar();
+            progressbar.Value = 0;
             progressbar.Visibility = Visibility.Visible;
-            main_grid.IsEnabled = false;
+            mother.IsEnabled = tab_panal.IsEnabled = false;
+            stop_search_button.IsEnabled = true;
+            stop_search_button.Visibility = Visibility.Visible;
+            UpdateButtons();
             TaskbarItemInfo.ProgressValue = 0;
 
             BackgroundWorker find_duplicate = new BackgroundWorker();
             find_duplicate.WorkerReportsProgress = true;
             find_duplicate.DoWork += (object dw_sender, DoWorkEventArgs dw_e) =>
             {
-                bool first_stage = true;
-                Thread progress_thread = new Thread(() =>
-                {
-                    for (int i = 0; i < 126 && first_stage; i++)
-                    {
-                        if (CloseWindow) return;
-                        if (!find_duplicate.IsBusy)
-                            break;
-                        else
-                            try
-                            { if (first_stage) find_duplicate.ReportProgress(0, 0.75); }
-                            catch (Exception) { }
-                        Thread.Sleep(100);
-                        int sleep_time = i < 100 ? 100 : i < 120 ? 1000 : i < 126 ? 5000 : 10000;
-                    }
-                });
                 List<DublicateFileInfo> files = new List<DublicateFileInfo>();
+                HashSet<string> listed = new HashSet<string>();
                 foreach (string i in paths)
                 {
                     if (File.Exists(i))
                     {
                         FileInfo tmp_file = new FileInfo(i);
-                        files.Add(new DublicateFileInfo() { fullpath = tmp_file.FullName, size = tmp_file.Length, file = tmp_file });
+                        if (!Functions.IsLink(tmp_file) && tmp_file.Length > 0 && listed.Add(tmp_file.FullName.ToLower()))
+                            files.Add(new DublicateFileInfo() { fullpath = tmp_file.FullName, size = tmp_file.Length, file = tmp_file });
                     }
                     else
                     {
                         try
-                        { GetAllFiles(files, new DirectoryInfo(i)); }
+                        { GetAllFiles(files, new DirectoryInfo(i), listed); }
                         catch (Exception) { }
                     }
                 }
-                first_stage = false;
                 find_duplicate.ReportProgress(-1, 25);
                 files.Sort((x, y) => x.size.CompareTo(y.size));
-                int start_i = 0, start_k = 0;
 
-                for (int i = 0; i < files.Count - 1; i++)
+                for (int i = 0; i < files.Count; i++)
                 {
+                    if (Stopping) return;
                     find_duplicate.ReportProgress(0, 70.0 / files.Count);
-                    start_i = i;
-                    int same_size = 0;
-                    if (files.Count > i + 1 && files[i].size == files[i + 1].size)
+                    int j = i + 1;
+                    while (j < files.Count && files[j].size == files[i].size)
+                        j++;
+                    if (j - i > 1)
                     {
-                        ReadPartsOF(files[i]);
-                        same_size++;
-                    }
-                    else
-                        continue;
-                    int j;
-                    for (j = i + 1; j < files.Count; j++)
-                    {
-                        if (files[i].size == files[j].size)
+                        List<DublicateFileInfo> same_size = files.GetRange(i, j - i);
+                        foreach (var k in same_size)
                         {
-                            ReadPartsOF(files[j]);
-                            same_size++;
+                            if (Stopping) return;
+                            ReadPartsOF(k);
                         }
-                        else break;
-                    }
-                    if (same_size > 1)
-                    {
-                        List<DublicateFileInfo> small_list = files.GetRange(start_i, same_size);
-                        small_list.Sort((x, y) => x.parts.CompareTo(y.parts));
-                        for (int k = 0; k < small_list.Count - 1; k++)
-                        {
-                            start_k = k;
-                            int duplicates = 0;
-                            if (small_list.Count > k + 1 && small_list[k].parts == small_list[k + 1].parts)
+                        foreach (var parts_group in same_size.Where(x => x.parts != null).GroupBy(x => x.parts))
+                            if (parts_group.Count() > 1)
                             {
-                                CalcHash(small_list[k]);
-                                duplicates++;
-                            }
-                            else
-                                continue;
-                            int l;
-                            for (l = k + 1; l < small_list.Count; l++)
-                            {
-                                if (small_list[k].parts.Equals(small_list[l].parts))
+                                foreach (var k in parts_group)
                                 {
-                                    CalcHash(small_list[l]);
-                                    duplicates++;
+                                    if (Stopping) return;
+                                    CalcHash(k);
                                 }
-                                else break;
-                            }
-                            if (duplicates > 1)
-                            {
-                                List<DublicateFileInfo> micro_list = small_list.GetRange(start_k, duplicates);
-                                micro_list.Sort((x, y) =>/* x.SHA1 == null ? -1 : y.SHA1 == null ? 1 : */x.SHA1.CompareTo(y.SHA1));
-                                for (int m = 0; m < micro_list.Count - 1; m++)
+                                foreach (var hash_group in parts_group.Where(x => x.SHA1 != null).GroupBy(x => x.SHA1))
                                 {
-                                    if (micro_list.Count > m + 1 && micro_list[m].SHA1 == micro_list[m + 1].SHA1)
+                                    List<DublicateFileInfo> copies = new List<DublicateFileInfo>();
+                                    foreach (var k in hash_group)
+                                        if (k.file_id == null || !copies.Any(x => x.file_id == k.file_id))
+                                            copies.Add(k);
+                                    if (copies.Count > 1)
                                     {
+                                        copies.Sort(KeepOrder);
                                         find_duplicate.ReportProgress(1);
-                                        find_duplicate.ReportProgress(2, micro_list[m].file);
+                                        foreach (var k in copies)
+                                            find_duplicate.ReportProgress(2, k.file);
+                                        find_duplicate.ReportProgress(3);
                                     }
-                                    else
-                                        continue;
-                                    int n;
-                                    for (n = m + 1; n < micro_list.Count; n++)
-                                        if (micro_list[m].SHA1.Equals(micro_list[n].SHA1))
-                                            find_duplicate.ReportProgress(2, micro_list[n].file);
-                                        else
-                                            break;
-                                    m = n - 1;
-                                    find_duplicate.ReportProgress(3);
                                 }
                             }
-                            k = l - 1;// will be l in for loop
-                            duplicates = 0;
-                            //break;
-                        }
+                        find_duplicate.ReportProgress(0, 70.0 * (j - i - 1) / files.Count);
                     }
                     i = j - 1;
-                    same_size = 0;
-                    //break;
                 }
             };
 
@@ -284,8 +438,9 @@ namespace File_Manager
                     case 3:
                         dublicate_data[dublicate_data.Count - 1].Size = dublicate_data[dublicate_data.Count - 1].Dublicats[0].File.Length;
                         dublicate_data[dublicate_data.Count - 1].FileType = Functions.GetFileType(dublicate_data[dublicate_data.Count - 1].Dublicats[0].File.Extension);
-                        dublicate_data[dublicate_data.Count - 1].FullPath = dublicate_data[dublicate_data.Count - 1].Dublicats.Count + (dublicate_data[dublicate_data.Count - 1].Dublicats.Count > 1 ? " dublicats " : " dublicat");
+                        dublicate_data[dublicate_data.Count - 1].FullPath = dublicate_data[dublicate_data.Count - 1].Dublicats.Count + " copies";
                         dublicate_data[dublicate_data.Count - 1].TotalFileSize = Functions.FileSize(dublicate_data[dublicate_data.Count - 1].Size * dublicate_data[dublicate_data.Count - 1].Dublicats.Count, 2);
+                        number.Text = dublicate_data.Count.ToString();
                         break;
                 }
             };
@@ -294,52 +449,81 @@ namespace File_Manager
             {
                 if (!CloseWindow)
                 {
-                    main_grid.IsEnabled = true;
-                    SelectAll_Click(null, null);
-                    if (dublicate_data.Count > 0)
-                        delete.IsEnabled = select_all.IsEnabled = select_none.IsEnabled = clear_list.IsEnabled = sort_button.IsEnabled = true;
-                    find_dublicate.IsEnabled = true;
-                    items_label.Text = dublicate_data.Count > 1 ? "items" : "item";
-                    number.Text = " " + dublicate_data.Count;
+                    bool stopped = stop_search;
+                    searching = false;
+                    stop_search = false;
+                    mother.IsEnabled = tab_panal.IsEnabled = true;
+                    stop_search_button.Visibility = Visibility.Collapsed;
+                    foreach (var i in dublicate_data)
+                        i.IsChecked = true;
                     dublicate_data.Sort(Sorter);
-                    item_group_viewer.Items.Refresh();
                     progressbar.Value = 100;
                     TaskbarItemInfo.ProgressValue = 100;
-                    Messages.ShowMessage("Search done.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, true, dublicate_data.Count > 0 ? string.Format("We found {0} item{1}", dublicate_data.Count, dublicate_data.Count > 1 ? "s" : "") : "Congratulations we did not find any dublicates here.");
+                    string result = dublicate_data.Count > 0 ? string.Format("We found {0} item{1}.\nIn each item the oldest copy is kept (not ticked).", dublicate_data.Count, dublicate_data.Count > 1 ? "s" : "") : "Congratulations we did not find any dublicates here.";
+                    if (stopped)
+                        result = "The search was stopped, only the items found until then are listed.\n" + result;
+                    if (bw_e.Error != null)
+                        result += "\nThe search stopped because of an error: " + bw_e.Error.Message;
+                    if (skipped_items.Count > 0)
+                        result += string.Format("\n{0} item{1} could not be read and {2} skipped (see the information bar).", skipped_items.Count, skipped_items.Count > 1 ? "s" : "", skipped_items.Count > 1 ? "were" : "was");
+                    Messages.ShowMessage(stopped ? "Search stopped." : "Search done.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, true, result);
                     TaskbarItemInfo.ProgressValue = 0;
                     progressbar.Visibility = Visibility.Hidden;
-                    flow_shart.Visibility = Visibility.Visible;
+                    Recompute();
+                    ShowInfoBar();
                 }
             };
             find_duplicate.RunWorkerAsync();
         }
 
-        private void GetAllFiles(List<DublicateFileInfo> list_to_add, DirectoryInfo directory)
+        int KeepOrder(DublicateFileInfo x, DublicateFileInfo y)
         {
-            if (CloseWindow)
-                return;
-            try
-            {
-                var files = directory.GetFiles();
-                foreach (var i in files)
-                {
-                    list_to_add.Add(new DublicateFileInfo() { fullpath = i.FullName, size = i.Length, file = i });
-                    if (CloseWindow)
-                        return;
-                }
-            }
-            catch (Exception) { /*return;*/ }
-            try
-            {
-                var sub_dirs = directory.GetDirectories();
-                foreach (var i in sub_dirs)
-                {
-                    GetAllFiles(list_to_add, i);
-                    if (CloseWindow)
-                        return;
-                }
-            }
+            DateTime x_date = DateTime.MaxValue, y_date = DateTime.MaxValue;
+            try { x_date = x.file.CreationTimeUtc; }
             catch (Exception) { }
+            try { y_date = y.file.CreationTimeUtc; }
+            catch (Exception) { }
+            if (x_date != y_date)
+                return x_date.CompareTo(y_date);
+            if (x.fullpath.Length != y.fullpath.Length)
+                return x.fullpath.Length.CompareTo(y.fullpath.Length);
+            return string.Compare(x.fullpath, y.fullpath, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void GetAllFiles(List<DublicateFileInfo> list_to_add, DirectoryInfo directory, HashSet<string> listed)
+        {
+            if (Stopping)
+                return;
+            FileInfo[] files;
+            DirectoryInfo[] sub_dirs;
+            try
+            {
+                files = directory.GetFiles();
+                sub_dirs = directory.GetDirectories();
+            }
+            catch (Exception ex)
+            {
+                AddSkipped(directory.FullName, ex);
+                return;
+            }
+            foreach (var i in files)
+            {
+                try
+                {
+                    if (i.Length > 0 && !Functions.IsLink(i) && listed.Add(i.FullName.ToLower()))
+                        list_to_add.Add(new DublicateFileInfo() { fullpath = i.FullName, size = i.Length, file = i });
+                }
+                catch (Exception ex) { AddSkipped(i.FullName, ex); }
+                if (Stopping)
+                    return;
+            }
+            foreach (var i in sub_dirs)
+            {
+                if (!Functions.IsLink(i))
+                    GetAllFiles(list_to_add, i, listed);
+                if (Stopping)
+                    return;
+            }
         }
 
         private void ReadPartsOF(DublicateFileInfo item)
@@ -351,175 +535,160 @@ namespace File_Manager
                 StringBuilder sb = new StringBuilder();
                 try
                 {
-                    BinaryReader BR = new BinaryReader(item.file.OpenRead());
-
-                    for (int i = 0; i < 32; i++)
+                    using (BinaryReader BR = new BinaryReader(new FileStream(item.fullpath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)))
                     {
-                        BR.BaseStream.Position = BR.BaseStream.Length * i / 32;
-                        sb.Append(Encoding.UTF8.GetString(BR.ReadBytes(4)));
+                        for (int i = 0; i < 32; i++)
+                        {
+                            BR.BaseStream.Position = BR.BaseStream.Length * i / 32;
+                            sb.Append(BitConverter.ToString(BR.ReadBytes(4)));
+                        }
                     }
+                    item.parts = sb.ToString();
                 }
-                catch (Exception) { };
-                item.parts = sb.ToString();
+                catch (Exception ex)
+                {
+                    item.parts = null;
+                    unreadable_count++;
+                    AddSkipped(item.fullpath, ex);
+                }
             }
         }
 
         private void CalcHash(DublicateFileInfo item)
         {
             try
-            { item.SHA1 = System.Text.Encoding.UTF8.GetString(Hasher.ComputeHash(File.OpenRead(item.fullpath))); }
-            catch (Exception) { }
-        }
-
-        private void Sun_Unchecked(object sender, RoutedEventArgs e)
-        {
-            if (bridle_father)
-                sun_bridle = false;
-            CheckAllSun(dublicate_data[item_group_viewer.SelectedIndex], -1);
-            sun_bridle = true;
-        }
-
-        private void Sun_Checked(object sender, RoutedEventArgs e)
-        {
-            if (bridle_father)
-                sun_bridle = false;
-            if (dublicate_data[item_group_viewer.SelectedIndex].cheched_count == dublicate_data[item_group_viewer.SelectedIndex].Dublicats.Count - 1)
-                if (show_message_again)
-                {
-                    if (Messages.ShowMessage("You are about to remove all copies of this file, do you want to do that?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "", out show_message_again) == MyMessageBoxResult.Yes)
-                        CheckAllSun(dublicate_data[item_group_viewer.SelectedIndex], 1);
-                    else
-                    {
-                        sun_bridle = true;
-                        bridle_father = false;
-                        (sender as CheckBox).IsChecked = false;
-                        bridle_father = true;
-                    }
-                }
-                else
-                    CheckAllSun(dublicate_data[item_group_viewer.SelectedIndex], 1);
-            else
-                CheckAllSun(dublicate_data[item_group_viewer.SelectedIndex], 1);
-            sun_bridle = true;
-        }
-
-        private void CheckAllSun(DublicateFiles_ListView d, int dif)
-        {
-            if (!sun_bridle)
             {
-                dublicate_data[item_group_viewer.SelectedIndex].cheched_count += dif;
-                deleted_size += dif * dublicate_data[item_group_viewer.SelectedIndex].Size;
-                deleted_grid.Width = (deleted_size / total_size) * total.ActualWidth + 4;
-                deleted_text.Text = Functions.FileSize(deleted_size, 2) + " will be deleted";
-                int count = 0;
-                foreach (var i in d.Dublicats)
-                    if (i.IsChecked) count++;
-                if (count == 0)
-                    d.ChangeIsCheakedValue(false);
-                else if (count == d.Dublicats.Count)
-                    d.ChangeIsCheakedValue(true);
-                else
-                    d.ChangeIsCheakedValue(null);
-                item_group_viewer.Items.Refresh();
-                item_viewer.Items.Refresh();
+                item.SHA1 = Functions.HashFile(item.fullpath, Hasher);
+                item.file_id = Functions.GetFileId(item.fullpath);
             }
+            catch (Exception ex)
+            {
+                item.SHA1 = null;
+                unreadable_count++;
+                AddSkipped(item.fullpath, ex);
+            }
+        }
+
+        private void Sun_Click(object sender, RoutedEventArgs e)
+        {
+            CheckBox box = (CheckBox)sender;
+            FilePath_ListView item = box.DataContext as FilePath_ListView;
+            DublicateFiles_ListView group = GroupOf(item);
+            if (group == null)
+                return;
+            if (box.IsChecked == true && group.Dublicats.All(x => x == item || x.IsChecked))
+            {
+                box.IsChecked = false;
+                Messages.ShowMessage("At least one copy of each file must be kept.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "Untick another copy first if you want to delete this one.");
+                return;
+            }
+            item.IsChecked = box.IsChecked == true;
+            Recompute();
+        }
+
+        private void Group_Click(object sender, RoutedEventArgs e)
+        {
+            DublicateFiles_ListView group = ((CheckBox)sender).DataContext as DublicateFiles_ListView;
+            if (group == null)
+                return;
+            group.IsChecked = !group.Dublicats.Any(x => x.IsChecked);
+            Recompute();
         }
 
         private void Item_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            if (item_viewer.SelectedIndex > -1)
-                try { System.Diagnostics.Process.Start(dublicate_data[item_group_viewer.SelectedIndex].Dublicats[item_viewer.SelectedIndex].FullPath); }
-                catch (Exception ex) { Messages.ShowMessage("Some went wrong.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
+            if (SelectedCopy() != null)
+                SafetyTools.OpenItem(SelectedCopy().FullPath);
         }
 
         private void Item_PreviewKeyUp(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Space)
             {
-                if (File.Exists(dublicate_data[item_group_viewer.SelectedIndex].Dublicats[item_viewer.SelectedIndex].FullPath))
-                    new Preview().ShowDialog(new FileInfo(dublicate_data[item_group_viewer.SelectedIndex].Dublicats[item_viewer.SelectedIndex].FullPath), ItemType.File);
-                if (MainWindow.GoToPath)
-                {
-                    MainWindow.GoToPath = false;
-                    new MainWindow(MainWindow.to_go_path).ShowDialog();
-                }
+                if (SelectedCopy() != null)
+                    SafetyTools.PreviewItem(SelectedCopy().FullPath);
             }
             else if (e.Key == Key.Enter)
                 Item_MouseDoubleClick(null, null);
-            else if (e.Key == Key.Delete)
+            else if (e.Key == Key.Delete && delete.IsEnabled)
                 Delete_Click(delete, null);
+        }
+
+        static bool SameSize(string path, long size)
+        {
+            try
+            {
+                FileInfo file = new FileInfo(path);
+                return file.Exists && file.Length == size && !Functions.IsLink(file);
+            }
+            catch (Exception) { return false; }
+        }
+
+        void RemoveMissing()
+        {
+            for (int i = dublicate_data.Count - 1; i > -1; i--)
+            {
+                dublicate_data[i].Dublicats.RemoveAll(x => !File.Exists(x.FullPath));
+                if (dublicate_data[i].Dublicats.Count < 2)
+                    dublicate_data.RemoveAt(i);
+            }
+            if (!dublicate_data.Any(x => x.Dublicats == item_viewer.DataContext as List<FilePath_ListView>))
+                item_viewer.DataContext = null;
         }
 
         private void Delete_Click(object sender, RoutedEventArgs e)
         {
-            List<FileOperationItem> files = new List<FileOperationItem>();
-            StringBuilder items_name = new StringBuilder();
+            bool permanent = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
+            List<FileSystemInfo> files = new List<FileSystemInfo>();
+            List<string> changed = new List<string>();
             foreach (var i in dublicate_data)
-                foreach (var j in i.Dublicats)
-                    if (j.IsChecked)
-                    {
-                        files.Add(new FileOperationItem(new FileInfo(j.FullPath), false, ""));
-                        items_name.AppendLine(j.FullPath);
-                    }
+            {
+                List<FilePath_ListView> ticked = i.Dublicats.Where(x => x.IsChecked).ToList();
+                if (ticked.Count == 0)
+                    continue;
+                if (!i.Dublicats.Any(x => !x.IsChecked && SameSize(x.FullPath, i.Size)))
+                {
+                    changed.Add(i.Dublicats[0].FullPath + "\n    (no unticked copy of this file exists any more with the same size, no copy of it is deleted)");
+                    continue;
+                }
+                foreach (var j in ticked)
+                    if (SameSize(j.FullPath, i.Size))
+                        files.Add(new FileInfo(j.FullPath));
+                    else
+                        changed.Add(j.FullPath + "\n    (changed or missing since the search, not deleted)");
+            }
+            if (changed.Count > 0)
+                Messages.ShowMessage(string.Format("{0} item{1} not deleted.", changed.Count, changed.Count > 1 ? "s are" : " is"), ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, string.Join("\n", changed.ToArray()));
             if (files.Count > 0)
             {
-                bool delete = false;
-                if (files.Count > 1)
-                {
-                    if (Messages.ShowMessage(string.Format("Are you sure you want to permanently delete these {0} items", files.Count), ModrenMessageButton.YesNo, ModrenMessageImage.Delete, ModrenMessageSound.Question, true, items_name.ToString()) == MyMessageBoxResult.Yes)
-                        delete = true;
-                }
-                else if (files.Count == 1)
-                    if (Messages.ShowMessage("Are you sure you want to permanently delete these item", ModrenMessageButton.YesNo, ModrenMessageImage.Delete, ModrenMessageSound.Question, true, Messages.GetItemInfo(files[0].Item)) == MyMessageBoxResult.Yes)
-                        delete = true;
-                if (delete)
-                {
-                    new Operation().CopyDialogShow(files, OperationType.Delete, "", true);
-                    for (int i = dublicate_data.Count - 1; i > -1; i--)
-                    {
-                        for (int j = dublicate_data[i].Dublicats.Count - 1; j > -1; j--)
-                            if (dublicate_data[i].Dublicats[j].IsChecked && !File.Exists(dublicate_data[i].Dublicats[j].FullPath))
-                            { dublicate_data[i].Dublicats.RemoveAt(j); dublicate_data[i].cheched_count--; }
-                        if (dublicate_data[i].Dublicats.Count < 2)
-                            dublicate_data.RemoveAt(i);
-                        else
-                            dublicate_data[i].FullPath = dublicate_data[i].Dublicats.Count + " dublicats ";
-                    }
-                    number.Text = dublicate_data.Count + " ";
-                    items_label.Text = dublicate_data.Count > 1 ? "items" : "item";
-                    Messages.ShowMessage("Files deleted done.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
-                }
+                if (Functions.ConfirmDelete(files, permanent))
+                    Functions.DeleteItems(files, permanent, this);
             }
-            else
+            else if (changed.Count == 0)
                 Messages.ShowMessage("You have not selected any file to delete.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
+            RemoveMissing();
+            Recompute();
         }
 
         private void SelectAll_Click(object sender, RoutedEventArgs e)
         {
-            dublicate_size = 0;
-            deleted_size = 0;
-            total_size = 0;
             foreach (DublicateFiles_ListView i in dublicate_data)
-            {
                 i.IsChecked = true;
-                total_size += (i.Size * i.Dublicats.Count);
-                dublicate_size += (i.Size * (i.Dublicats.Count - 1));
-            }
-            item_viewer.Items.Refresh();
-            item_group_viewer.Items.Refresh();
-            deleted_size = dublicate_size;
-            duplicate.Width = (dublicate_size / total_size) * total.ActualWidth - 2;
-            deleted_grid.Width = (deleted_size / total_size) * total.ActualWidth + 4;
-            deleted_text.Text = Functions.FileSize(deleted_size, 2) + " will be deleted";
+            Recompute();
         }
 
         private void ClearList_Click(object sender, RoutedEventArgs e)
         {
             progressbar.Value = 0;
-            delete.IsEnabled = select_all.IsEnabled = select_none.IsEnabled = clear_list.IsEnabled = sort_button.IsEnabled = false;
-            flow_shart.Visibility = Visibility.Hidden;
             dublicate_data.Clear();
             item_viewer.DataContext = null;
+            if (sender != null)
+            {
+                skipped_items.Clear();
+                denied_count = 0;
+                ShowInfoBar();
+            }
+            Recompute();
         }
 
         private void SortBy_Click(object sender, RoutedEventArgs e)
@@ -531,10 +700,7 @@ namespace File_Manager
         {
             foreach (DublicateFiles_ListView i in dublicate_data)
                 i.IsChecked = false;
-            item_group_viewer.Items.Refresh();
-            item_viewer.Items.Refresh();
-            deleted_grid.Width = 4;
-            deleted_text.Text = "0 byte will be deleted";
+            Recompute();
         }
 
         private void ItemGroupViewer_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -611,7 +777,7 @@ namespace File_Manager
                     FileInfo file = new FileInfo(p);
                     f_filename.Text = file.Name;
                     f_filepath.Text = file.FullName;
-                    f_date.Text = "Date: " + string.Format("{0}/{1}/{2}  ", OrginizeDate(file.LastWriteTimeUtc.Day, 2), OrginizeDate(file.LastWriteTimeUtc.Month, 2), OrginizeDate(file.LastWriteTimeUtc.Year, 4)) + string.Format("{0}:{1}", OrginizeDate(file.LastWriteTimeUtc.Hour, 2), OrginizeDate(file.LastWriteTimeUtc.Minute, 2));
+                    f_date.Text = "Date: " + string.Format("{0}/{1}/{2}  ", OrginizeDate(file.LastWriteTime.Day, 2), OrginizeDate(file.LastWriteTime.Month, 2), OrginizeDate(file.LastWriteTime.Year, 4)) + string.Format("{0}:{1}", OrginizeDate(file.LastWriteTime.Hour, 2), OrginizeDate(file.LastWriteTime.Minute, 2));
                     f_image.Source = Functions.GetFileImage256(file.Extension);
                     f_size.Text = "Size: " + Functions.FileSize(file.Length, 2);
                     f_type.Text = "Type: " + Functions.GetFileType(file.Extension) + (file.Extension.Length > 0 ? string.Format(" ({0})", file.Extension) : string.Empty);
@@ -637,7 +803,7 @@ namespace File_Manager
                     FileInfo file = new FileInfo(p);
                     s_filename.Text = file.Name;
                     s_filepath.Text = file.FullName;
-                    s_date.Text = "Date: " + string.Format("{0}/{1}/{2}  ", OrginizeDate(file.LastWriteTimeUtc.Day, 2), OrginizeDate(file.LastWriteTimeUtc.Month, 2), OrginizeDate(file.LastWriteTimeUtc.Year, 4)) + string.Format("{0}:{1}", OrginizeDate(file.LastWriteTimeUtc.Hour, 2), OrginizeDate(file.LastWriteTimeUtc.Minute, 2));
+                    s_date.Text = "Date: " + string.Format("{0}/{1}/{2}  ", OrginizeDate(file.LastWriteTime.Day, 2), OrginizeDate(file.LastWriteTime.Month, 2), OrginizeDate(file.LastWriteTime.Year, 4)) + string.Format("{0}:{1}", OrginizeDate(file.LastWriteTime.Hour, 2), OrginizeDate(file.LastWriteTime.Minute, 2));
                     s_image.Source = Functions.GetFileImage256(file.Extension);
                     s_size.Text = "Size: " + Functions.FileSize(file.Length, 2);
                     s_type.Text = "Type: " + Functions.GetFileType(file.Extension) + (file.Extension.Length > 0 ? string.Format(" ({0})", file.Extension) : string.Empty);
@@ -703,8 +869,8 @@ namespace File_Manager
                 else if (sender == by_total_size_main_menu)
                     SortBy = DublicateSortBy.TotalSize;
                 else if (sender == ascrending_menu_item)
-                    if ((int)SortBy < 5)
-                        SortBy += 4;
+                    if ((int)SortBy > 4)
+                        SortBy -= 4;
             }
             else
             {
@@ -717,8 +883,8 @@ namespace File_Manager
                 else if (sender == by_total_size_main_menu)
                     SortBy = DublicateSortBy.DecTotalSize;
                 else if (sender == ascrending_menu_item)
-                    if ((int)SortBy > 4)
-                        SortBy -= 4;
+                    if ((int)SortBy < 5)
+                        SortBy += 4;
             }
         }
 
@@ -740,10 +906,25 @@ namespace File_Manager
             //2.4:
             //bug fixed
             //
+            AboutTool window = new AboutTool();
+            window.tool_vertion.Text = "Version: 2.4";
+            window.tool_date.Text = "";
+            window.tool_name.Text = "Duplicate Files Remover";
+            window.tool_image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Tools Icon/dublicate-files-remover.png"));
+            window.ShowDialog();
+        }
+
+        void UpdateCompareButton()
+        {
+            if (compare_button == null)
+                return;
+            bool ready = File.Exists(f_filepath.Text) && File.Exists(s_filepath.Text);
+            SafetyTools.SetState(compare_button, ready && !comparing, comparing ? "Please wait, the files are being compared." : "Choose two files first (drag them here or use '...').");
         }
 
         private void FirstFilePath_TextChanged(object sender, TextChangedEventArgs e)
         {
+            UpdateCompareButton();
             if (!starting_window)
             {
                 go_button_color.Color = Colors.Tomato;
@@ -765,6 +946,7 @@ namespace File_Manager
 
         private void SecondFilePath_TextChanged(object sender, TextChangedEventArgs e)
         {
+            UpdateCompareButton();
             if (!starting_window)
             {
                 go_button_color.Color = Colors.Tomato;
@@ -786,46 +968,79 @@ namespace File_Manager
 
         private void Compare_Click(object sender, RoutedEventArgs e)
         {
-            if (File.Exists(f_filepath.Text))
+            if (!File.Exists(f_filepath.Text) || !File.Exists(s_filepath.Text) || comparing)
             {
-                if (File.Exists(s_filepath.Text))
-                {
-                    main_grid.IsEnabled = false;
-                    DublicateFileInfo f = new DublicateFileInfo(new FileInfo(f_filepath.Text));
-                    DublicateFileInfo s = new DublicateFileInfo(new FileInfo(s_filepath.Text));
-                    if (f.size == s.size)
-                    {
-                        ReadPartsOF(f);
-                        ReadPartsOF(s);
-                        if (f.parts.Equals(s.parts))
-                        {
-                            CalcHash(f);
-                            CalcHash(s);
-                            if (f.SHA1.Equals(s.SHA1))
-                            {
-                                Messages.ShowMessage("Files is equal.", ModrenMessageButton.OK, ModrenMessageImage.Tick, ModrenMessageSound.Information, false, "");
-                                main_grid.IsEnabled = true;
-                                if (!f.file.Extension.ToLower().Equals(s.file.Extension.ToLower()))
-                                    if (Messages.ShowMessage("Something wrong.", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, true, "Files seem have deferent extention, do you want to run 'Super extention changer' to detemenate what is the corect extention?") == MyMessageBoxResult.Yes)
-                                    {
-                                        List<string> files = new List<string>();
-                                        files.Add(f.file.FullName);
-                                        files.Add(s.file.FullName);
-                                        new Renamer().ShowWindow(files, "", ExtentionChanger.ExtentionSuggester, true);
-                                    }
-                                main_grid.IsEnabled = true;
-                                return;
-                            }
-                        }
-                    }
-                    main_grid.IsEnabled = true;
-                    Messages.ShowMessage("Files is not equal.", ModrenMessageButton.OK, ModrenMessageImage.Cross, ModrenMessageSound.Information, false, "");
-                }
-                else if (s_filepath.Text != "-" && s_filepath.Text != "")
-                        Messages.ShowMessage("File is not exist", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, string.Format("the file '{0}' is not exist", s_filepath.Text));
+                UpdateCompareButton();
+                return;
             }
-            else if (f_filepath.Text != "-" && f_filepath.Text != "")
-                Messages.ShowMessage("File is not exist", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, string.Format("the file '{0}' is not exist", f_filepath.Text));
+            FileInfo first = new FileInfo(f_filepath.Text), second = new FileInfo(s_filepath.Text);
+            if (string.Equals(first.FullName, second.FullName, StringComparison.OrdinalIgnoreCase))
+            {
+                Messages.ShowMessage("Choose two different files.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
+                return;
+            }
+            comparing = true;
+            compare_button.Content = "comparing...";
+            f_grid.IsEnabled = s_grid.IsEnabled = tab_panal.IsEnabled = false;
+            UpdateCompareButton();
+            string problem = null;
+            bool equal = false, same_file = false;
+            BackgroundWorker compare = new BackgroundWorker();
+            compare.DoWork += (object dw_sender, DoWorkEventArgs dw_e) =>
+            {
+                DublicateFileInfo f = new DublicateFileInfo(first);
+                DublicateFileInfo s = new DublicateFileInfo(second);
+                string f_id = Functions.GetFileId(f.fullpath), s_id = Functions.GetFileId(s.fullpath);
+                if (f_id != null && f_id == s_id)
+                {
+                    same_file = true;
+                    return;
+                }
+                if (f.size != s.size)
+                    return;
+                ReadPartsOF(f);
+                ReadPartsOF(s);
+                if (f.parts == null || s.parts == null)
+                {
+                    problem = "We can not read one of the files.";
+                    return;
+                }
+                if (f.parts != s.parts)
+                    return;
+                CalcHash(f);
+                CalcHash(s);
+                if (f.SHA1 == null || s.SHA1 == null)
+                {
+                    problem = "We can not read one of the files.";
+                    return;
+                }
+                equal = f.SHA1 == s.SHA1;
+            };
+            compare.RunWorkerCompleted += (object bw_sender, RunWorkerCompletedEventArgs bw_e) =>
+            {
+                comparing = false;
+                compare_button.Content = "compare";
+                f_grid.IsEnabled = s_grid.IsEnabled = tab_panal.IsEnabled = true;
+                UpdateCompareButton();
+                if (CloseWindow)
+                    return;
+                if (bw_e.Error != null)
+                    Messages.ShowMessage("We can not compare the files.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, bw_e.Error.Message);
+                else if (problem != null)
+                    Messages.ShowMessage(problem, ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, false, "");
+                else if (same_file)
+                    Messages.ShowMessage("These two paths are the same file.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, true, "One of them is a link or a hard link to the other, they are not two copies.");
+                else if (equal)
+                {
+                    Messages.ShowMessage("The files are identical.", ModrenMessageButton.OK, ModrenMessageImage.Tick, ModrenMessageSound.Information, false, "");
+                    if (!first.Extension.ToLower().Equals(second.Extension.ToLower()))
+                        if (Messages.ShowMessage("Something wrong.", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, true, "Files seem have deferent extention, do you want to run 'Super extention changer' to detemenate what is the corect extention?") == MyMessageBoxResult.Yes)
+                            new Renamer().ShowWindow(new List<string>() { first.FullName, second.FullName }, "", ExtentionChanger.ExtentionSuggester, true);
+                }
+                else
+                    Messages.ShowMessage("The files are not identical.", ModrenMessageButton.OK, ModrenMessageImage.Cross, ModrenMessageSound.Information, false, "");
+            };
+            compare.RunWorkerAsync();
         }
 
         private void Browse_Click(object sender, RoutedEventArgs e)
@@ -859,6 +1074,7 @@ namespace File_Manager
 
         internal string SHA1;
         internal string parts;
+        internal string file_id;
 
         public DublicateFileInfo() { }
 
@@ -916,7 +1132,6 @@ namespace File_Manager
 
     class DublicateFiles_ListView : GeneralPurpose
     {
-        internal int cheched_count = 0;
         long size = 0;
 
         public long Size
@@ -946,31 +1161,25 @@ namespace File_Manager
             Point = Tag;
         }
 
-        private bool? is_cheched;
         public Boolean? IsChecked
         {
-            get { return is_cheched; }
+            get
+            {
+                int count = Dublicats.Count(x => x.IsChecked);
+                if (count == 0)
+                    return false;
+                return count >= Dublicats.Count - 1 ? (bool?)true : null;
+            }
             set
             {
                 if (value.HasValue)
                 {
                     foreach (var i in Dublicats)
                         i.IsChecked = value.Value;
-                    if (value.Value)
+                    if (value.Value && Dublicats.Count > 0)
                         Dublicats[0].IsChecked = false;
-                    cheched_count = Dublicats.Count - 1;
                 }
-                if (value.Value)
-                    is_cheched = null;
-                else
-                    is_cheched = value;
-                //refresh list view;
             }
-        }
-
-        public void ChangeIsCheakedValue(bool? value)
-        {
-            is_cheched = value;
         }
 
         List<FilePath_ListView> dublicats;

@@ -64,10 +64,34 @@ namespace File_Manager
         public Desktop_Environment()
         {
             InitializeComponent();
+            SafetyTools.SetWindowIcon(this, "DesktopEnvironment");
         }
+
+        bool size_worker_started = false;
+        static string[] document_extensions = { ".pdf", ".txt", ".doc", ".docx", ".odt", ".ppt", ".pptx", ".odp", ".xls", ".xlsx", ".ods", ".xps", ".oxps", ".htm", ".html", ".mht", ".rtf" };
 
         private void Launcher_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
+            string action = ((Grid)sender).Tag as string;
+            switch (action)
+            {
+                case "pictures":
+                    OpenSpecialFolder(Environment.SpecialFolder.MyPictures);
+                    return;
+                case "music":
+                    OpenSpecialFolder(Environment.SpecialFolder.MyMusic);
+                    return;
+                case "video":
+                    OpenSpecialFolder(Environment.SpecialFolder.MyVideos);
+                    return;
+                case "control":
+                    try { Process.Start(new ProcessStartInfo(System.IO.Path.Combine(Environment.SystemDirectory, "control.exe"))); }
+                    catch (Exception ex)
+                    { Messages.ShowMessage("We can not open the Control Panel.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
+                    return;
+            }
+            if (launcher_panal.Children.IndexOf((Grid)sender) > 3)
+                return;
             ThicknessAnimation ta = new ThicknessAnimation(new Thickness(0, -(ActualHeight * launcher_panal.Children.IndexOf((Grid)sender)), 0, 0), new Duration(new TimeSpan(2000000)));
             ThicknessAnimation ta2 = new ThicknessAnimation(new Thickness(52, (54 * launcher_panal.Children.IndexOf((Grid)sender)), 0, 0), new Duration(new TimeSpan(2000000)));
             rec.BeginAnimation(MarginProperty, ta2);
@@ -77,6 +101,115 @@ namespace File_Manager
             ((Grid)sender).Background = Brushes.White;
             ViewedPage = (PagePanal)launcher_panal.Children.IndexOf((Grid)sender) + 1;
             //mother.Margin = new Thickness(0, -(ActualHeight * launcher_panal.Children.IndexOf((Grid)sender)), 0, 0);
+        }
+
+        void OpenSpecialFolder(Environment.SpecialFolder folder)
+        {
+            string path = Environment.GetFolderPath(folder);
+            if (!string.IsNullOrEmpty(path) && Directory.Exists(path))
+                Directory_Explorer.ExplorePath(path);
+            else
+                Messages.ShowMessage("We can not find this folder.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, folder.ToString());
+        }
+
+        static List<string> ReadFolders(string key)
+        {
+            string value = Functions.ReadSetting(key);
+            return value == null ? new List<string>() : value.Split(new char[] { '|' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+        }
+
+        static bool AddFolder(string key, string title)
+        {
+            SelectFileDialog sfd = new SelectFileDialog();
+            sfd.dialogMode = SelectFileDialogMode.SelectDirectory;
+            sfd.CreateFolderEnable = false;
+            sfd.AddExtension = false;
+            sfd.DialogTitle = title;
+            if (sfd.ShowWindow() != MyMessageBoxResult.OK || string.IsNullOrEmpty(sfd.SelectedItem))
+                return false;
+            List<string> folders = ReadFolders(key);
+            if (!folders.Any(x => x.Equals(sfd.SelectedItem, StringComparison.OrdinalIgnoreCase)))
+                folders.Add(sfd.SelectedItem);
+            Functions.SaveSetting(key, string.Join("|", folders.ToArray()));
+            return true;
+        }
+
+        static bool AddStartMenuShortcut(string folder, string title)
+        {
+            SelectFileDialog sfd = new SelectFileDialog();
+            sfd.dialogMode = SelectFileDialogMode.OpenFile;
+            sfd.CreateFolderEnable = false;
+            sfd.AddExtension = false;
+            sfd.DialogTitle = title;
+            sfd.FilterMenu.Add(new SelectFileFilter() { display_name = "Programs and shortcuts (*.exe, *.lnk, *.bat, *.cmd)", extentions = SelectFileFilter.SetExtentions(".exe|.lnk|.bat|.cmd") });
+            if (sfd.ShowWindow() != MyMessageBoxResult.OK || string.IsNullOrEmpty(sfd.SelectedItem))
+                return false;
+            string target = sfd.SelectedItem;
+            try
+            {
+                Directory.CreateDirectory(folder);
+                string name = System.IO.Path.GetFileNameWithoutExtension(target), path = System.IO.Path.Combine(folder, name + ".lnk");
+                for (int i = 2; File.Exists(path); i++)
+                    path = System.IO.Path.Combine(folder, name + " (" + i + ").lnk");
+                if (System.IO.Path.GetExtension(target).ToLower() == ".lnk")
+                    File.Copy(target, path);
+                else
+                {
+                    IWshRuntimeLibrary.IWshShortcut shortcut = new IWshRuntimeLibrary.IWshShell_Class().CreateShortcut(path);
+                    shortcut.TargetPath = target;
+                    shortcut.WorkingDirectory = System.IO.Path.GetDirectoryName(target);
+                    shortcut.Save();
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Messages.ShowMessage("We can not add it.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message);
+                return false;
+            }
+        }
+
+        private void AddApp_Click(object sender, RoutedEventArgs e)
+        {
+            if (AddStartMenuShortcut(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "Select the program to add"))
+                RepairAppsPageElements();
+        }
+
+        private void AddAppsFolder_Click(object sender, RoutedEventArgs e)
+        {
+            if (AddFolder("desktop.app_folders", "Add all programs in this folder"))
+                RepairAppsPageElements();
+        }
+
+        private void AddGame_Click(object sender, RoutedEventArgs e)
+        {
+            if (AddStartMenuShortcut(System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "Games"), "Select the game to add"))
+                RepairGamesPageElements();
+        }
+
+        private void AddDocumentLocation_Click(object sender, RoutedEventArgs e)
+        {
+            if (AddFolder("desktop.doc_folders", "Add the documents in this folder"))
+                RepairDocumentPageElements();
+        }
+
+        private void GetFolderApps(List<FileInfo> file_list, DirectoryInfo current, int depth)
+        {
+            FileInfo[] files = new FileInfo[0];
+            DirectoryInfo[] sub_directory = new DirectoryInfo[0];
+            try
+            {
+                files = current.GetFiles("*.exe");
+                sub_directory = current.GetDirectories();
+            }
+            catch (Exception) { }
+            foreach (var i in files)
+                if (!i.Name.ToLower().StartsWith("unins") && !file_list.Any(x => x.FullName.Equals(i.FullName, StringComparison.OrdinalIgnoreCase)))
+                    file_list.Add(i);
+            if (depth < 2)
+                foreach (var i in sub_directory)
+                    if (!Functions.IsLink(i))
+                        GetFolderApps(file_list, i, depth + 1);
         }
 
         #region Set Window as Backgrount Window
@@ -101,6 +234,9 @@ namespace File_Manager
             SetBottom(this);
             if (ActualHeight < 600 || ActualWidth < 800)
                 Close();
+            if (size_worker_started)
+                return;
+            size_worker_started = true;
             BackgroundWorker element_size_sitter = new BackgroundWorker();
             element_size_sitter.WorkerReportsProgress = element_size_sitter.WorkerSupportsCancellation = true;
             element_size_sitter.DoWork += (object sender2, DoWorkEventArgs e2) =>
@@ -135,20 +271,45 @@ namespace File_Manager
         {
             try
             {
-                SevenZip.SevenZipExtractor.SetLibraryPath(@"C:\Program Files\7-Zip\7z.dll");
-                SevenZip.SevenZipExtractor sze = new SevenZip.SevenZipExtractor(fileInfo.FullName);
-                int index = -1;
-                double random = HomeItem.rand.NextDouble();
-                while (File.Exists(@"C:\Users\pal\AppData\Local\Temp\{256BFC36-34DF-4C3E-8051-5DDCC16B9334}\file" + random + image_extention))
-                    random = HomeItem.rand.NextDouble();
-
-                Stream str = File.Open(@"C:\Users\pal\AppData\Local\Temp\{256BFC36-34DF-4C3E-8051-5DDCC16B9334}\file" + random + image_extention, FileMode.OpenOrCreate);
-                if ((index = sze.ArchiveFileNames.IndexOf(image_path)) > -1)
-                    sze.ExtractFile(index, str);
-                str.Close();
-
-                if (File.Exists(@"C:\Users\pal\AppData\Local\Temp\{256BFC36-34DF-4C3E-8051-5DDCC16B9334}\file" + random + image_extention))
-                    return new BitmapImage(new Uri(@"C:\Users\pal\AppData\Local\Temp\{256BFC36-34DF-4C3E-8051-5DDCC16B9334}\file" + random + image_extention));
+                MemoryStream image_stream = null;
+                if (image_extention != ".wmf")
+                {
+                    if (Functions.FindSevenZipLibrary() != null && Functions.PrepareSevenZip())
+                        using (SevenZip.SevenZipExtractor sze = new SevenZip.SevenZipExtractor(fileInfo.FullName))
+                        {
+                            int index = sze.ArchiveFileNames.IndexOf(image_path);
+                            if (index > -1)
+                            {
+                                image_stream = new MemoryStream();
+                                sze.ExtractFile(index, image_stream);
+                            }
+                        }
+                }
+                else
+                    using (Package package = Package.Open(fileInfo.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                        foreach (PackagePart i in package.GetParts())
+                        {
+                            string part_name = i.Uri.OriginalString.ToLower();
+                            if (part_name.StartsWith("/docprops/thumbnail.") && !part_name.EndsWith(".wmf") && !part_name.EndsWith(".emf"))
+                            {
+                                image_stream = new MemoryStream();
+                                using (Stream part_stream = i.GetStream(FileMode.Open, FileAccess.Read))
+                                    part_stream.CopyTo(image_stream);
+                                break;
+                            }
+                        }
+                if (image_stream != null && image_stream.Length > 0)
+                {
+                    image_stream.Position = 0;
+                    BitmapImage image = new BitmapImage();
+                    image.BeginInit();
+                    image.CacheOption = BitmapCacheOption.OnLoad;
+                    image.DecodePixelWidth = 210;
+                    image.StreamSource = image_stream;
+                    image.EndInit();
+                    image.Freeze();
+                    return image;
+                }
             }
             catch (Exception) { }
 
@@ -307,7 +468,7 @@ namespace File_Manager
                     try
                     { item.BigImage = Imaging.CreateBitmapSourceFromHIcon(System.Drawing.Icon.ExtractAssociatedIcon(item.file.FullName).Handle, System.Windows.Int32Rect.Empty, System.Windows.Media.Imaging.BitmapSizeOptions.FromEmptyOptions()); }
                     catch (Exception)
-                    { item.BigImage = new BitmapImage(new Uri("pack://application:,,,/App Launcher;component/Images/applicaton.png")); }
+                    { item.BigImage = Functions.GetFileImage256(item.file.Extension); }
                     //}
                     //else
                     //;
@@ -317,12 +478,12 @@ namespace File_Manager
                 case FileCategory.Text:
                     try
                     {
-                        StreamReader reader = new StreamReader(item.file.OpenRead());
+                        using (StreamReader reader = new StreamReader(new FileStream(item.file.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete)))
                         if (reader.BaseStream.Length > 100)
                         {
                             char[] buffer = new char[100];
-                            reader.Read(buffer, 0, 100);
-                            item.TextContent = new string(buffer).Replace("\n", "").Replace("\r", "");
+                            int read = reader.Read(buffer, 0, 100);
+                            item.TextContent = new string(buffer, 0, read).Replace("\n", "").Replace("\r", "");
                         }
                         else item.TextContent = reader.ReadToEnd().Replace("\n", "").Replace("\r", "");
                     }
@@ -334,8 +495,10 @@ namespace File_Manager
                         BitmapImage myBitmapImage = new BitmapImage();
                         myBitmapImage.BeginInit();
                         myBitmapImage.UriSource = new Uri(item.file.FullName);
+                        myBitmapImage.CacheOption = BitmapCacheOption.OnLoad;
                         myBitmapImage.DecodePixelWidth = 210;
                         myBitmapImage.EndInit();
+                        myBitmapImage.Freeze();
                         item.BigImage = myBitmapImage;
                     }
                     catch (Exception) { }
@@ -344,10 +507,10 @@ namespace File_Manager
                     //Get vedio thumbnail
                     break;
                 case FileCategory.Audio:
-                    item.BigImage = new BitmapImage(new Uri("pack://application:,,,/App Launcher;component/Images/Appearance/go-music.png"));
+                    item.BigImage = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/go-music.png"));
                     break;
                 case FileCategory.Document:
-                    if (item.file.Extension.ToLower().Equals(".docs") || item.file.Extension.ToLower().Equals(".pptx") || item.file.Extension.ToLower().Equals(".xlsx"))
+                    if (item.file.Extension.ToLower().Equals(".docx") ||item.file.Extension.ToLower().Equals(".pptx") || item.file.Extension.ToLower().Equals(".xlsx"))
                         item.BigImage = GetOfficeThumbnails(item.file, @"docProps\thumbnail.wmf", ".wmf");
                     else if (item.file.Extension.ToLower().Equals(".odt") || item.file.Extension.ToLower().Equals(".odp") || item.file.Extension.ToLower().Equals(".ods"))
                         item.BigImage = GetOfficeThumbnails(item.file, @"Thumbnails\thumbnail.png", ".png");
@@ -359,7 +522,8 @@ namespace File_Manager
                 default:
                     try
                     {
-                        BinaryReader reader = new BinaryReader(item.file.OpenRead());
+                        using (BinaryReader reader = new BinaryReader(new FileStream(item.file.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete)))
+                        {
                         byte[] buffer;
                         if (reader.BaseStream.Length > 100)
                             buffer = reader.ReadBytes(100);
@@ -368,6 +532,7 @@ namespace File_Manager
                         item.TextContent = BitConverter.ToString(buffer).Replace("-", " ");
                         //for (int i = 0; i < buffer.Length; i++)
                         //    item.TextContent += ConvToHXD(buffer[i]);
+                        }
                     }
                     catch (Exception) { }
                     break;
@@ -381,16 +546,21 @@ namespace File_Manager
                 if (home_list_view.SelectedIndex > -1)
                 {
                     if (home_list_data[home_list_view.SelectedIndex].is_current_programs)
-                        new MainWindow().Show();
+                        Functions.ShowTool(new Directory_Explorer());
                     else if (home_list_data[home_list_view.SelectedIndex].is_directory)
-                        new MainWindow(home_list_data[home_list_view.SelectedIndex].directory.FullName).Show();
+                        Directory_Explorer.ExplorePath(home_list_data[home_list_view.SelectedIndex].directory.FullName);
                     else if (home_list_data[home_list_view.SelectedIndex].is_drive)
-                        new MainWindow(home_list_data[home_list_view.SelectedIndex].drive.Name).Show();
+                    {
+                        if (home_list_data[home_list_view.SelectedIndex].drive.IsReady)
+                            Directory_Explorer.ExplorePath(home_list_data[home_list_view.SelectedIndex].drive.Name);
+                        else
+                            Messages.ShowMessage("Drive is not ready", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
+                    }
                     else
                         try
                         { Process.Start(new ProcessStartInfo(home_list_data[home_list_view.SelectedIndex].file.FullName)); }
                         catch (Exception ex)
-                        { Messages.ShowMessage("Error while openning the file.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
+                        { Messages.ShowMessage("Error while opening the file.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
                 }
             }
         }
@@ -407,6 +577,7 @@ namespace File_Manager
             app_list_copy.Clear();
             string program_directory = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
             string all_program_directory = Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms);
+            List<string> app_folders = ReadFolders("desktop.app_folders");
             List<FileInfo> file_list = new List<FileInfo>();
             BackgroundWorker get_apps = new BackgroundWorker();
             get_apps.WorkerSupportsCancellation = true;
@@ -418,6 +589,9 @@ namespace File_Manager
                     DirectoryInfo all_prog = new DirectoryInfo(all_program_directory);
                     GetAllApps(file_list,prog);
                     GetAllApps(file_list, all_prog);
+                    foreach (var i in app_folders)
+                        if (Directory.Exists(i))
+                            GetFolderApps(file_list, new DirectoryInfo(i), 0);
                     file_list.Sort(FileSorter);
                 }
                 catch (Exception ex) { string g = ex.Message; }
@@ -545,7 +719,7 @@ namespace File_Manager
                         try
                         { Process.Start(new ProcessStartInfo(app_list_data[app_list_view.SelectedIndex].file_info.FullName)); }
                         catch (Exception ex)
-                        { Messages.ShowMessage("Error while openning application.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
+                        { Messages.ShowMessage("Error while opening the application.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
                 }
             }
         }
@@ -730,7 +904,7 @@ namespace File_Manager
                         try
                         { Process.Start(new ProcessStartInfo(game_list_data[game_list_view.SelectedIndex].file_info.FullName)); }
                         catch (Exception ex)
-                        { Messages.ShowMessage("Error while openning the game.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
+                        { Messages.ShowMessage("Error while opening the game.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
                 }
             }
         }
@@ -755,7 +929,9 @@ namespace File_Manager
             document_list_copy.Clear();
             string documents_directory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
             string all_documents_directory = Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments);
+            List<string> doc_folders = ReadFolders("desktop.doc_folders");
             List<FileInfo> file_list = new List<FileInfo>();
+            HashSet<string> known = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             BackgroundWorker get_docs = new BackgroundWorker();
             get_docs.WorkerSupportsCancellation = true;
             get_docs.DoWork += (object sender, DoWorkEventArgs e) =>
@@ -764,8 +940,11 @@ namespace File_Manager
                 {
                     DirectoryInfo docs = new DirectoryInfo(documents_directory);
                     DirectoryInfo all_docs = new DirectoryInfo(all_documents_directory);
-                    GetAllDocuments(file_list, docs);
-                    GetAllDocuments(file_list, all_docs);
+                    GetAllDocuments(file_list, docs, known);
+                    GetAllDocuments(file_list, all_docs, known);
+                    foreach (var i in doc_folders)
+                        if (Directory.Exists(i))
+                            GetAllDocuments(file_list, new DirectoryInfo(i), known);
                     file_list.Sort(FileSorter);
                 }
                 catch (Exception ex) { string g = ex.Message; }
@@ -777,19 +956,21 @@ namespace File_Manager
                 foreach (var i in file_list)
                 {
                     string extention = System.IO.Path.GetExtension(i.FullName).ToLower();
-                    if (extention.Equals(".txt") || extention.Equals(".doc") || extention.Equals(".docx") || extention.Equals(".odt") || extention.Equals(".ppt") || extention.Equals(".pptx") || extention.Equals(".odp") || extention.Equals(".xls") || extention.Equals(".xlsx") || extention.Equals(".ods") || extention.Equals(".xps") || extention.Equals(".oxps") || extention.Equals(".htm") || extention.Equals(".html") || extention.Equals(".mht") || extention.Equals(".rtf"))
+                    if (document_extensions.Contains(extention))
                     {
                         DocumentItem item = new DocumentItem(i);
-                        document_list_data.Add(item);
                         document_list_copy.Add(item);
                     }
                 }
+                ApplyDocumentFilter();
             };
             get_docs.RunWorkerAsync();
         }
 
-        private void GetAllDocuments(List<FileInfo> file_list, DirectoryInfo current)
+        private void GetAllDocuments(List<FileInfo> file_list, DirectoryInfo current, HashSet<string> known)
         {
+            if (Functions.IsLink(current) || file_list.Count > 20000)
+                return;
             FileInfo[] files = new FileInfo[0];
             DirectoryInfo[] sub_directory = new DirectoryInfo[0];
             try
@@ -799,22 +980,69 @@ namespace File_Manager
             }
             catch (Exception) { }
             foreach (var i in sub_directory)
-                    GetAllDocuments(file_list, i);
+                    GetAllDocuments(file_list, i, known);
             foreach (var i in files)
             {
                 string ext = i.Extension.ToLower();
-                if (ext.Equals(".txt") || ext.Equals(".doc") || ext.Equals(".docx") || ext.Equals(".odt") || ext.Equals(".ppt") || ext.Equals(".pptx") || ext.Equals(".odp") || ext.Equals(".xls") || ext.Equals(".xlsx") || ext.Equals(".ods") || ext.Equals(".xps") || ext.Equals(".oxps") || ext.Equals(".htm") || ext.Equals(".html") || ext.Equals(".mht") || ext.Equals(".rtf"))
-                        if (!Contains(file_list, i.Name.ToLower()))
+                if (document_extensions.Contains(ext))
+                        if (known.Add(i.FullName))
                             file_list.Add(i);
             }
         }
 
         private void DocumentFilter_TextChanged(object sender, TextChangedEventArgs e)
         {
+            ApplyDocumentFilter();
+        }
+
+        private void DocumentType_Changed(object sender, RoutedEventArgs e)
+        {
+            ApplyDocumentFilter();
+        }
+
+        private void DocumentSort_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            ApplyDocumentFilter();
+        }
+
+        void ApplyDocumentFilter()
+        {
+            if (doc_types == null || doc_sort == null || doc_filter == null)
+                return;
+            HashSet<string> types = new HashSet<string>();
+            foreach (var i in doc_types.Items)
+            {
+                CheckBox box = i as CheckBox;
+                if (box != null && box.IsChecked == true)
+                {
+                    string type = "." + box.Content;
+                    types.Add(type);
+                    if (type == ".html")
+                        types.Add(".htm");
+                    if (type == ".xps")
+                        types.Add(".oxps");
+                }
+            }
+            string text = doc_filter.Text.ToLower();
+            IEnumerable<DocumentItem> items = document_list_copy.Where(x => x.Name.ToLower().Contains(text) && (types.Count == 0 || types.Contains(x.file_info.Extension.ToLower())));
+            switch (doc_sort.SelectedIndex)
+            {
+                case 1:
+                    items = items.OrderBy(x => x.FileType).ThenBy(x => x.Name);
+                    break;
+                case 2:
+                    items = items.OrderByDescending(x => x.Date);
+                    break;
+                case 3:
+                    items = items.OrderByDescending(x => x.Size);
+                    break;
+                default:
+                    items = items.OrderBy(x => x.Name);
+                    break;
+            }
             document_list_data.Clear();
-            foreach (var i in document_list_copy)
-                if (i.Name.ToLower().Contains(doc_filter.Text.ToLower()))
-                    document_list_data.Add(i);
+            foreach (var i in items)
+                document_list_data.Add(i);
         }
 
         private void DocumentItem_DoubleClick(object sender, MouseButtonEventArgs e)
@@ -827,7 +1055,7 @@ namespace File_Manager
                         try
                         { Process.Start(new ProcessStartInfo(document_list_data[doc_list_view.SelectedIndex].file_info.FullName)); }
                         catch (Exception ex)
-                        { Messages.ShowMessage("Error while openning the file.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
+                        { Messages.ShowMessage("Error while opening the file.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
                 }
             }
         }
@@ -1364,7 +1592,7 @@ namespace File_Manager
             file = new FileInfo(System.Windows.Forms.Application.ExecutablePath);
             is_directory = false;
             is_drive = false;
-            name = "FILE MANAGER (APPS PREVIEW)";
+            name = "FILE MANAGER";
             BigImage = new BitmapImage(new Uri(Functions.StandardImageSource + "home-file-manager.jpg"));
             BackgroundColor = GetColor();
         }
@@ -1480,11 +1708,30 @@ namespace File_Manager
             set { img_source = value; }
         }
 
+        public string FileSize { get; set; }
+        public string FileType { get; set; }
+        public string FileDate { get; set; }
+        public string Folder { get; set; }
+        public string Location { get; set; }
+        public long Size;
+        public DateTime Date;
+
         public DocumentItem(FileInfo file)
         {
             file_info = file;
             Name = System.IO.Path.GetFileNameWithoutExtension(file_info.Name);
-            Image = Functions.GetFileImage256(file.Extension.ToLower());
+            Image = Functions.GetFileImage24(file.Extension.ToLower());
+            FileType = Functions.GetFileType(file.Extension.ToLower());
+            Folder = file.DirectoryName;
+            Location = file.FullName;
+            try
+            {
+                Size = file.Length;
+                Date = file.LastWriteTime;
+                FileSize = Functions.FileSize(Size, 2);
+                FileDate = Date.ToString("g");
+            }
+            catch (Exception) { }
         }
     }
 

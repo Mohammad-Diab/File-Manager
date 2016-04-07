@@ -48,24 +48,11 @@
     <Reference Include="WindowsBase" />
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
-    <Reference Include="Xceed.Wpf.AvalonDock">
-      <HintPath>..\packages\Extended.Wpf.Toolkit.2.4\lib\net40\Xceed.Wpf.AvalonDock.dll</HintPath>
-    </Reference>
-    <Reference Include="Xceed.Wpf.AvalonDock.Themes.Aero">
-      <HintPath>..\packages\Extended.Wpf.Toolkit.2.4\lib\net40\Xceed.Wpf.AvalonDock.Themes.Aero.dll</HintPath>
-    </Reference>
-    <Reference Include="Xceed.Wpf.AvalonDock.Themes.Metro">
-      <HintPath>..\packages\Extended.Wpf.Toolkit.2.4\lib\net40\Xceed.Wpf.AvalonDock.Themes.Metro.dll</HintPath>
-    </Reference>
-    <Reference Include="Xceed.Wpf.AvalonDock.Themes.VS2010">
-      <HintPath>..\packages\Extended.Wpf.Toolkit.2.4\lib\net40\Xceed.Wpf.AvalonDock.Themes.VS2010.dll</HintPath>
-    </Reference>
-    <Reference Include="Xceed.Wpf.DataGrid">
-      <HintPath>..\packages\Extended.Wpf.Toolkit.2.4\lib\net40\Xceed.Wpf.DataGrid.dll</HintPath>
-    </Reference>
-    <Reference Include="Xceed.Wpf.Toolkit">
-      <HintPath>..\packages\Extended.Wpf.Toolkit.2.4\lib\net40\Xceed.Wpf.Toolkit.dll</HintPath>
-    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml">
@@ -96,7 +83,6 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
-    <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -116,12 +102,25 @@
     <Resource Include="Images\16\disk-vcd-file.png" />
     <Resource Include="Images\16\file.png" />
     <Resource Include="Images\16\floppy.png" />
+    <Resource Include="Images\16\folder-appdata.png" />
+    <Resource Include="Images\16\folder-desktop.png" />
+    <Resource Include="Images\16\folder-documents.png" />
+    <Resource Include="Images\16\folder-downloads.png" />
+    <Resource Include="Images\16\folder-fonts.png" />
+    <Resource Include="Images\16\folder-history.png" />
+    <Resource Include="Images\16\folder-music.png" />
+    <Resource Include="Images\16\folder-pictures.png" />
+    <Resource Include="Images\16\folder-programs.png" />
+    <Resource Include="Images\16\folder-user.png" />
+    <Resource Include="Images\16\folder-videos.png" />
+    <Resource Include="Images\16\hard-disk-system.png" />
     <Resource Include="Images\16\hard-disk.png" />
     <Resource Include="Images\16\memory-card.png" />
     <Resource Include="Images\16\multimedia-audio.png" />
     <Resource Include="Images\16\multimedia-flash.png" />
     <Resource Include="Images\16\multimedia-image.png" />
     <Resource Include="Images\16\multimedia-video.png" />
+    <Resource Include="Images\16\network-drive.png" />
     <Resource Include="Images\16\optical-drive.png" />
     <Resource Include="Images\16\project-file.png" />
     <Resource Include="Images\16\removable-media.png" />
@@ -160,12 +159,25 @@
     <Resource Include="Images\24\disk-vcd-file.png" />
     <Resource Include="Images\24\file.png" />
     <Resource Include="Images\24\floppy.png" />
+    <Resource Include="Images\24\folder-appdata.png" />
+    <Resource Include="Images\24\folder-desktop.png" />
+    <Resource Include="Images\24\folder-documents.png" />
+    <Resource Include="Images\24\folder-downloads.png" />
+    <Resource Include="Images\24\folder-fonts.png" />
+    <Resource Include="Images\24\folder-history.png" />
+    <Resource Include="Images\24\folder-music.png" />
+    <Resource Include="Images\24\folder-pictures.png" />
+    <Resource Include="Images\24\folder-programs.png" />
+    <Resource Include="Images\24\folder-user.png" />
+    <Resource Include="Images\24\folder-videos.png" />
+    <Resource Include="Images\24\hard-disk-system.png" />
     <Resource Include="Images\24\hard-disk.png" />
     <Resource Include="Images\24\memory-card.png" />
     <Resource Include="Images\24\multimedia-audio.png" />
     <Resource Include="Images\24\multimedia-flash.png" />
     <Resource Include="Images\24\multimedia-image.png" />
     <Resource Include="Images\24\multimedia-video.png" />
+    <Resource Include="Images\24\network-drive.png" />
     <Resource Include="Images\24\optical-drive.png" />
     <Resource Include="Images\24\project-file.png" />
     <Resource Include="Images\24\removable-media.png" />
@@ -204,12 +216,25 @@
     <Resource Include="Images\256\disk-vcd-file.png" />
     <Resource Include="Images\256\file.png" />
     <Resource Include="Images\256\floppy.png" />
+    <Resource Include="Images\256\folder-appdata.png" />
+    <Resource Include="Images\256\folder-desktop.png" />
+    <Resource Include="Images\256\folder-documents.png" />
+    <Resource Include="Images\256\folder-downloads.png" />
+    <Resource Include="Images\256\folder-fonts.png" />
+    <Resource Include="Images\256\folder-history.png" />
+    <Resource Include="Images\256\folder-music.png" />
+    <Resource Include="Images\256\folder-pictures.png" />
+    <Resource Include="Images\256\folder-programs.png" />
+    <Resource Include="Images\256\folder-user.png" />
+    <Resource Include="Images\256\folder-videos.png" />
+    <Resource Include="Images\256\hard-disk-system.png" />
     <Resource Include="Images\256\hard-disk.png" />
     <Resource Include="Images\256\memory-card.png" />
     <Resource Include="Images\256\multimedia-audio.png" />
     <Resource Include="Images\256\multimedia-flash.png" />
     <Resource Include="Images\256\multimedia-image.png" />
     <Resource Include="Images\256\multimedia-video.png" />
+    <Resource Include="Images\256\network-drive.png" />
     <Resource Include="Images\256\optical-drive.png" />
     <Resource Include="Images\256\project-file.png" />
     <Resource Include="Images\256\removable-media.png" />
@@ -248,12 +273,25 @@
     <Resource Include="Images\64\disk-vcd-file.png" />
     <Resource Include="Images\64\file.png" />
     <Resource Include="Images\64\floppy.png" />
+    <Resource Include="Images\64\folder-appdata.png" />
+    <Resource Include="Images\64\folder-desktop.png" />
+    <Resource Include="Images\64\folder-documents.png" />
+    <Resource Include="Images\64\folder-downloads.png" />
+    <Resource Include="Images\64\folder-fonts.png" />
+    <Resource Include="Images\64\folder-history.png" />
+    <Resource Include="Images\64\folder-music.png" />
+    <Resource Include="Images\64\folder-pictures.png" />
+    <Resource Include="Images\64\folder-programs.png" />
+    <Resource Include="Images\64\folder-user.png" />
+    <Resource Include="Images\64\folder-videos.png" />
+    <Resource Include="Images\64\hard-disk-system.png" />
     <Resource Include="Images\64\hard-disk.png" />
     <Resource Include="Images\64\memory-card.png" />
     <Resource Include="Images\64\multimedia-audio.png" />
     <Resource Include="Images\64\multimedia-flash.png" />
     <Resource Include="Images\64\multimedia-image.png" />
     <Resource Include="Images\64\multimedia-video.png" />
+    <Resource Include="Images\64\network-drive.png" />
     <Resource Include="Images\64\optical-drive.png" />
     <Resource Include="Images\64\project-file.png" />
     <Resource Include="Images\64\removable-media.png" />
@@ -285,6 +323,13 @@
     <Resource Include="Images\64\x-theme.png" />
     <Resource Include="Images\app.png" />
   </ItemGroup>
+  <PropertyGroup Condition="'$(NuGetPackageRoot)' == ''">
+    <NuGetPackageRoot Condition="'$(NUGET_PACKAGES)' != ''">$([MSBuild]::EnsureTrailingSlash('$(NUGET_PACKAGES)'))</NuGetPackageRoot>
+    <NuGetPackageRoot Condition="'$(NUGET_PACKAGES)' == ''">$(UserProfile)\.nuget\packages\</NuGetPackageRoot>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFrameworkRootPath)' == '' And Exists('$(NuGetPackageRoot)microsoft.netframework.referenceassemblies.net40\1.0.3\build\.NETFramework')">
+    <TargetFrameworkRootPath>$(NuGetPackageRoot)microsoft.netframework.referenceassemblies.net40\1.0.3\build\</TargetFrameworkRootPath>
+  </PropertyGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

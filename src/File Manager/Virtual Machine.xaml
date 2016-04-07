@@ -5,49 +5,153 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:File_Manager"
         mc:Ignorable="d"
-        Title="Virtual Machine" Height="470" Width="410" ResizeMode="CanMinimize" FontSize="14" Icon="Images/Icons/virtual-machine.png" Closing="Window_Closing">
+        Title="Virtual Machine" Height="640" Width="520" MinWidth="440" MinHeight="420" FontSize="14" Icon="Images/Icons/virtual-machine.png" Closing="Window_Closing">
     <Grid>
-        <ScrollViewer Margin="0,5,0,40" BorderBrush="#FF7498BF" VerticalScrollBarVisibility="Auto">
-            <Grid>
-                <TextBlock x:Name="textBlock" HorizontalAlignment="Left" Margin="52,10,0,0" TextWrapping="Wrap" Text="Virtual Machine Options" VerticalAlignment="Top" FontSize="28" TextDecorations="Underline" Foreground="#FF7498BF"/>
-                <TextBlock x:Name="textBlock1" HorizontalAlignment="Left" Margin="10,60,0,0" TextWrapping="Wrap" VerticalAlignment="Top"><Run Text="CPU"/><Run Text=" architecture:"/></TextBlock>
-                <TextBlock x:Name="textBlock2" HorizontalAlignment="Left" Margin="10,96,0,0" TextWrapping="Wrap" Text="CPU Cores:" VerticalAlignment="Top"/>
-                <TextBox x:Name="disk_file" ToolTip="Path" VerticalAlignment="Top" Margin="20,287,50,0" BorderBrush="#FF7498BF" Foreground="Black"/>
-                <TextBlock x:Name="textBlock3" HorizontalAlignment="Left" TextWrapping="Wrap" Text="Memory Size:" VerticalAlignment="Top" Margin="9,133,0,0"/>
-                <ComboBox x:Name="comboBox" HorizontalAlignment="Left" Margin="150,58,0,0" VerticalAlignment="Top" Width="150" SelectedIndex="0" IsEnabled="False" BorderBrush="#FF7498BF">
-                    <ComboBoxItem Content="x86"/>
-                    <ComboBoxItem Content="x64"/>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Rectangle Height="5" Stroke="Black" VerticalAlignment="Top" Fill="Black" StrokeThickness="0"/>
+        <ScrollViewer Margin="0,5,0,0" BorderBrush="#FF7498BF" VerticalScrollBarVisibility="Auto">
+            <Grid x:Name="options_grid" Margin="12,8,12,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="130"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <StackPanel Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,0,0,10">
+                    <Image Height="37" Width="37" Stretch="Fill" Source="Images/Icons/virtual-machine.png"/>
+                    <TextBlock x:Name="textBlock" Margin="8,0,0,0" Text="Virtual Machine Options" VerticalAlignment="Center" FontSize="26" TextDecorations="Underline" Foreground="#FF7498BF"/>
+                </StackPanel>
+
+                <TextBlock Grid.Row="1" Text="CPU architecture:" VerticalAlignment="Center"/>
+                <ComboBox x:Name="architecture" Grid.Row="1" Grid.Column="1" Margin="0,3" HorizontalAlignment="Left" Width="170" BorderBrush="#FF7498BF" SelectionChanged="Option_Changed" ToolTipService.ShowOnDisabled="True"/>
+
+                <TextBlock Grid.Row="2" Text="CPU cores:" VerticalAlignment="Center"/>
+                <ComboBox x:Name="cores" Grid.Row="2" Grid.Column="1" Margin="0,3" HorizontalAlignment="Left" Width="170" BorderBrush="#FF7498BF" ToolTip="Number of processor cores the virtual machine sees"/>
+
+                <TextBlock Grid.Row="3" Text="Memory:" VerticalAlignment="Center"/>
+                <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Margin="0,3">
+                    <TextBox x:Name="memory_text" Width="90" Height="26" VerticalContentAlignment="Center" BorderBrush="#FF7498BF" TextChanged="MemoryText_TextChanged" LostFocus="MemoryText_LostFocus"/>
+                    <TextBlock Text="MB" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="memory_hint" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="Gray" FontSize="12"/>
+                </StackPanel>
+                <Slider x:Name="memory_size" Grid.Row="4" Grid.ColumnSpan="2" ToolTip="Memory of the virtual machine (64 MB steps)" Margin="0,2,0,6" TickPlacement="TopLeft" SmallChange="64" LargeChange="512" TickFrequency="512" Minimum="64" Maximum="4096" Value="1024" Foreground="#FF7498BF" ValueChanged="MemorySize_ValueChanged"/>
+
+                <CheckBox x:Name="accel_whpx" Grid.Row="5" Grid.ColumnSpan="2" Margin="0,4" BorderBrush="#FF7498BF" Content="Hardware acceleration (WHPX), falls back to software (TCG)" Tag="Uses the Windows Hypervisor Platform to run the virtual machine much faster; when it can not start, QEMU uses its slower software emulation (TCG)" ToolTipService.ShowOnDisabled="True"/>
+
+                <TextBlock Grid.Row="6" Grid.ColumnSpan="2" Margin="0,12,0,4" Text="Disks" FontSize="16" Foreground="#FF7498BF"/>
+                <Grid Grid.Row="7" Grid.ColumnSpan="2" Margin="0,3">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="130"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Hard disk:" VerticalAlignment="Center"/>
+                    <TextBox x:Name="hdd_file" Grid.Column="1" Height="28" VerticalContentAlignment="Center" BorderBrush="#FF7498BF" ToolTip="Hard disk image (vhd, vhdx, qcow2, vdi, vmdk, img...)" TextChanged="Media_TextChanged"/>
+                    <Button Grid.Column="2" Content="..." Height="28" Width="32" Margin="4,0,0,0" Background="{x:Null}" BorderBrush="#FF7498BF" ToolTip="Choose a hard disk image" Click="BrowseHdd_Click"/>
+                    <Button x:Name="create_hdd" Grid.Column="3" Height="28" Width="32" Margin="4,0,0,0" Background="{x:Null}" BorderBrush="#FF7498BF" Tag="Create a new empty virtual hard disk" ToolTip="Create a new empty virtual hard disk" ToolTipService.ShowOnDisabled="True" Click="CreateHdd_Click">
+                        <Grid Width="20" Height="18">
+                            <Rectangle Width="16" Height="10" RadiusX="2" RadiusY="2" Stroke="#FF2F5597" StrokeThickness="1.5" HorizontalAlignment="Left" VerticalAlignment="Bottom"/>
+                            <Ellipse Width="2.5" Height="2.5" Fill="#FF2F5597" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="11,0,0,3.5"/>
+                            <Ellipse Width="10" Height="10" Fill="#FF1E8E3E" HorizontalAlignment="Right" VerticalAlignment="Top"/>
+                            <Path Data="M5,2 L5,8 M2,5 L8,5" Stroke="White" StrokeThickness="1.6" HorizontalAlignment="Right" VerticalAlignment="Top" Width="10" Height="10"/>
+                        </Grid>
+                    </Button>
+                </Grid>
+                <Grid Grid.Row="8" Grid.ColumnSpan="2" Margin="0,3">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="130"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="CD / DVD:" VerticalAlignment="Center"/>
+                    <TextBox x:Name="cd_file" Grid.Column="1" Height="28" VerticalContentAlignment="Center" BorderBrush="#FF7498BF" ToolTip="CD/DVD image (iso)" TextChanged="Media_TextChanged"/>
+                    <Button Grid.Column="2" Content="..." Height="28" Width="32" Margin="4,0,36,0" Background="{x:Null}" BorderBrush="#FF7498BF" ToolTip="Choose a CD/DVD image" Click="BrowseCd_Click"/>
+                </Grid>
+                <Grid Grid.Row="9" Grid.ColumnSpan="2" Margin="0,3">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="130"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Floppy:" VerticalAlignment="Center"/>
+                    <TextBox x:Name="floppy_file" Grid.Column="1" Height="28" VerticalContentAlignment="Center" BorderBrush="#FF7498BF" ToolTip="Floppy image (img, ima, flp, vfd)" TextChanged="Media_TextChanged"/>
+                    <Button Grid.Column="2" Content="..." Height="28" Width="32" Margin="4,0,0,0" Background="{x:Null}" BorderBrush="#FF7498BF" ToolTip="Choose a floppy image" Click="BrowseFloppy_Click"/>
+                    <Button x:Name="create_floppy" Grid.Column="3" Height="28" Width="32" Margin="4,0,0,0" Background="{x:Null}" BorderBrush="#FF7498BF" ToolTip="Create a new empty 1.44 MB floppy image (formatted FAT12)" Click="CreateFloppy_Click">
+                        <Grid Width="20" Height="18">
+                            <Rectangle Width="13" Height="13" RadiusX="1.5" RadiusY="1.5" Stroke="#FF2F5597" StrokeThickness="1.5" HorizontalAlignment="Left" VerticalAlignment="Bottom"/>
+                            <Rectangle Width="6" Height="4" Fill="#FF2F5597" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="3.5,0,0,1.5"/>
+                            <Ellipse Width="10" Height="10" Fill="#FF1E8E3E" HorizontalAlignment="Right" VerticalAlignment="Top"/>
+                            <Path Data="M5,2 L5,8 M2,5 L8,5" Stroke="White" StrokeThickness="1.6" HorizontalAlignment="Right" VerticalAlignment="Top" Width="10" Height="10"/>
+                        </Grid>
+                    </Button>
+                </Grid>
+
+                <TextBlock Grid.Row="10" Text="Boot from:" VerticalAlignment="Center" Margin="0,6,0,0"/>
+                <ComboBox x:Name="boot_from" Grid.Row="10" Grid.Column="1" Margin="0,9,0,3" HorizontalAlignment="Left" Width="170" BorderBrush="#FF7498BF" SelectedIndex="0" ToolTip="The device the virtual machine starts from" SelectionChanged="Option_Changed">
+                    <ComboBoxItem Content="Hard disk"/>
+                    <ComboBoxItem Content="CD / DVD"/>
+                    <ComboBoxItem Content="Floppy"/>
                 </ComboBox>
-                <CheckBox x:Name="full_screen" Content="Full screen" HorizontalAlignment="Left" Margin="20,377,0,0" VerticalAlignment="Top" BorderBrush="#FF7498BF"/>
-                <TextBlock x:Name="textBlock6" HorizontalAlignment="Left" Margin="10,327,0,0" TextWrapping="Wrap" Text="VGA" VerticalAlignment="Top"/>
-                <RadioButton x:Name="floppy" Content="Floppy" HorizontalAlignment="Left" Margin="230,262,0,0" VerticalAlignment="Top" Foreground="Black" Checked="FloppyDisk_Checked" BorderBrush="#FF7498BF"/>
-                <RadioButton x:Name="cd_rom" Content="CD Rom" HorizontalAlignment="Left" Margin="120,262,0,0" VerticalAlignment="Top" BorderBrush="#FF7498BF" Checked="CDRom_Checked"/>
-                <RadioButton x:Name="hard_disk" Content="Hard Disk" HorizontalAlignment="Left" Margin="20,262,0,0" VerticalAlignment="Top" BorderBrush="#FF7498BF" IsChecked="True" Checked="HardDisk_Checked"/>
-                <ComboBox x:Name="cores" HorizontalAlignment="Left" Margin="150,94,0,0" VerticalAlignment="Top" Width="150" SelectedIndex="0" BorderBrush="#FF7498BF">
-                    <ComboBoxItem Content="1"/>
-                </ComboBox>
-                <Slider x:Name="memory_size" ToolTip="Memory Size" Margin="20,162,10,0" VerticalAlignment="Top" TickPlacement="TopLeft" SmallChange="16" TickFrequency="128" LargeChange="128" Maximum="4096" Value="128" Minimum="16" Foreground="#FF7498BF" ValueChanged="MemorySize_ValueChanged"/>
-                <TextBlock x:Name="textBlock7" HorizontalAlignment="Left" Margin="10,202,0,0" TextWrapping="Wrap" Text="Boot Options" VerticalAlignment="Top"/>
-                <Button x:Name="button1" Content="B" HorizontalAlignment="Right" Margin="0,287,30,0" VerticalAlignment="Top" Width="21" Height="21" Background="{x:Null}" BorderBrush="#FF7498BF" FontSize="10.667" Foreground="Black" Click="Browse_Click"/>
-                <ComboBox x:Name="vga" HorizontalAlignment="Left" Margin="150,349,0,0" VerticalAlignment="Top" Width="150" SelectedIndex="0" BorderBrush="#FF7498BF">
+
+                <TextBlock Grid.Row="11" Text="Video card:" VerticalAlignment="Center"/>
+                <ComboBox x:Name="vga" Grid.Row="11" Grid.Column="1" Margin="0,3" HorizontalAlignment="Left" Width="170" SelectedIndex="0" BorderBrush="#FF7498BF" ToolTip="std works with almost every system; virtio is fast with drivers (Linux); vmware and cirrus for old systems">
                     <ComboBoxItem Content="std"/>
+                    <ComboBoxItem Content="virtio"/>
                     <ComboBoxItem Content="vmware"/>
+                    <ComboBoxItem Content="cirrus"/>
                 </ComboBox>
-                <TextBlock x:Name="textBlock4" HorizontalAlignment="Left" Margin="20,352,0,0" TextWrapping="Wrap" Text="Video card type:" VerticalAlignment="Top"/>
-                <TextBox x:Name="memory_size_text" HorizontalAlignment="Left" Margin="150,129,0,0" TextWrapping="Wrap" Text="128 MB" VerticalAlignment="Top" Width="150" BorderBrush="#FF7498BF" IsReadOnly="True"/>
-                <Button x:Name="button2" ToolTip="Create New Hard Disk" HorizontalAlignment="Right" Margin="0,287,10,0" VerticalAlignment="Top" Width="21" Height="21" Background="{x:Null}" BorderBrush="#FF7498BF" Click="CreateVHD_Click"/>
-                <Image HorizontalAlignment="Left" Height="37" Margin="10,10,0,0" VerticalAlignment="Top" Width="37" Stretch="Fill" Source="Images/Icons/virtual-machine.png"/>
-                <ComboBox IsEnabled="True" SelectedIndex="0" HorizontalAlignment="Left" Margin="20,227,0,0" VerticalAlignment="Top" Width="167" BorderBrush="#FF7498BF">
-                    <ComboBox.ToolTip>
-                        <TextBlock Text="To edit you must run this tool as adminstartor." Foreground="Red"/>
-                    </ComboBox.ToolTip>
-                    <ComboBoxItem Content="virtual"/>
-                    <ComboBoxItem Content="physical" IsEnabled="False"/>
-                </ComboBox>
+
+                <StackPanel Grid.Row="12" Grid.ColumnSpan="2" Margin="0,8,0,0">
+                    <CheckBox x:Name="full_screen" Content="Full screen" Margin="0,3" BorderBrush="#FF7498BF" ToolTip="Start in full screen (Ctrl+Alt+F switches back)"/>
+                    <CheckBox x:Name="network" Content="Network (internet through this PC)" Margin="0,3" BorderBrush="#FF7498BF" IsChecked="True" ToolTip="An e1000 network card connected to this PC's network (user mode NAT)"/>
+                    <CheckBox x:Name="sound" Content="Sound" Margin="0,3" BorderBrush="#FF7498BF" ToolTip="An AC97 sound card playing through Windows"/>
+                </StackPanel>
             </Grid>
         </ScrollViewer>
-        <Button x:Name="button" Content="RUN" HorizontalAlignment="Right" Margin="0,0,10,5" VerticalAlignment="Bottom" Width="110" Background="{x:Null}" Height="30" BorderBrush="#FF7498BF" Foreground="#FF7498BF" Click="Run_Click" FontSize="16"/>
-        <TextBlock x:Name="textBlock5" HorizontalAlignment="Left" TextWrapping="Wrap" Text="Press &quot;Ctrl + Alt + G&quot; to grab mouse" VerticalAlignment="Bottom" Margin="10,0,0,10"/>
-        <Rectangle Height="5" Stroke="Black" VerticalAlignment="Top" Fill="Black" StrokeThickness="0"/>
+        <Button ToolTip="About Virtual Machine" HorizontalAlignment="Right" VerticalAlignment="Top" Width="36" Height="36" Margin="0,8,22,0" Background="{x:Null}" BorderBrush="{x:Null}" Click="AboutTool_Click">
+            <Image Stretch="Fill" Source="Images/Menu/about-tool.png"/>
+        </Button>
+        <Grid x:Name="qemu_bar" Grid.Row="1" Height="28" Margin="5,0,5,4" Background="#FFE8F1FB" Visibility="Collapsed">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Image Source="Images/Appearance/dialog-information.png" Width="18" Height="18" Margin="4,0"/>
+            <TextBlock Grid.Column="1" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Foreground="#FF011F5B" Text="QEMU is not installed: this tool needs it to run a virtual machine." ToolTip="Install QEMU for Windows (64-bit) from the official QEMU site, then click 'Check again'."/>
+            <Button Grid.Column="2" Content="Download QEMU" ToolTip="Open the official QEMU download page" Margin="4,2,0,2" Padding="6,0" Background="{x:Null}" BorderBrush="RoyalBlue" Click="DownloadQemu_Click"/>
+            <Button Grid.Column="3" Content="Check again" ToolTip="Look for QEMU again (after installing it)" Margin="4,2,2,2" Padding="6,0" Background="{x:Null}" BorderBrush="RoyalBlue" Click="CheckQemu_Click"/>
+        </Grid>
+        <Grid Grid.Row="2" Margin="10,0,10,6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock x:Name="textBlock5" TextWrapping="Wrap" Text="Press &quot;Ctrl + Alt + G&quot; to grab mouse" VerticalAlignment="Center" FontSize="13" Foreground="Gray"/>
+            <Button x:Name="stop_button" Grid.Column="1" Content="STOP" Width="90" Height="30" Margin="8,0,0,0" Background="{x:Null}" BorderBrush="IndianRed" Foreground="IndianRed" FontSize="16" IsEnabled="False" ToolTipService.ShowOnDisabled="True" Tag="Turn the virtual machine off at once. Warning: like pulling the power cable, anything not saved inside it is lost." Click="Stop_Click"/>
+            <Button x:Name="button" Grid.Column="2" Content="RUN" Width="110" Height="30" Margin="8,0,0,0" Background="{x:Null}" BorderBrush="#FF7498BF" Foreground="#FF7498BF" FontSize="16" ToolTipService.ShowOnDisabled="True" Tag="Start the virtual machine" Click="Run_Click"/>
+        </Grid>
     </Grid>
 </Window>

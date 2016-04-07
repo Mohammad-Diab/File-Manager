@@ -6,22 +6,29 @@ using System.IO;
 using System.Linq;
 using System.Management;
 using System.Runtime.InteropServices;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Security.Cryptography;
 using System.Security.Principal;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
+using Microsoft.Win32;
 
 namespace File_Manager
 {
 
     static class Functions
     {
-        public static string StandardImageSource = "pack://application:,,,/File Manager;component/Images/Icons/", SystemDrive = "c:\\";
+        public static string StandardImageSource = "pack://application:,,,/File Manager;component/Images/Icons/", SystemDrive = Path.GetPathRoot(Environment.SystemDirectory).ToLower();
 
         public static int buffer = 16384 /*32768 / 2*/;
 
@@ -53,6 +60,590 @@ namespace File_Manager
         private static Guid FolderDownloads = new Guid("374DE290-123F-4565-9164-39C4925E467B");
         [DllImport("shell32.dll", CharSet = CharSet.Auto)]
         private static extern int SHGetKnownFolderPath(ref Guid id, int flags, IntPtr token, out IntPtr path);
+
+        public static string AppPath(string relative_path)
+        {
+            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, relative_path);
+        }
+
+        internal static string LoadFileInfo()
+        {
+            if (FileInfoCombonents.FilesInformation != null)
+                return null;
+            string file_path = AppPath("FileInfo.dat");
+            if (!File.Exists(file_path))
+                return "Can not find 'FileInfo.dat' File.";
+            List<BasicFileInfoCombonents> info = null;
+            try
+            {
+                using (Stream filestream = File.OpenRead(file_path))
+                {
+                    BinaryFormatter BF = new BinaryFormatter();
+                    BF.Binder = new SafeBinder("System.Collections.Generic.List`1", "File_Manager.BasicFileInfoCombonents", "File_Manager.FileCategory", "System.Int32", "System.String", "System.Boolean");
+                    info = (List<BasicFileInfoCombonents>)BF.Deserialize(filestream);
+                }
+            }
+            catch (Exception)
+            { return "Can not load 'FileInfo.dat' File."; }
+            if (info == null || !BasicFileInfoCombonents.ConvertToStandard(info))
+            {
+                FileInfoCombonents.FilesInformation = null;
+                return "The file 'FileInfo.dat' is not valid.";
+            }
+            return null;
+        }
+
+        internal static void LogError(Exception ex)
+        {
+            try
+            {
+                string folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "File Manager");
+                Directory.CreateDirectory(folder);
+                File.AppendAllText(Path.Combine(folder, "errors.log"), DateTime.Now + "\r\n" + ex + "\r\n\r\n");
+            }
+            catch (Exception) { }
+        }
+
+        static object settings_lock = new object();
+
+        static string SettingsFile()
+        {
+            return Path.Combine(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "File Manager"), "settings.txt");
+        }
+
+        internal static string ReadSetting(string key)
+        {
+            try
+            {
+                lock (settings_lock)
+                    if (File.Exists(SettingsFile()))
+                        foreach (var i in File.ReadAllLines(SettingsFile()))
+                            if (i.StartsWith(key + "="))
+                                return i.Substring(key.Length + 1);
+            }
+            catch (Exception) { }
+            return null;
+        }
+
+        internal static void SaveSetting(string key, string value)
+        {
+            try
+            {
+                lock (settings_lock)
+                {
+                    string file = SettingsFile(), temp = file + ".tmp";
+                    List<string> lines = new List<string>();
+                    try
+                    {
+                        if (File.Exists(file))
+                            lines = File.ReadAllLines(file).Where(x => x.Contains('=') && !x.StartsWith(key + "=")).ToList();
+                    }
+                    catch (Exception) { }
+                    lines.Add(key + "=" + value);
+                    Directory.CreateDirectory(Path.GetDirectoryName(file));
+                    File.WriteAllLines(temp, lines.ToArray());
+                    if (File.Exists(file))
+                        File.Replace(temp, file, null);
+                    else
+                        File.Move(temp, file);
+                }
+            }
+            catch (Exception ex) { LogError(ex); }
+        }
+
+        internal static void OpenUrl(string url)
+        {
+            try { Process.Start(new ProcessStartInfo(url)); }
+            catch (Exception ex)
+            { Messages.ShowMessage("We can not open the link.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, url + "\n" + ex.Message); }
+        }
+
+        #region Links and protected paths
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        struct WIN32_FIND_DATA
+        {
+            public uint dwFileAttributes;
+            public System.Runtime.InteropServices.ComTypes.FILETIME ftCreationTime;
+            public System.Runtime.InteropServices.ComTypes.FILETIME ftLastAccessTime;
+            public System.Runtime.InteropServices.ComTypes.FILETIME ftLastWriteTime;
+            public uint nFileSizeHigh;
+            public uint nFileSizeLow;
+            public uint dwReserved0;
+            public uint dwReserved1;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
+            public string cFileName;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 14)]
+            public string cAlternateFileName;
+        }
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        static extern IntPtr FindFirstFile(string lpFileName, out WIN32_FIND_DATA lpFindFileData);
+
+        [DllImport("kernel32.dll")]
+        static extern bool FindClose(IntPtr hFindFile);
+
+        internal static bool IsLink(FileSystemInfo item)
+        {
+            FileAttributes attributes;
+            try { attributes = item.Attributes; }
+            catch (Exception) { return false; }
+            if ((int)attributes == -1 || !attributes.HasFlag(FileAttributes.ReparsePoint))
+                return false;
+            WIN32_FIND_DATA data;
+            IntPtr handle = FindFirstFile(item.FullName.TrimEnd('\\'), out data);
+            if (handle == new IntPtr(-1))
+                return true;
+            FindClose(handle);
+            return (data.dwReserved0 & 0x20000000) != 0;
+        }
+
+        static void AddRiskPlace(List<KeyValuePair<string, string>> places, string path, string description)
+        {
+            if (!string.IsNullOrEmpty(path))
+                try { places.Add(new KeyValuePair<string, string>(Path.GetFullPath(path).TrimEnd('\\').ToLower(), description)); }
+                catch (Exception) { }
+        }
+
+        internal static string GetPathRisk(string path)
+        {
+            string full;
+            try { full = Path.GetFullPath(path).TrimEnd('\\').ToLower(); }
+            catch (Exception) { return null; }
+            if (full.EndsWith(":"))
+                return "the whole drive " + full.ToUpper() + "\\";
+            List<KeyValuePair<string, string>> places = new List<KeyValuePair<string, string>>();
+            AddRiskPlace(places, Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Windows itself (Windows may stop working or fail to start)");
+            AddRiskPlace(places, Environment.GetEnvironmentVariable("ProgramW6432"), "installed programs");
+            AddRiskPlace(places, Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "installed programs");
+            AddRiskPlace(places, Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "installed programs");
+            AddRiskPlace(places, AppDomain.CurrentDomain.BaseDirectory, "File Manager itself");
+            foreach (var i in places)
+            {
+                if (full == i.Key)
+                    return i.Value;
+                if (i.Key.StartsWith(full + "\\"))
+                    return "it contains " + i.Value;
+                if (full.StartsWith(i.Key + "\\"))
+                    return "a part of " + i.Value;
+            }
+            places.Clear();
+            AddRiskPlace(places, Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "settings and data of installed programs");
+            string users = null;
+            try { users = Path.GetDirectoryName(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)); }
+            catch (Exception) { }
+            AddRiskPlace(places, users, "all user accounts and their files");
+            foreach (var i in places)
+            {
+                if (full == i.Key)
+                    return i.Value;
+                if (i.Key.StartsWith(full + "\\"))
+                    return "it contains " + i.Value;
+            }
+            if (users != null && string.Equals(Path.GetDirectoryName(full), users.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase))
+                return "a user account's folder (documents, desktop, settings)";
+            string name = Path.GetFileName(full);
+            if ((name == "system volume information" || name == "$recycle.bin") && Path.GetDirectoryName(full) != null && Path.GetDirectoryName(full).Length <= 3)
+                return "system restore data or the Recycle Bin of the drive";
+            return null;
+        }
+
+        internal static bool ConfirmRiskyItems(IEnumerable<string> paths, string action)
+        {
+            StringBuilder risks = new StringBuilder();
+            int count = 0;
+            foreach (string i in paths)
+            {
+                string risk = GetPathRisk(i);
+                if (risk != null)
+                {
+                    count++;
+                    if (count <= 10)
+                        risks.AppendLine(i + "\n    (" + risk + ")");
+                }
+            }
+            if (count == 0)
+                return true;
+            if (count > 10)
+                risks.AppendLine(string.Format("... and {0} more.", count - 10));
+            if (Messages.ShowMessage(string.Format("Warning: you are about to {0} protected system or user items.", action), ModrenMessageButton.YesNo, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, risks.ToString(), "This can break Windows, installed programs or user accounts and may not be undoable. Continue only if you are sure.") != MyMessageBoxResult.Yes)
+                return false;
+            return Messages.ShowMessage(string.Format("Last confirmation: {0} {1} protected item{2} at your own risk?", action, count, count > 1 ? "s" : ""), "", new ButtonContent("No, keep them (recommended)", ModrenMessageBitmapImage.Cancel, 1), new ButtonContent("Yes, " + action + " at my own risk", ModrenMessageBitmapImage.Default, 2)) == MyMessageBoxResult.Button2;
+        }
+
+        #endregion
+
+        #region Delete and Recycle Bin
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        struct SHFILEOPSTRUCT
+        {
+            public IntPtr hwnd;
+            public uint wFunc;
+            public string pFrom;
+            public string pTo;
+            public ushort fFlags;
+            public bool fAnyOperationsAborted;
+            public IntPtr hNameMappings;
+            public string lpszProgressTitle;
+        }
+
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+        static extern int SHFileOperation(ref SHFILEOPSTRUCT FileOp);
+
+        static bool HasRecycleBin(string path)
+        {
+            try { return new DriveInfo(Path.GetPathRoot(path)).DriveType == DriveType.Fixed; }
+            catch (Exception) { return false; }
+        }
+
+        static List<string> SendToRecycleBin(List<FileSystemInfo> items, Window owner)
+        {
+            StringBuilder from = new StringBuilder();
+            foreach (var i in items)
+            {
+                from.Append(i.FullName);
+                from.Append('\0');
+            }
+            SHFILEOPSTRUCT operation = new SHFILEOPSTRUCT();
+            operation.hwnd = owner == null ? IntPtr.Zero : new WindowInteropHelper(owner).Handle;
+            operation.wFunc = 3;
+            operation.pFrom = from.ToString();
+            operation.fFlags = 0x40 | 0x10 | 0x4000;
+            int result = -1;
+            try { result = SHFileOperation(ref operation); }
+            catch (Exception) { }
+            List<string> failed = new List<string>();
+            foreach (var i in items)
+            {
+                i.Refresh();
+                if (i.Exists)
+                    failed.Add(i.FullName + (result != 0 ? string.Format("\n    (error code {0})", result) : ""));
+            }
+            return failed;
+        }
+
+        internal static bool DeleteItems(List<FileSystemInfo> items, bool permanent, Window owner)
+        {
+            List<string> paths = new List<string>();
+            foreach (var i in items)
+                paths.Add(i.FullName);
+            if (!ConfirmRiskyItems(paths, permanent ? "permanently delete" : "delete"))
+                return false;
+            List<FileSystemInfo> to_delete = new List<FileSystemInfo>(), to_recycle = new List<FileSystemInfo>(), no_bin = new List<FileSystemInfo>();
+            List<string> failed = new List<string>();
+            foreach (var i in items)
+            {
+                if (i is DirectoryInfo && IsLink(i))
+                {
+                    try { Directory.Delete(i.FullName, false); }
+                    catch (Exception ex) { failed.Add(i.FullName + "\n    (" + ex.Message + ")"); }
+                }
+                else if (permanent)
+                    to_delete.Add(i);
+                else if (HasRecycleBin(i.FullName))
+                    to_recycle.Add(i);
+                else
+                    no_bin.Add(i);
+            }
+            if (no_bin.Count > 0)
+            {
+                StringBuilder names = new StringBuilder();
+                foreach (var i in no_bin)
+                    names.AppendLine(i.FullName);
+                if (Messages.ShowMessage(string.Format("{0} item{1} on a drive without a Recycle Bin (removable or network drive), delete permanently?", no_bin.Count, no_bin.Count > 1 ? "s are" : " is"), ModrenMessageButton.YesNo, ModrenMessageImage.Delete, ModrenMessageSound.Exclamation, true, names.ToString()) == MyMessageBoxResult.Yes)
+                    to_delete.AddRange(no_bin);
+            }
+            if (to_recycle.Count > 0)
+                failed.AddRange(SendToRecycleBin(to_recycle, owner));
+            if (to_delete.Count > 0)
+            {
+                List<FileOperationItem> list = new List<FileOperationItem>();
+                foreach (var i in to_delete)
+                    if (i is DirectoryInfo)
+                        list.Add(new FileOperationItem((DirectoryInfo)i, false, ""));
+                    else
+                        list.Add(new FileOperationItem((FileInfo)i, false, ""));
+                new Operation().CopyDialogShow(list, OperationType.Delete, "", true);
+            }
+            if (failed.Count > 0)
+                Messages.ShowMessage(string.Format("{0} item{1} not deleted.", failed.Count, failed.Count > 1 ? "s were" : " was"), ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, string.Join("\n", failed.ToArray()));
+            return true;
+        }
+
+        internal static bool ConfirmDelete(List<FileSystemInfo> items, bool permanent)
+        {
+            string action = permanent ? "permanently delete" : "move to the Recycle Bin";
+            if (items.Count > 1)
+            {
+                StringBuilder items_name = new StringBuilder();
+                for (int i = 0; i < items.Count && i < 30; i++)
+                    items_name.AppendLine(items[i].FullName);
+                if (items.Count > 30)
+                    items_name.AppendLine(string.Format("... and {0} more.", items.Count - 30));
+                if (!permanent)
+                    items_name.AppendLine("\nHold Shift while deleting to delete permanently.");
+                return Messages.ShowMessage(string.Format("Are you sure you want to {0} these {1} items?", action, items.Count), ModrenMessageButton.YesNo, ModrenMessageImage.Delete, ModrenMessageSound.Question, true, items_name.ToString()) == MyMessageBoxResult.Yes;
+            }
+            return Messages.ShowMessage(string.Format("Are you sure you want to {0} this item?", action), ModrenMessageButton.YesNo, ModrenMessageImage.Delete, ModrenMessageSound.Question, true, Messages.GetItemInfo(items[0]) + (permanent ? "" : "\nHold Shift while deleting to delete permanently.")) == MyMessageBoxResult.Yes;
+        }
+
+        internal static void CreateNewFile(string path, string extension)
+        {
+            extension = extension.ToLower();
+            if (extension == ".zip")
+            {
+                File.WriteAllBytes(path, new byte[] { 0x50, 0x4B, 0x05, 0x06, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 });
+                return;
+            }
+            if (extension == ".txt" || extension == ".htm" || extension == ".html")
+            {
+                File.WriteAllBytes(path, new byte[0]);
+                return;
+            }
+            using (RegistryKey extension_key = Registry.ClassesRoot.OpenSubKey(extension))
+            {
+                if (extension_key != null)
+                {
+                    List<RegistryKey> places = new List<RegistryKey>();
+                    object prog_id = extension_key.GetValue("");
+                    if (prog_id != null)
+                        places.Add(extension_key.OpenSubKey(prog_id + "\\ShellNew"));
+                    places.Add(extension_key.OpenSubKey("ShellNew"));
+                    foreach (var i in places)
+                        if (i != null)
+                            using (i)
+                            {
+                                object data = i.GetValue("Data");
+                                object template = i.GetValue("FileName");
+                                if (template != null)
+                                {
+                                    string template_path = Environment.ExpandEnvironmentVariables(template.ToString());
+                                    if (!Path.IsPathRooted(template_path))
+                                        template_path = Path.Combine(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "ShellNew"), template_path);
+                                    if (File.Exists(template_path))
+                                    {
+                                        File.Copy(template_path, path);
+                                        return;
+                                    }
+                                }
+                                else if (data is byte[])
+                                {
+                                    File.WriteAllBytes(path, (byte[])data);
+                                    return;
+                                }
+                                else if (data is string)
+                                {
+                                    File.WriteAllText(path, (string)data);
+                                    return;
+                                }
+                                else if (i.GetValueNames().Contains("NullFile"))
+                                {
+                                    File.WriteAllBytes(path, new byte[0]);
+                                    return;
+                                }
+                            }
+                }
+            }
+            throw new IOException("Windows has no template for '" + extension + "' files on this computer, install a program that creates them first.");
+        }
+
+        internal static bool PermanentDeleteKey()
+        {
+            return Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
+        }
+
+        #endregion
+
+        #region Third party programs
+
+        public static string SevenZipDownloadLink = "https://www.7-zip.org/download.html", NotepadPlusPlusDownloadLink = "https://notepad-plus-plus.org/downloads/", QemuDownloadLink = "https://www.qemu.org/download/#windows", HelpLink = "https://github.com/Mohammad-Diab/File-Manager", ReleasesLink = "https://github.com/Mohammad-Diab/File-Manager/releases", LicenseLink = "https://github.com/Mohammad-Diab/File-Manager/blob/main/LICENSE";
+        static string seven_zip_library = null;
+
+        static string ReadRegistryValue(RegistryHive hive, RegistryView view, string key_name, string value_name)
+        {
+            try
+            {
+                using (RegistryKey base_key = RegistryKey.OpenBaseKey(hive, view))
+                using (RegistryKey key = base_key.OpenSubKey(key_name))
+                    if (key != null)
+                    {
+                        object value = key.GetValue(value_name);
+                        if (value != null)
+                            return value.ToString().Trim('"');
+                    }
+            }
+            catch (Exception) { }
+            return null;
+        }
+
+        static string FirstExisting(List<string> places)
+        {
+            foreach (var i in places)
+                try
+                {
+                    if (!string.IsNullOrEmpty(i) && File.Exists(i))
+                        return Path.GetFullPath(i);
+                }
+                catch (Exception) { }
+            return null;
+        }
+
+        internal static string FindSevenZipLibrary()
+        {
+            List<string> places = new List<string>();
+            places.Add(AppPath((Environment.Is64BitProcess ? "x64" : "x86") + "\\7z.dll"));
+            RegistryView view = Environment.Is64BitProcess ? RegistryView.Registry64 : RegistryView.Registry32;
+            string folder = ReadRegistryValue(RegistryHive.LocalMachine, view, @"SOFTWARE\7-Zip", Environment.Is64BitProcess ? "Path64" : "Path");
+            if (folder == null)
+                folder = ReadRegistryValue(RegistryHive.LocalMachine, view, @"SOFTWARE\7-Zip", "Path");
+            if (folder != null)
+                places.Add(Path.Combine(folder, "7z.dll"));
+            places.Add(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "7-Zip\\7z.dll"));
+            return FirstExisting(places);
+        }
+
+        internal static bool PrepareSevenZip()
+        {
+            if (seven_zip_library != null)
+                return true;
+            string library = FindSevenZipLibrary();
+            if (library == null)
+            {
+                if (Messages.ShowMessage("'7-Zip' library (7z.dll) is missing.", ModrenMessageButton.YesNo, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, string.Format("File Manager needs 7-Zip ({0}-bit) to open and create archives, install it from the official 7-Zip site then try again.\n\nOpen the download page now?", Environment.Is64BitProcess ? 64 : 32)) == MyMessageBoxResult.Yes)
+                    OpenUrl(SevenZipDownloadLink);
+                return false;
+            }
+            try
+            {
+                SevenZip.SevenZipBase.SetLibraryPath(library);
+                seven_zip_library = library;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Messages.ShowMessage("We can not load '7-Zip' library.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, library + "\n" + ex.Message);
+                return false;
+            }
+        }
+
+        internal static string FindProgram(string exe_name, string folder_name, string registry_key, string registry_value)
+        {
+            List<string> places = new List<string>();
+            string[] roots = { Environment.GetEnvironmentVariable("ProgramW6432"), Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86) };
+            foreach (var i in roots)
+                if (!string.IsNullOrEmpty(i))
+                    places.Add(Path.Combine(Path.Combine(i, folder_name), exe_name));
+            foreach (RegistryView view in new RegistryView[] { RegistryView.Registry64, RegistryView.Registry32 })
+            {
+                if (registry_key != null)
+                {
+                    string folder = ReadRegistryValue(RegistryHive.LocalMachine, view, registry_key, registry_value);
+                    if (folder != null)
+                        places.Add(folder.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? folder : Path.Combine(folder, exe_name));
+                }
+                places.Add(ReadRegistryValue(RegistryHive.LocalMachine, view, @"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\" + exe_name, ""));
+                places.Add(ReadRegistryValue(RegistryHive.CurrentUser, view, @"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\" + exe_name, ""));
+            }
+            string path_variable = Environment.GetEnvironmentVariable("PATH");
+            if (path_variable != null)
+                foreach (var i in path_variable.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
+                    try { places.Add(Path.Combine(i.Trim().Trim('"'), exe_name)); }
+                    catch (Exception) { }
+            return FirstExisting(places);
+        }
+
+        internal static string FindQemu(string exe_name)
+        {
+            string path = FindProgram(exe_name, "qemu", @"SOFTWARE\QEMU", "Install_Dir");
+            if (path == null)
+                path = FindProgram(exe_name, "qemu", @"SOFTWARE\QEMU", "InstallLocation");
+            if (path == null && Messages.ShowMessage("'QEMU' is not installed.", ModrenMessageButton.YesNo, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, string.Format("This tool needs QEMU ('{0}'), install QEMU for Windows from the official QEMU site then try again.\n\nOpen the download page now?", exe_name)) == MyMessageBoxResult.Yes)
+                OpenUrl(QemuDownloadLink);
+            return path;
+        }
+
+        #endregion
+
+        #region Files helpers
+
+        internal static string HashFile(string path, HashAlgorithm hasher)
+        {
+            using (FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                return BitConverter.ToString(hasher.ComputeHash(stream)).Replace("-", "");
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct BY_HANDLE_FILE_INFORMATION
+        {
+            public uint FileAttributes;
+            public System.Runtime.InteropServices.ComTypes.FILETIME CreationTime;
+            public System.Runtime.InteropServices.ComTypes.FILETIME LastAccessTime;
+            public System.Runtime.InteropServices.ComTypes.FILETIME LastWriteTime;
+            public uint VolumeSerialNumber;
+            public uint FileSizeHigh;
+            public uint FileSizeLow;
+            public uint NumberOfLinks;
+            public uint FileIndexHigh;
+            public uint FileIndexLow;
+        }
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        static extern bool GetFileInformationByHandle(Microsoft.Win32.SafeHandles.SafeFileHandle hFile, out BY_HANDLE_FILE_INFORMATION lpFileInformation);
+
+        internal static string GetFileId(string path)
+        {
+            try
+            {
+                using (FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                {
+                    BY_HANDLE_FILE_INFORMATION info;
+                    if (GetFileInformationByHandle(stream.SafeFileHandle, out info))
+                        return info.VolumeSerialNumber + ":" + info.FileIndexHigh + ":" + info.FileIndexLow;
+                }
+            }
+            catch (Exception) { }
+            return null;
+        }
+
+        internal static string GetCopyName(string folder, string name, bool is_file)
+        {
+            string extention = is_file ? Path.GetExtension(name) : "";
+            string base_name = is_file ? Path.GetFileNameWithoutExtension(name) : name;
+            string new_name = base_name + " - Copy" + extention;
+            int k = 2;
+            while (File.Exists(Path.Combine(folder, new_name)) || Directory.Exists(Path.Combine(folder, new_name)))
+                new_name = base_name + " - Copy (" + k++ + ")" + extention;
+            return new_name;
+        }
+
+        internal static List<string> MultiRenameNames(List<FileSystemInfo> items, FileSystemInfo reference, string new_name)
+        {
+            List<string> names = new List<string>();
+            bool first_is_file = reference is FileInfo;
+            string new_base = first_is_file ? Path.GetFileNameWithoutExtension(new_name) : new_name;
+            string new_extention = first_is_file ? Path.GetExtension(new_name) : "";
+            long number;
+            if (items.Count > 1 && new_base.Length > 0 && new_base.All(char.IsDigit) && long.TryParse(new_base, out number))
+            {
+                foreach (var i in items)
+                {
+                    names.Add(number.ToString().PadLeft(new_base.Length, '0') + (i is FileInfo ? i.Extension : ""));
+                    number++;
+                }
+            }
+            else if (items.Count > 1 && first_is_file && string.Equals(Path.GetFileNameWithoutExtension(reference.Name), new_base, StringComparison.OrdinalIgnoreCase) && !string.Equals(reference.Extension, new_extention, StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (var i in items)
+                    names.Add(i is FileInfo ? Path.GetFileNameWithoutExtension(i.Name) + new_extention : i.Name);
+            }
+            else
+                foreach (var i in items)
+                    names.Add(new_name);
+            return names;
+        }
+
+        #endregion
 
         public static void MarkAs(OperationTree root, OperationOption option, bool over_curent_option)
         {
@@ -107,15 +698,65 @@ namespace File_Manager
             catch (Exception ex) { un_done.Add(new UnCompleatedRename(Item, new_name, ex.Message)); }
         }
 
+        internal static BitmapImage GetDriveImage(DriveSnapshot drive, int width)
+        {
+            switch (drive.drive_type)
+            {
+                case DriveType.Fixed:
+                    return Icons.GetIcons.GetIcon(IsSystemDrive(drive.drive.Name) ? "hard-disk-system.png" : "hard-disk.png", width);
+                case DriveType.CDRom:
+                    return Icons.GetIcons.GetIcon(drive.is_ready ? "CD.png" : "optical-drive.png", width);
+                case DriveType.Removable:
+                    return Icons.GetIcons.GetIcon(drive.is_ready ? "removable-usb.png" : "removable-media.png", width);
+                case DriveType.Network:
+                    return Icons.GetIcons.GetIcon("network-drive.png", width);
+            }
+            return Icons.GetIcons.GetIcon("hard-disk.png", width);
+        }
+
+        internal static bool IsSystemDrive(string name)
+        {
+            return string.Equals(name, Path.GetPathRoot(Environment.SystemDirectory), StringComparison.OrdinalIgnoreCase);
+        }
+
+        internal static string DriveTitle(DriveType type, string label, string name)
+        {
+            if (string.IsNullOrEmpty(label))
+                switch (type)
+                {
+                    case DriveType.CDRom:
+                        label = "Optical Disk";
+                        break;
+                    case DriveType.Fixed:
+                        label = "Local Disk";
+                        break;
+                    case DriveType.Network:
+                        label = "Network Drive";
+                        break;
+                    case DriveType.Ram:
+                        label = "RAM Disk";
+                        break;
+                    case DriveType.Removable:
+                        label = "Removable Disk";
+                        break;
+                    default:
+                        label = "Drive";
+                        break;
+                }
+            return label + " (" + name.TrimEnd('\\') + ")";
+        }
+
         public static BitmapImage GetDriveImage(DriveInfo drive, int width)
         {
             switch (drive.DriveType)
             {
                 case DriveType.Fixed:
-                    if (drive.Name.ToLower().Equals(Functions.SystemDrive.ToLower()))
-                        return Icons.GetIcons.GetIcon("hard-disk.png", width);//**** system hard drive
+                    if (IsSystemDrive(drive.Name))
+                        return Icons.GetIcons.GetIcon("hard-disk-system.png", width);
                     else
                         return Icons.GetIcons.GetIcon("hard-disk.png", width);
+                case DriveType.Network:
+                    return Icons.GetIcons.GetIcon("network-drive.png", width);
                 case DriveType.CDRom:
                     if (drive.IsReady)
                         return Icons.GetIcons.GetIcon("CD.png", width);
@@ -220,10 +861,11 @@ namespace File_Manager
 
         internal static long CalcFileSizeOnDisk(FileInfo info)
         {
-            if (clusterSize == 0)
-                GetClusterSize(info.Directory.Root.FullName);
+            int clusterSize = GetClusterSize(info.Directory.Root.FullName);
             uint hosize;
             uint losize = GetCompressedFileSizeW(info.FullName, out hosize);
+            if (losize == 0xFFFFFFFF && Marshal.GetLastWin32Error() != 0)
+                return info.Length;
             long size;
             size = (long)hosize << 32 | losize;
             if (clusterSize > 0)
@@ -234,48 +876,53 @@ namespace File_Manager
 
         #region Get Size on Disk
 
-        static int clusterSize = 0;
+        static Dictionary<string, int> cluster_sizes = new Dictionary<string, int>();
 
-        static void GetClusterSize(string drive)
+        static int GetClusterSize(string drive)
         {
-            clusterSize = 0;
-            using (var searcher = new ManagementObjectSearcher("select BlockSize,NumberOfBlocks from Win32_Volume WHERE DriveLetter = '" + drive.TrimEnd('\\') + "'"))
+            drive = drive.ToLower();
+            lock (cluster_sizes)
             {
-                foreach (ManagementObject i in searcher.Get())
+                if (cluster_sizes.ContainsKey(drive))
+                    return cluster_sizes[drive];
+                int clusterSize = 0;
+                try
                 {
-                    string bb = (i["BlockSize"]).ToString();
-                    int.TryParse(bb, out clusterSize);
-                    if (clusterSize == 0)
-                        clusterSize = 4096;
-                    break;
+                    using (var searcher = new ManagementObjectSearcher("select BlockSize,NumberOfBlocks from Win32_Volume WHERE DriveLetter = '" + drive.TrimEnd('\\') + "'"))
+                    {
+                        foreach (ManagementObject i in searcher.Get())
+                        {
+                            string bb = (i["BlockSize"]).ToString();
+                            int.TryParse(bb, out clusterSize);
+                            if (clusterSize == 0)
+                                clusterSize = 4096;
+                            break;
+                        }
+                    }
                 }
+                catch (Exception) { }
+                cluster_sizes[drive] = clusterSize;
+                return clusterSize;
             }
         }
 
-        [DllImport("kernel32.dll")]
+        [DllImport("kernel32.dll", SetLastError = true)]
         static extern uint GetCompressedFileSizeW([In, MarshalAs(UnmanagedType.LPWStr)] string lpFileName, [Out, MarshalAs(UnmanagedType.U4)] out uint lpFileSizeHigh);
 
         #endregion Get Size on Disk
 
         internal static string GetDriveDescription(DriveInfo drive)
         {
-            if (!drive.IsReady)
-                return drive.Name;
-            switch (drive.DriveType)
+            string label = "";
+            DriveType type = DriveType.Unknown;
+            try
             {
-                case DriveType.CDRom:
-                    return ((drive.VolumeLabel.Equals(string.Empty) ? "Optical disk" : drive.VolumeLabel) + " (" + drive.Name + ")");
-                case DriveType.Fixed:
-                    return ((drive.VolumeLabel.Equals(string.Empty) ? "Local drive" : drive.VolumeLabel) + " (" + drive.Name + ")");
-                case DriveType.Network:
-                    return ((drive.VolumeLabel.Equals(string.Empty) ? "Network drive" : drive.VolumeLabel) + " (" + drive.Name + ")");
-                case DriveType.Ram:
-                    return ((drive.VolumeLabel.Equals(string.Empty) ? "Ram disk" : drive.VolumeLabel) + " (" + drive.Name + ")");
-                case DriveType.Removable:
-                    return ((drive.VolumeLabel.Equals(string.Empty) ? "Removable media" : drive.VolumeLabel) + " (" + drive.Name + ")");
-                default:
-                    return ((drive.VolumeLabel.Equals(string.Empty) ? "Drive" : drive.VolumeLabel) + " (" + drive.Name + ")");
+                type = drive.DriveType;
+                if (drive.IsReady)
+                    label = drive.VolumeLabel;
             }
+            catch (Exception) { }
+            return DriveTitle(type, label, drive.Name);
         }
 
         static public bool IsRunningAsAdmin()
@@ -348,7 +995,60 @@ namespace File_Manager
 
         internal static BitmapImage GetDirectoryImage(string path)
         {
-            return GetFileImage64("directory");
+            string icon = SpecialDirectoryIcon(path);
+            return icon == null ? GetFileImage64("directory") : Icons.GetIcons.GetIcon(icon, 64);
+        }
+
+        static Dictionary<string, string> special_directory_icons = null;
+        static object special_directory_lock = new object();
+
+        internal static string SpecialDirectoryIcon(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+                return null;
+            switch (path.ToLower())
+            {
+                case "user":
+                    return "folder-user.png";
+                case "desktop":
+                    return "folder-desktop.png";
+                case "downloads":
+                    return "folder-downloads.png";
+                case "documents":
+                    return "folder-documents.png";
+                case "music":
+                    return "folder-music.png";
+                case "pictures":
+                    return "folder-pictures.png";
+                case "videos":
+                    return "folder-videos.png";
+                case "programfile":
+                    return "folder-programs.png";
+                case "fonts":
+                    return "folder-fonts.png";
+                case "local":
+                    return "folder-appdata.png";
+                case "history":
+                    return "folder-history.png";
+            }
+            lock (special_directory_lock)
+            {
+                if (special_directory_icons == null)
+                {
+                    special_directory_icons = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    string[] directories = { Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), GetDownloadsPath(),
+                        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), Environment.GetFolderPath(Environment.SpecialFolder.MyMusic), Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
+                        Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+                        Environment.GetFolderPath(Environment.SpecialFolder.Fonts), Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), Environment.GetFolderPath(Environment.SpecialFolder.History) };
+                    string[] icons = { "folder-user.png", "folder-desktop.png", "folder-downloads.png", "folder-documents.png", "folder-music.png", "folder-pictures.png", "folder-videos.png",
+                        "folder-programs.png", "folder-programs.png", "folder-fonts.png", "folder-appdata.png", "folder-history.png" };
+                    for (int i = 0; i < directories.Length; i++)
+                        if (!string.IsNullOrEmpty(directories[i]) && !special_directory_icons.ContainsKey(directories[i].TrimEnd('\\')))
+                            special_directory_icons[directories[i].TrimEnd('\\')] = icons[i];
+                }
+                string icon;
+                return special_directory_icons.TryGetValue(path.TrimEnd('\\'), out icon) ? icon : null;
+            }
         }
 
         internal static BitmapImage GetFileImage48(string extension)
@@ -436,6 +1136,54 @@ namespace File_Manager
                 if (OFD.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                     System.Diagnostics.Process.Start(new ProcessStartInfo(OFD.FileName, "\"" + path + "\""));
             }
+        }
+
+        internal static void ShowTool(Window window)
+        {
+            window.Show();
+            window.Dispatcher.BeginInvoke(new Action(() => { ActivateTool(window); }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+        }
+
+        internal static bool ShowOpenedTool<T>() where T : Window
+        {
+            T window = Application.Current.Windows.OfType<T>().FirstOrDefault(x => x.IsVisible);
+            if (window == null)
+                return false;
+            window.Dispatcher.BeginInvoke(new Action(() => { ActivateTool(window); }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+            return true;
+        }
+
+        static void ActivateTool(Window window)
+        {
+            if (!window.IsVisible)
+                return;
+            if (window.WindowState == WindowState.Minimized)
+                window.WindowState = WindowState.Normal;
+            window.Activate();
+            if (window.IsKeyboardFocusWithin && !(Keyboard.FocusedElement is Window))
+                return;
+            UIElement input = FirstInput(window);
+            if (input != null)
+                input.Focus();
+            else
+                window.MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
+        }
+
+        static UIElement FirstInput(DependencyObject parent)
+        {
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                DependencyObject child = VisualTreeHelper.GetChild(parent, i);
+                UIElement element = child as UIElement;
+                if (element != null && !element.IsVisible)
+                    continue;
+                if (((child is TextBox && !((TextBox)child).IsReadOnly) || child is PasswordBox) && element.IsEnabled && element.Focusable)
+                    return element;
+                UIElement found = FirstInput(child);
+                if (found != null)
+                    return found;
+            }
+            return null;
         }
 
         public static ItemType GetItemType(string path)
@@ -547,6 +1295,7 @@ namespace File_Manager
                 foreach (var i in sub_dirs)
                 {
                     if (cancel_operation) return;
+                    if (IsLink(i)) continue;
                     try { GetAllFiles(i, adder, ref cancel_operation); } catch (Exception) { }
                 }
             }
@@ -1021,20 +1770,34 @@ namespace File_Manager
         {
             P = p;
             PID = p.Id.ToString();
-            ProcessName = (p.MainWindowTitle.Equals("") ? (p.ProcessName) : (p.ProcessName + " (" + p.MainWindowTitle + ")"));
-            Memory = Functions.FileSize(p.PagedMemorySize64, 2);
+            string title = "";
+            try { title = p.MainWindowTitle; }
+            catch (Exception) { }
+            HasWindow = !title.Equals("");
+            ProcessName = (title.Equals("") ? (p.ProcessName) : (p.ProcessName + " (" + title + ")"));
+            try { Memory = Functions.FileSize(p.PrivateMemorySize64, 2); }
+            catch (Exception) { Memory = ""; }
             try
             { cpu_d = p.TotalProcessorTime.TotalMilliseconds; }
-            catch (Exception) { cpu_d = 0; }
-            if (!p.MainWindowTitle.Equals(""))
-                Icon = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/window.png"));
-            else
-                Icon = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Appearance/service.png"));
+            catch (Exception) { cpu_d = -1; }
+            try { Threads = p.Threads.Count.ToString(); }
+            catch (Exception) { Threads = ""; }
         }
 
-        public void SetCPU(double total_milisecond)
+        public void SetCPU(double old_milisecond, double total_milisecond)
         {
-            cpu = Math.Round(cpu_d * 100 / total_milisecond) + " %";
+            if (cpu_d < 0 || total_milisecond <= 0)
+                return;
+            cpu = Math.Max(0, Math.Round((cpu_d - old_milisecond) * 100 / total_milisecond, 1)) + " %";
+        }
+
+        public bool HasWindow;
+
+        string threads;
+        public String Threads
+        {
+            get { return threads; }
+            set { threads = value; }
         }
 
         public Process P;
@@ -1290,6 +2053,24 @@ namespace File_Manager
         string type;
         DirectoryTreeItem parent;
         List<DirectoryTreeItem> sub_items;
+    }
+
+    class SafeBinder : SerializationBinder
+    {
+        List<string> allowed_types;
+
+        public SafeBinder(params string[] allowed_types)
+        {
+            this.allowed_types = new List<string>(allowed_types);
+        }
+
+        public override Type BindToType(string assemblyName, string typeName)
+        {
+            foreach (Match i in Regex.Matches(typeName, @"[A-Za-z_][\w`.+]*"))
+                if (i.Value.Contains('.') && !allowed_types.Contains(i.Value))
+                    throw new SerializationException("The file contains an unexpected type '" + i.Value + "'.");
+            return null;
+        }
     }
 
     public class FileIDInfo

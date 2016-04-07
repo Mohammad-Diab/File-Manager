@@ -35,11 +35,13 @@ namespace File_Manager
         public Files_Encrepter()
         {
             InitializeComponent();
+            PrepareControls();
         }
 
         public Files_Encrepter(string[] files, bool encrypt)//true for encrypt and false for decrypt
         {
             InitializeComponent();
+            PrepareControls();
             if (encrypt)
                 AddFiles(files, encrypt_data, encrypt_list);
             else
@@ -49,12 +51,118 @@ namespace File_Manager
             }
         }
 
+        void PrepareControls()
+        {
+            encrypt_list.ContextMenu = ListMenu(encrypt_list, encrypt_data);
+            decrypt_list.ContextMenu = ListMenu(decrypt_list, decrypt_data);
+            UpdateButtons();
+        }
+
+        ContextMenu ListMenu(ListView list, List<DestroyListView> data)
+        {
+            ContextMenu menu = new ContextMenu();
+            MenuItem open_location = new MenuItem() { Header = "Open location" };
+            MenuItem preview = new MenuItem() { Header = "Preview", InputGestureText = "Space" };
+            MenuItem copy_path = new MenuItem() { Header = "Copy path" };
+            MenuItem remove = new MenuItem() { Header = "Remove from list", InputGestureText = "Del" };
+            open_location.Click += (object sender, RoutedEventArgs e) => { if (list.SelectedItems.Count == 1) SafetyTools.OpenLocation(((DestroyListView)list.SelectedItem).FullPath); };
+            preview.Click += (object sender, RoutedEventArgs e) => { if (list.SelectedItems.Count == 1) SafetyTools.PreviewItem(((DestroyListView)list.SelectedItem).FullPath); };
+            copy_path.Click += (object sender, RoutedEventArgs e) => { if (list.SelectedItems.Count > 0) SafetyTools.CopyPaths(list.SelectedItems.Cast<DestroyListView>().Select(x => x.FullPath)); };
+            remove.Click += (object sender, RoutedEventArgs e) => { RemoveSelected(list, data); };
+            menu.Items.Add(open_location);
+            menu.Items.Add(preview);
+            menu.Items.Add(copy_path);
+            menu.Items.Add(new Separator());
+            menu.Items.Add(remove);
+            menu.Opened += (object sender, RoutedEventArgs e) =>
+            {
+                int selected = list.SelectedItems.Count;
+                string one = selected == 0 ? "Select a file first." : selected > 1 ? "Select only one file." : null;
+                SafetyTools.SetState(open_location, one == null, one);
+                SafetyTools.SetState(preview, one == null, one);
+                SafetyTools.SetState(copy_path, selected > 0, "Select a file first.");
+                SafetyTools.SetState(remove, selected > 0 && !adding, adding ? "Please wait, files are being added." : "Select a file first.");
+            };
+            return menu;
+        }
+
+        string Password(PasswordBox box, TextBox text)
+        {
+            return box.Visibility == Visibility.Hidden ? text.Text : box.Password;
+        }
+
+        void UpdateButtons()
+        {
+            if (pack_extract_button == null || decrypt_button == null)
+                return;
+            string wait = adding ? "Please wait, files are being added." : null;
+            SafetyTools.SetState(encrypt_add_button, !adding, wait);
+            SafetyTools.SetState(encrypt_add_folder_button, !adding, wait);
+            SafetyTools.SetState(decrypt_add_button, !adding, wait);
+            SafetyTools.SetState(decrypt_add_folder_button, !adding, wait);
+            SafetyTools.SetState(encrypt_clear_button, encrypt_data.Count > 0 && !adding, wait ?? "The list is empty.");
+            SafetyTools.SetState(decrypt_clear_button, decrypt_data.Count > 0 && !adding, wait ?? "The list is empty.");
+            SafetyTools.SetState(encrypt_remove_button, encrypt_list.SelectedItems.Count > 0 && !adding, wait ?? (encrypt_data.Count == 0 ? "The list is empty." : "Select files in the list first."));
+            SafetyTools.SetState(decrypt_remove_button, decrypt_list.SelectedItems.Count > 0 && !adding, wait ?? (decrypt_data.Count == 0 ? "The list is empty." : "Select files in the list first."));
+            string enc_reason = wait ?? (encrypt_data.Count == 0 ? "Add files to the list first." : Password(enc_password, enc_password_text).Length < 8 ? "The password must have at least 8 characters." : null);
+            SafetyTools.SetState(encrypt_button, enc_reason == null, enc_reason);
+            string dec_reason = wait ?? (decrypt_data.Count == 0 ? "Add encrypted files to the list first." : Password(dec_password, dec_password_text).Length == 0 ? "Enter the password first." : null);
+            SafetyTools.SetState(decrypt_button, dec_reason == null, dec_reason);
+            UpdatePackButtons();
+        }
+
+        void UpdatePackButtons()
+        {
+            string show_reason = pack_path.Text.Length == 0 ? "Open an encrypted package first." : pack_password.Password.Length == 0 ? "Enter the password first." : null;
+            SafetyTools.SetState(pack_show_button, show_reason == null, show_reason);
+            bool shown = pack_list.ItemsSource != null && pack_list.Items.Count > 0;
+            SafetyTools.SetState(pack_extract_button, shown, "Click 'Show content' first.");
+            pack_extract_button.Content = shown && pack_list.SelectedItems.Count == 0 ? "Extract all" : "Extract selected";
+        }
+
+        private void Password_Changed(object sender, RoutedEventArgs e)
+        {
+            UpdateButtons();
+        }
+
+        private void List_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            UpdateButtons();
+        }
+
+        private void List_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            ListView list = (ListView)sender;
+            if (e.Key == Key.Delete && list.SelectedItems.Count > 0)
+            {
+                RemoveSelected(list, list == encrypt_list ? encrypt_data : decrypt_data);
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Space && list.SelectedItems.Count == 1)
+            {
+                SafetyTools.PreviewItem(((DestroyListView)list.SelectedItem).FullPath);
+                e.Handled = true;
+            }
+        }
+
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             rec.Width = label1.ActualWidth;
             starting_window = false;
             encrypt_list.DataContext = encrypt_data;
             decrypt_list.DataContext = decrypt_data;
+            string documents = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            if (!Directory.Exists(enc_output.Text))
+                enc_output.Text = documents;
+            if (!Directory.Exists(dec_output.Text))
+                dec_output.Text = documents;
+            if (!Directory.Exists(pack_output.Text))
+                pack_output.Text = documents;
+            UpdateButtons();
+            if (CurrentPage == EncryptPages.FilesDecrypt)
+                TabChange_MouseButtonUp(label2, null);
+            else if (CurrentPage == EncryptPages.ViewPackContent)
+                TabChange_MouseButtonUp(label3, null);
         }
 
         private void Window_Closing(object sender, CancelEventArgs e)
@@ -62,103 +170,175 @@ namespace File_Manager
             CloseWindow = true;
         }
 
+        bool adding = false;
+
         private void AddFile_Click(object sender, RoutedEventArgs e)
         {
+            bool encrypt = sender == encrypt_add_button;
             SelectFileDialog sfd = new SelectFileDialog();
             sfd.dialogMode = SelectFileDialogMode.OpenFile;
             sfd.CreateFolderEnable = false;
-            sfd.DialogTitle = "Select files to encrypt";
+            sfd.DialogTitle = encrypt ? "Select files to encrypt" : "Select encrypted files to decrypt";
             sfd.AddExtension = false;
             sfd.MultiSelect = true;
+            if (!encrypt)
+            {
+                sfd.FilterMenu.Add(new SelectFileFilter() { display_name = "Encrypted files (*.enf, *.enp, *.fme)", extentions = SelectFileFilter.SetExtentions(".enf|.enp|.fme") });
+                sfd.FilterMenu.Add(new SelectFileFilter() { display_name = "All files", extentions = SelectFileFilter.SetExtentions("") });
+            }
             if (sfd.ShowWindow() == MyMessageBoxResult.OK)
-                AddFiles(sfd.SelectedItems.ToArray(), sender == encrypt_add_button ? encrypt_data : decrypt_data, sender == encrypt_add_button ? encrypt_list : decrypt_list);
+                AddFiles(sfd.SelectedItems.ToArray(), encrypt ? encrypt_data : decrypt_data, encrypt ? encrypt_list : decrypt_list);
         }
 
         private void AddFiles(string[] files, List<DestroyListView> data_list, ListView list)
         {
+            HashSet<string> listed = new HashSet<string>(data_list.Select(x => x.FullPath), StringComparer.OrdinalIgnoreCase);
+            List<string> folders = new List<string>(), links = new List<string>();
             foreach (string i in files)
-                data_list.Add(new DestroyListView(new FileInfo(i)));
+            {
+                if (Directory.Exists(i))
+                {
+                    folders.Add(i);
+                    continue;
+                }
+                if (!File.Exists(i))
+                    continue;
+                FileInfo file = new FileInfo(i);
+                if (Functions.IsLink(file))
+                    links.Add(i);
+                else if (listed.Add(file.FullName))
+                    data_list.Add(new DestroyListView(file));
+            }
             list.Items.Refresh();
+            UpdateButtons();
+            if (links.Count > 0)
+                Messages.ShowMessage(string.Format("{0} link{1} not added.", links.Count, links.Count > 1 ? "s were" : " was"), ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, true, "Links (symbolic links) are never followed:\n" + string.Join("\n", links.Take(30).ToArray()));
+            if (folders.Count > 0)
+                AddDirectory(folders, data_list, list);
         }
 
         private void AddDirectory_Click(object sender, RoutedEventArgs e)
         {
+            bool encrypt = sender == encrypt_add_folder_button;
             SelectFileDialog sfd = new SelectFileDialog();
             sfd.dialogMode = SelectFileDialogMode.SelectDirectory;
             sfd.CreateFolderEnable = false;
-            sfd.DialogTitle = "Add all files in this directory.";
+            sfd.DialogTitle = encrypt ? "Add all files in this directory." : "Add all encrypted files in this directory.";
             sfd.AddExtension = false;
-            List<DestroyListView> add_in = sender == encrypt_add_folder_button ? encrypt_data : decrypt_data;
-            ListView list = sender == encrypt_add_folder_button ? encrypt_list : decrypt_list;
             if (sfd.ShowWindow() == MyMessageBoxResult.OK)
-                AddDirectory(sfd.SelectedItem, sender == encrypt_add_folder_button ? encrypt_data : decrypt_data, sender == encrypt_add_folder_button ? encrypt_list : decrypt_list);
+                AddDirectory(new List<string>() { sfd.SelectedItem }, encrypt ? encrypt_data : decrypt_data, encrypt ? encrypt_list : decrypt_list);
         }
 
-        private void AddDirectory(string path, List<DestroyListView> data_list, ListView list)
+        private void AddDirectory(List<string> paths, List<DestroyListView> data_list, ListView list)
         {
-            main_grid.IsEnabled = false;
+            if (adding)
+                return;
+            bool only_encrypted = data_list == decrypt_data;
+            adding = true;
+            Cursor = Cursors.AppStarting;
+            UpdateButtons();
+            List<string> found = new List<string>(), skipped = new List<string>();
+            int not_encrypted = 0;
             BackgroundWorker add_files_in_directory = new BackgroundWorker();
-            add_files_in_directory.WorkerReportsProgress = true;
             add_files_in_directory.DoWork += (object bw_sender, DoWorkEventArgs e_bw) =>
-            { GetAllFiles(new DirectoryInfo(path), add_files_in_directory); };
-
-            add_files_in_directory.ProgressChanged += (object bw_sender, ProgressChangedEventArgs bw_e) =>
-            { data_list.Add(new DestroyListView((FileInfo)bw_e.UserState)); };
-
+            {
+                foreach (string path in paths)
+                {
+                    DirectoryInfo directory = new DirectoryInfo(path);
+                    if (!directory.Exists)
+                        continue;
+                    if (Functions.IsLink(directory))
+                        skipped.Add(path + "\n    (link, not followed)");
+                    else
+                        GetAllFiles(directory, found, skipped);
+                }
+                if (only_encrypted)
+                    not_encrypted = found.RemoveAll(x => !IsEncryptedFile(x));
+            };
             add_files_in_directory.RunWorkerCompleted += (object bw_sender, RunWorkerCompletedEventArgs bw_e) =>
             {
-                list.Items.Refresh();
-                main_grid.IsEnabled = true;
+                adding = false;
+                Cursor = null;
+                if (CloseWindow)
+                    return;
+                AddFiles(found.ToArray(), data_list, list);
+                if (skipped.Count > 0)
+                    Messages.ShowMessage(string.Format("{0} item{1} not added.", skipped.Count, skipped.Count > 1 ? "s were" : " was"), ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, string.Join("\n", skipped.Take(30).ToArray()) + (skipped.Count > 30 ? string.Format("\n... and {0} more.", skipped.Count - 30) : ""));
+                else if (only_encrypted && found.Count == 0)
+                    Messages.ShowMessage("No file encrypted by File Manager was found in '" + string.Join("', '", paths.ToArray()) + "'.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, not_encrypted > 0, not_encrypted > 0 ? not_encrypted + " other file(s) were not added." : "");
             };
-
             add_files_in_directory.RunWorkerAsync();
         }
 
-        private void GetAllFiles(DirectoryInfo dir, BackgroundWorker worker)
+        static bool IsEncryptedFile(string path)
         {
             try
             {
-                var sub_dirs = dir.GetDirectories();
-                foreach (var i in sub_dirs)
+                using (FileStream input = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
                 {
-                    if (CloseWindow)
-                        return;
-                    try { GetAllFiles(i, worker); }
-                    catch (Exception) { }
+                    int version = Operation.ReadFmeHeader(input, null).version;
+                    return version == 1 || version == 3 || version == 4;
                 }
             }
-            catch (Exception) { }
-            FileInfo[] files = null;
+            catch (Exception) { return false; }
+        }
+
+        private void GetAllFiles(DirectoryInfo dir, List<string> found, List<string> skipped)
+        {
+            DirectoryInfo[] sub_dirs;
+            FileInfo[] files;
             try
             {
+                sub_dirs = dir.GetDirectories();
                 files = dir.GetFiles();
-                foreach (var i in files)
-                {
-                    if (CloseWindow)
-                        return;
-                    try { worker.ReportProgress(0, i); }
-                    catch (Exception) { }
-                }
             }
-            catch (Exception) { }
+            catch (Exception ex)
+            {
+                skipped.Add(dir.FullName + "\n    (could not be read: " + ex.Message + ")");
+                return;
+            }
+            foreach (var i in sub_dirs)
+            {
+                if (CloseWindow)
+                    return;
+                if (Functions.IsLink(i))
+                    skipped.Add(i.FullName + "\n    (link, not followed)");
+                else
+                    GetAllFiles(i, found, skipped);
+            }
+            foreach (var i in files)
+            {
+                if (CloseWindow)
+                    return;
+                if (Functions.IsLink(i))
+                    skipped.Add(i.FullName + "\n    (link, not added)");
+                else
+                    found.Add(i.FullName);
+            }
+        }
+
+        void RemoveSelected(ListView list, List<DestroyListView> data)
+        {
+            if (adding || list.SelectedItems.Count == 0)
+                return;
+            HashSet<DestroyListView> selected = new HashSet<DestroyListView>(list.SelectedItems.Cast<DestroyListView>());
+            data.RemoveAll(x => selected.Contains(x));
+            list.Items.Refresh();
+            UpdateButtons();
         }
 
         private void RemoveSelected_Click(object sender, RoutedEventArgs e)
         {
             if (sender == encrypt_remove_button)
-            {
-                encrypt_data.RemoveAll(x => encrypt_list.SelectedItems.Contains(x));
-                encrypt_list.Items.Refresh();
-            }
+                RemoveSelected(encrypt_list, encrypt_data);
             else
-            {
-                decrypt_data.RemoveAll(x => encrypt_list.SelectedItems.Contains(x));
-                decrypt_list.Items.Refresh();
-            }
+                RemoveSelected(decrypt_list, decrypt_data);
         }
 
         private void ClearList_Click(object sender, RoutedEventArgs e)
         {
+            if (adding)
+                return;
             if (sender == encrypt_clear_button)
             {
                 encrypt_data.Clear();
@@ -169,7 +349,7 @@ namespace File_Manager
                 decrypt_data.Clear();
                 decrypt_list.Items.Refresh();
             }
-
+            UpdateButtons();
         }
 
         private void ShowPassword_Click(object sender, RoutedEventArgs e)
@@ -203,6 +383,8 @@ namespace File_Manager
             {
                 if (sender == encrypt_browser_button)
                     enc_output.Text = sfd.SelectedItem;
+                else if (sender == pack_browser_button)
+                    pack_output.Text = sfd.SelectedItem;
                 else
                     dec_output.Text = sfd.SelectedItem;
             }
@@ -236,7 +418,8 @@ namespace File_Manager
             }
             else
                 encrypt = true;
-            if (encrypt && Messages.ShowMessage("We have got all information we needed, start encryption?", ModrenMessageButton.YesNo,ModrenMessageImage.Question,ModrenMessageSound.Question,false,"", "all files in list will encrypt with same password, make sure to keep it in safe place.") == MyMessageBoxResult.Yes)
+            string plan = overwrite_file.IsChecked == true ? "Every file is encrypted to '<name>.enf' next to it, the original is overwritten with zeros and deleted only after its encrypted copy is verified." : enc_delete_files.IsChecked == true ? "After the encryption, File Destroyer opens with the original files whose encrypted copy was verified, you choose the method there." : "The original files are kept.";
+            if (encrypt && Messages.ShowMessage("We have got all information we needed, start encryption?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, true, plan, "all files in list will encrypt with same password, make sure to keep it in safe place.") == MyMessageBoxResult.Yes)
             {
                 bool delete, enc_file_name, enc_pack_files;
                 string save_in = enc_output.Text;
@@ -252,36 +435,42 @@ namespace File_Manager
                         }
                     }
                 }
-                delete = enc_delete_files.IsChecked.Value;
+                delete = enc_delete_files.IsChecked.Value && overwrite_file.IsChecked == false;
                 enc_file_name = this.enc_file_name.IsChecked.Value;
                 enc_pack_files = this.enc_pack_files.IsChecked.Value;
                 List<FileInfo> files_list = new List<FileInfo>();
                 foreach (var i in encrypt_data)
-                    files_list.Add(i.File);
-                byte[] bytes = new byte[password.Length * sizeof(char)];
-                Buffer.BlockCopy(password.ToCharArray(), 0, bytes, 0, bytes.Length);
-                bytes = new MD5Cng().ComputeHash(bytes);
-                new Operation().StartEncrept(files_list, bytes, delete, overwrite_file.IsChecked.Value, save_in, enc_file_name, enc_pack_files, true);
-                
-                ClearList_Click(encrypt_clear_button, null);
-                Messages.ShowMessage("Encryption done.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
+                    files_list.Add(new FileInfo(i.FullPath));
+                if (overwrite_file.IsChecked == true && !Functions.ConfirmRiskyItems(files_list.Select(x => x.FullName), "encrypt and overwrite"))
+                    return;
+                Operation operation = new Operation();
+                operation.StartSafetyEncrypt(files_list, password, overwrite_file.IsChecked.Value, save_in, enc_file_name, enc_pack_files, true);
+                HashSet<string> verified = new HashSet<string>(operation.verified_files.Select(x => x.FullName), StringComparer.OrdinalIgnoreCase);
+                encrypt_data.RemoveAll(x => verified.Contains(x.FullPath));
+                encrypt_list.Items.Refresh();
+                UpdateButtons();
+                ShowResult(operation, "Encryption");
+                if (delete && verified.Count > 0)
+                {
+                    List<string> originals = operation.verified_files.Select(x => x.FullName).Where(x => File.Exists(x)).ToList();
+                    if (originals.Count > 0 && (!operation.Stopped || Messages.ShowMessage(string.Format("The encryption was stopped. Open File Destroyer for the {0} original file{1} whose encrypted copy was verified?", originals.Count, originals.Count > 1 ? "s" : ""), ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "") == MyMessageBoxResult.Yes))
+                        Functions.ShowTool(new File_Destroyer(originals, string.Format("{0} original file{1}, encrypted and verified", originals.Count, originals.Count > 1 ? "s" : "")));
+                }
             }
         }
 
         private void EncryptList_Drop(object sender, DragEventArgs e)
         {
+            e.Handled = true;
             string[] data;
-            if (e.Data.GetDataPresent(DataFormats.FileDrop))
-                if ((data = (string[])e.Data.GetData(DataFormats.FileDrop)).Length == 1 && Directory.Exists(data[0]))
-                    AddDirectory(data[0], encrypt_data, encrypt_list);
-                else if (data.Length > 0)
-                    AddFiles(data, encrypt_data, encrypt_list);
+            if (e.Data.GetDataPresent(DataFormats.FileDrop) && !adding && (data = e.Data.GetData(DataFormats.FileDrop) as string[]) != null && data.Length > 0)
+                AddFiles(data, encrypt_data, encrypt_list);
         }
 
         private void EncOutputText_Drop(object sender, DragEventArgs e)
         {
             string[] data;
-            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            if (e.Data.GetDataPresent(DataFormats.FileDrop) && overwrite_file.IsChecked == false)
                 if ((data = (string[])e.Data.GetData(DataFormats.FileDrop)).Length == 1 && Directory.Exists(data[0]))
                     enc_output.Text = data[0];
         }
@@ -290,7 +479,10 @@ namespace File_Manager
         {
             enc_output_grid.IsEnabled = false;
             enc_delete_files.IsChecked = enc_delete_files.IsEnabled = false;
-            enc_pack_files.IsChecked = encrypt_add_button.IsEnabled = false;
+            enc_pack_files.IsChecked = enc_pack_files.IsEnabled = false;
+            enc_output_grid.ToolTip = "Not used: the encrypted files are saved next to the originals.";
+            enc_delete_files.ToolTip = "Not needed: 'Overwrite original files' already destroys every original after its encrypted copy is verified.";
+            enc_pack_files.ToolTip = "Not available with 'Overwrite original files': every file gets its own encrypted file next to it.";
         }
 
         private void RadioButton_Checked(object sender, RoutedEventArgs e)
@@ -299,7 +491,10 @@ namespace File_Manager
             {
                 enc_output_grid.IsEnabled = true;
                 enc_delete_files.IsEnabled = true;
-                encrypt_add_button.IsEnabled = true;
+                enc_pack_files.IsEnabled = true;
+                enc_output_grid.ToolTip = null;
+                enc_delete_files.ToolTip = "When the encryption ends, File Destroyer opens with only the original files whose encrypted copy was written and verified.\nYou choose the destroy method there and confirm before anything is destroyed.";
+                enc_pack_files.ToolTip = null;
             }
         }
 
@@ -342,32 +537,32 @@ namespace File_Manager
                 }
                 List<FileInfo> files_list = new List<FileInfo>();
                 foreach (var i in decrypt_data)
-                    files_list.Add(i.File);
-                byte[] bytes = new byte[password.Length * sizeof(char)];
-                Buffer.BlockCopy(password.ToCharArray(), 0, bytes, 0, bytes.Length);
-                bytes = new MD5Cng().ComputeHash(bytes);
-                new Operation().StartDecrept(files_list, bytes, save_in, true);
-                ClearList_Click(null, null);
-                Messages.ShowMessage("De-encryption done.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
+                    files_list.Add(new FileInfo(i.FullPath));
+                Operation operation = new Operation();
+                operation.StartDecrept(files_list, password, save_in, dec_package_directory.IsChecked == true, null, true);
+                if (operation.result_errors.Count == 0 && !operation.Stopped)
+                    ClearList_Click(decrypt_clear_button, null);
+                ShowResult(operation, "De-encryption");
             }
         }
 
         private void DecryptList_Drop(object sender, DragEventArgs e)
         {
+            e.Handled = true;
             string[] data;
-            if (e.Data.GetDataPresent(DataFormats.FileDrop))
-                if ((data = (string[])e.Data.GetData(DataFormats.FileDrop)).Length == 1 && Directory.Exists(data[0]))
-                    AddDirectory(data[0], decrypt_data, decrypt_list);
-                else if (data.Length > 0)
-                    AddFiles(data, decrypt_data, decrypt_list);
+            if (e.Data.GetDataPresent(DataFormats.FileDrop) && !adding && (data = e.Data.GetData(DataFormats.FileDrop) as string[]) != null && data.Length > 0)
+                AddFiles(data, decrypt_data, decrypt_list);
         }
 
         private void DecOutputText_Drop(object sender, DragEventArgs e)
         {
             string[] data;
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
                 if ((data = (string[])e.Data.GetData(DataFormats.FileDrop)).Length == 1 && Directory.Exists(data[0]))
-                    dec_output.Text = data[0];
+                    ((TextBox)sender).Text = data[0];
+                e.Handled = true;
+            }
         }
 
         #endregion
@@ -387,9 +582,11 @@ namespace File_Manager
             mother.BeginAnimation(MarginProperty, ta);
             label1.Background = Brushes.Black; label1.Foreground = Brushes.White;
             label2.Background = Brushes.Black; label2.Foreground = Brushes.White;
+            label3.Background = Brushes.Black; label3.Foreground = Brushes.White;
             ((Label)sender).Background = Brushes.White;
             ((Label)sender).Foreground = Brushes.Black;
             CurrentPage = (EncryptPages)tab_panal.Children.IndexOf((Label)sender) + 1;
+            Title = CurrentPage == EncryptPages.FilesEncrypt ? "Encrypt files" : CurrentPage == EncryptPages.FilesDecrypt ? "Decrypt files" : "View package content";
         }
 
         private void AboutTool_Click(object sender, RoutedEventArgs e)
@@ -405,7 +602,156 @@ namespace File_Manager
           // new not published //2.1:
             //add method(fast-mid-slow)
             //encrypt on same file or encrypt to other file
+            AboutTool window = new AboutTool();
+            window.tool_vertion.Text = "Version: 3";
+            window.tool_date.Text = "";
+            window.tool_name.Text = "Files encrypter";
+            window.tool_image.Source = new System.Windows.Media.Imaging.BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Tools Icon/encrypt.png"));
+            window.ShowDialog();
         }
+
+        void ShowResult(Operation operation, string action)
+        {
+            StringBuilder details = new StringBuilder();
+            foreach (var i in operation.result_errors)
+                details.AppendLine(i);
+            if (operation.result_notes.Count > 0)
+            {
+                if (details.Length > 0)
+                    details.AppendLine();
+                details.AppendLine("Output:");
+                foreach (var i in operation.result_notes)
+                    details.AppendLine(i);
+            }
+            if (operation.result_errors.Count > 0)
+                Messages.ShowMessage(string.Format("{0} finished with {1} problem{2}.", action, operation.result_errors.Count, operation.result_errors.Count > 1 ? "s" : ""), ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, details.ToString());
+            else if (operation.Stopped)
+                Messages.ShowMessage(action + " was stopped, unfinished output files were removed.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, details.Length > 0, details.ToString());
+            else
+                Messages.ShowMessage(action + " done.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, details.Length > 0, details.ToString());
+        }
+
+        #region VIEW PACK CONTENT
+
+        private void PackOpen_Click(object sender, RoutedEventArgs e)
+        {
+            SelectFileDialog sfd = new SelectFileDialog();
+            sfd.dialogMode = SelectFileDialogMode.OpenFile;
+            sfd.CreateFolderEnable = false;
+            sfd.DialogTitle = "Select encrypted package or file";
+            sfd.AddExtension = false;
+            sfd.MultiSelect = false;
+            sfd.FilterMenu.Add(new SelectFileFilter() { display_name = "Encrypted package or file (*.enp, *.enf)", extentions = SelectFileFilter.SetExtentions(".enp|.enf") });
+            sfd.FilterMenu.Add(new SelectFileFilter() { display_name = "All files", extentions = SelectFileFilter.SetExtentions("") });
+            if (sfd.ShowWindow() == MyMessageBoxResult.OK)
+            {
+                pack_path.Text = sfd.SelectedItem;
+                pack_list.ItemsSource = null;
+            }
+        }
+
+        private void PackPath_DragOver(object sender, DragEventArgs e)
+        {
+            e.Effects = DragDropEffects.Copy;
+            e.Handled = true;
+        }
+
+        private void PackPath_Drop(object sender, DragEventArgs e)
+        {
+            string[] data;
+            if (e.Data.GetDataPresent(DataFormats.FileDrop) && (data = (string[])e.Data.GetData(DataFormats.FileDrop)).Length > 0 && File.Exists(data[0]))
+            {
+                pack_path.Text = data[0];
+                pack_list.ItemsSource = null;
+            }
+            e.Handled = true;
+        }
+
+        internal void OpenPackage(string path)
+        {
+            pack_path.Text = path;
+            CurrentPage = EncryptPages.ViewPackContent;
+        }
+
+        private void Pack_Changed(object sender, RoutedEventArgs e)
+        {
+            if (pack_list == null || pack_extract_button == null)
+                return;
+            if (sender == pack_path)
+                pack_list.ItemsSource = null;
+            UpdatePackButtons();
+        }
+
+        private void PackPassword_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter && pack_show_button.IsEnabled)
+            {
+                PackShow_Click(pack_show_button, null);
+                e.Handled = true;
+            }
+        }
+
+        private void PackList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            UpdatePackButtons();
+        }
+
+        private void PackShow_Click(object sender, RoutedEventArgs e)
+        {
+            if (!File.Exists(pack_path.Text))
+                Messages.ShowMessage("Some field is missing.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "Please select an encrypted package.");
+            else if (pack_password.Password.Length == 0)
+                Messages.ShowMessage("Some field is missing.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "Please enter the password.");
+            else
+            {
+                string error;
+                Cursor = Cursors.Wait;
+                List<FmeItem> items = Operation.ReadPackageContent(pack_path.Text, pack_password.Password, out error);
+                Cursor = null;
+                if (items == null)
+                    Messages.ShowMessage("We can not show the package content.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, error);
+                else
+                {
+                    List<PackItemView> views = new List<PackItemView>();
+                    foreach (var i in items)
+                        views.Add(new PackItemView(i));
+                    pack_list.ItemsSource = views;
+                }
+                UpdatePackButtons();
+            }
+        }
+
+        private void PackExtract_Click(object sender, RoutedEventArgs e)
+        {
+            if (pack_list.ItemsSource == null || pack_list.Items.Count == 0)
+                Messages.ShowMessage("Click 'Show content' first.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
+            else if (pack_output.Text == string.Empty || pack_output.Text.Any(x => Path.GetInvalidPathChars().Any(y => y.Equals(x))))
+                Messages.ShowMessage("Some field has wrong values.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "Please select a valid output directory.");
+            else
+            {
+                List<int> ids = new List<int>();
+                foreach (PackItemView i in pack_list.SelectedItems)
+                    ids.Add(i.id);
+                if (ids.Count == 0)
+                {
+                    if (Messages.ShowMessage("No file is selected, extract all files?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "") != MyMessageBoxResult.Yes)
+                        return;
+                    foreach (PackItemView i in pack_list.Items)
+                        ids.Add(i.id);
+                }
+                try { Directory.CreateDirectory(pack_output.Text); }
+                catch (Exception ex)
+                {
+                    Messages.ShowMessage("We can not create directory '" + pack_output.Text + "'", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message);
+                    return;
+                }
+                Operation operation = new Operation();
+                operation.StartDecrept(new List<FileInfo>() { new FileInfo(pack_path.Text) }, pack_password.Password, pack_output.Text, false, ids, true);
+                ShowResult(operation, "Extraction");
+            }
+        }
+
+        #endregion
 
         private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
         {
@@ -485,59 +831,6 @@ namespace File_Manager
             //return secret_number;
         }
 
-        private void Test_Click(object sender, RoutedEventArgs e)
-        {
-            var b1 = new byte[16];
-            new Random(new Random(DateTime.Now.Millisecond).Next()).NextBytes(b1);
-            byte[] pass = new byte[enc_password_text.Text.Length * 2];
-            Buffer.BlockCopy(enc_password_text.Text.ToCharArray(), 0, pass, 0, pass.Length);
-            var sec_num = GetSecretNumber(128);
-            byte[] encrypt_key = PreparePassword(pass, sec_num, 16);
-            var enc_word = EncryptBytes(b1, encrypt_key);
-
-            byte[] dec_word = DecryptBytes(enc_word, encrypt_key);
-
-            MessageBox.Show(StringMaker(pass, sec_num, encrypt_key, enc_word, dec_word, b1), "Result");
-        }
-
-        string StringMaker(byte[] pass, byte[] sec_num, byte[] enc_key, byte[] enc_word, byte[] dec_word, byte[] real_word)
-        {
-            StringBuilder mm = new StringBuilder();
-            mm.Append("Password\t\t\t: ");
-            foreach (var i in pass)
-                mm.Append(i + ", ");
-            mm.Append("\n");
-
-            mm.Append("Secret Number\t: ");
-            foreach (var i in sec_num)
-                mm.Append(i + ", ");
-            mm.Append("\n");
-
-            mm.Append("Encrypt Key\t\t: ");
-            foreach (var i in enc_key)
-                mm.Append(i + ", ");
-            mm.Append("\n");
-
-            mm.Append("Enc Word\t\t\t: ");
-            foreach (var i in enc_word)
-                mm.Append(i + ", ");
-            mm.Append("\n");
-            mm.Append("\n");
-            mm.Append("\n");
-
-            mm.Append("read Word\t\t\t: ");
-            foreach (var i in real_word)
-                mm.Append(i + ", ");
-            mm.Append("\n");
-
-            mm.Append("Dec Word\t\t\t: ");
-            foreach (var i in dec_word)
-                mm.Append(i + ", ");
-            mm.Append("\n");
-
-            return mm.ToString();
-        }
-
         internal static byte[] HashBytes(byte[] bytes, int length)
         {
             var password = md5.ComputeHash(bytes);
@@ -565,7 +858,24 @@ namespace File_Manager
     enum EncryptPages
     {
         FilesEncrypt = 1,
-        FilesDecrypt = 2
+        FilesDecrypt = 2,
+        ViewPackContent = 3
+    }
+
+    class PackItemView
+    {
+        internal int id;
+
+        public PackItemView(FmeItem item)
+        {
+            id = item.id;
+            Name = item.name;
+            Size = Functions.FileSize(item.plain_length, 2);
+        }
+
+        public string Name { get; set; }
+
+        public string Size { get; set; }
     }
 
     class EncryptFileHeader

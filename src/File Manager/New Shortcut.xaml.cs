@@ -31,39 +31,67 @@ namespace File_Manager
 
         private void CreateShortcut_Click(object sender, RoutedEventArgs e)
         {
-            if (o_path.Text != string.Empty && s_name.Text != string.Empty && s_path.Text != string.Empty)
-            {
-                if (Directory.Exists(o_path.Text) || System.IO.File.Exists(o_path.Text))
+            string original = o_path.Text.Trim(), folder = s_path.Text.Trim(), name = s_name.Text.Trim(), icon = icon_path.Text.Trim();
+            if (original.Length > 0 && folder.Length == 0)
+                try
                 {
-                    if (Directory.Exists(s_path.Text))
+                    folder = System.IO.Path.GetDirectoryName(original.TrimEnd('\\')) ?? "";
+                    s_path.Text = folder;
+                }
+                catch (Exception) { }
+            if (original.Length > 0 && name.Length == 0)
+                name = DefaultName(original);
+            if (name.Length > 0 && !name.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase))
+                name += ".lnk";
+            s_name.Text = name;
+            if (original != string.Empty && name != string.Empty && folder != string.Empty)
+            {
+                if (name.IndexOfAny(System.IO.Path.GetInvalidFileNameChars()) >= 0)
+                {
+                    Messages.ShowMessage("The shortcut name has characters a file name can not have.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "\\ / : * ? \" < > |");
+                    return;
+                }
+                if (Directory.Exists(original) || System.IO.File.Exists(original))
+                {
+                    if (Directory.Exists(folder))
                     {
-                        if (!System.IO.File.Exists(s_path.Text + "\\" + s_name.Text) && !Directory.Exists(s_path.Text + "\\" + s_name.Text))
+                        string shortcut_path = System.IO.Path.Combine(folder, name);
+                        if (!System.IO.File.Exists(shortcut_path) && !Directory.Exists(shortcut_path))
                         {
-                            if (icon_path.Text != string.Empty && System.IO.File.Exists(icon_path.Text) || icon_path.Text == string.Empty)
+                            string icon_file = icon;
+                            int comma = icon.LastIndexOf(',');
+                            int icon_index = 0;
+                            if (comma > 0 && int.TryParse(icon.Substring(comma + 1), out icon_index))
+                                icon_file = icon.Substring(0, comma);
+                            if (icon_file != string.Empty && System.IO.File.Exists(icon_file) || icon_file == string.Empty)
                             {
                                 bool replay = false;
                                 do
                                 {
+                                    replay = false;
                                     try
                                     {
-                                        IWshShortcut shortcut = new IWshShell_Class().CreateShortcut(s_path.Text + "\\" + s_name.Text);
-                                        shortcut.TargetPath = o_path.Text;
-                                        if (icon_path.Text != string.Empty)
-                                            shortcut.IconLocation = icon_path.Text;
+                                        IWshShortcut shortcut = new IWshShell_Class().CreateShortcut(shortcut_path);
+                                        shortcut.TargetPath = original;
+                                        if (Directory.Exists(original))
+                                            shortcut.WorkingDirectory = original;
+                                        else
+                                            shortcut.WorkingDirectory = System.IO.Path.GetDirectoryName(original);
+                                        if (icon_file != string.Empty)
+                                            shortcut.IconLocation = icon_file + "," + icon_index;
                                         shortcut.Description = desc.Text;
                                         shortcut.Save();
-                                        Messages.ShowMessage("Creating shortcut done.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
+                                        Messages.ShowMessage("The shortcut has been created.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, true, shortcut_path);
                                         Close();
                                     }
-                                    catch (Exception)
+                                    catch (Exception ex)
                                     {
-                                        switch (Messages.ShowMessage("We can not create shortcut.", "What do you want to do?", new ButtonContent("Retry creating shortcut", ModrenMessageBitmapImage.Retry, 1), new ButtonContent("Skip creating shortcut for this item.", ModrenMessageBitmapImage.Skip, 2), new ButtonContent("Cancel operation", ModrenMessageBitmapImage.Cancel, 3)))
+                                        switch (Messages.ShowMessage("We can not create the shortcut.", ex.Message, new ButtonContent("Retry creating the shortcut", ModrenMessageBitmapImage.Retry, 1), new ButtonContent("Cancel", ModrenMessageBitmapImage.Cancel, 2)))
                                         {
                                             case MyMessageBoxResult.Button1:
                                                 replay = true;
                                                 break;
-                                            case MyMessageBoxResult.Button2:
-                                            case MyMessageBoxResult.Button3:
+                                            default:
                                                 replay = false;
                                                 break;
                                         }
@@ -71,38 +99,82 @@ namespace File_Manager
                                 } while (replay);
                             }
                             else
-                                Messages.ShowMessage("We can not find icon file '" + System.IO.Path.Combine(icon_path.Text) + "'.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, false, "");
+                                Messages.ShowMessage("We can not find icon file '" + icon_file + "'.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, false, "");
                         }
                         else
-                            Messages.ShowMessage("We find an element in output directory has same name of shortcut.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, false, "");
+                            Messages.ShowMessage("A file or folder with the name of the shortcut already exists in this folder.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, shortcut_path);
                     }
                     else
                     {
-                        if (Messages.ShowMessage("Output path is not exist, do you want to create it?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "") == MyMessageBoxResult.Yes)
+                        if (Messages.ShowMessage("The shortcut folder does not exist, do you want to create it?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, true, folder) == MyMessageBoxResult.Yes)
                             try
                             {
-                                Directory.CreateDirectory(s_path.Text);
+                                Directory.CreateDirectory(folder);
                                 CreateShortcut_Click(null, null);
                             }
                             catch (Exception ex)
-                            { Messages.ShowMessage("Sorry, we can not create directory.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
+                            { Messages.ShowMessage("Sorry, we can not create the folder.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
                     }
                 }
                 else
-                    Messages.ShowMessage("File or directory is not exist.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, false, "");
+                    Messages.ShowMessage("The original file or folder does not exist.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, original);
             }
             else
-                Messages.ShowMessage("Please fill all nesessary fields.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "Nesessary fields are:\nOrginal path.\nShortcut path.\nShortcut name.");
+                Messages.ShowMessage("Please fill all necessary fields.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "Necessary fields are:\nOriginal path.\nShortcut path.\nShortcut name.");
+        }
+
+        static string DefaultName(string original)
+        {
+            string trimmed = original.TrimEnd('\\');
+            string name = Directory.Exists(original) ? System.IO.Path.GetFileName(trimmed) : System.IO.Path.GetFileNameWithoutExtension(trimmed);
+            if (string.IsNullOrEmpty(name))
+                name = trimmed.Replace(":", "").Replace("\\", "") + " drive";
+            return name + ".lnk";
+        }
+
+        string auto_folder = "", auto_name = "";
+
+        private void OriginalPath_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            string original = o_path.Text.Trim();
+            if (original.Length == 0 || (!Directory.Exists(original) && !System.IO.File.Exists(original)))
+                return;
+            string folder = "";
+            try { folder = System.IO.Path.GetDirectoryName(original.TrimEnd('\\')) ?? ""; }
+            catch (Exception) { }
+            if (s_path.Text.Trim().Length == 0 || s_path.Text == auto_folder)
+                s_path.Text = auto_folder = folder;
+            if (s_name.Text.Trim().Length == 0 || s_name.Text == auto_name)
+                s_name.Text = auto_name = DefaultName(original);
+        }
+
+        private void SelectOriginalFile_Click(object sender, RoutedEventArgs e)
+        {
+            SelectFileDialog sfd = new SelectFileDialog();
+            sfd.dialogMode = SelectFileDialogMode.OpenFile;
+            sfd.CreateFolderEnable = false;
+            sfd.AddExtension = false;
+            sfd.DialogTitle = "Select the file the shortcut opens";
+            if (sfd.ShowWindow() == MyMessageBoxResult.OK)
+                o_path.Text = sfd.SelectedItem;
+        }
+
+        private void SelectOriginalFolder_Click(object sender, RoutedEventArgs e)
+        {
+            SelectFileDialog sfd = new SelectFileDialog();
+            sfd.dialogMode = SelectFileDialogMode.SelectDirectory;
+            sfd.CreateFolderEnable = false;
+            sfd.AddExtension = false;
+            sfd.DialogTitle = "Select the folder the shortcut opens";
+            if (sfd.ShowWindow() == MyMessageBoxResult.OK)
+                o_path.Text = sfd.SelectedItem;
         }
 
         private void SelectOrginalItem_Click(object sender, RoutedEventArgs e)
         {
-            OpenFileDialog ofd = new OpenFileDialog();
-            if (ofd.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-            {
-                o_path.Text = ofd.FileName;
-                s_name.Text = System.IO.Path.GetFileNameWithoutExtension(ofd.FileName) + ".lnk";
-            }
+            o_browse.ContextMenu.PlacementTarget = o_browse;
+            o_browse.ContextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+            o_browse.ContextMenu.IsOpen = true;
         }
 
         private void SelectLinkDestination_Click(object sender, RoutedEventArgs e)
@@ -111,7 +183,7 @@ namespace File_Manager
             sfd.dialogMode = SelectFileDialogMode.SelectDirectory;
             sfd.CreateFolderEnable = true;
             sfd.AddExtension = false;
-            sfd.DialogTitle = "Select Link Destination";
+            sfd.DialogTitle = "Select the folder for the shortcut";
             if (sfd.ShowWindow() == MyMessageBoxResult.OK)
                 s_path.Text = sfd.SelectedItem;
         }
@@ -120,10 +192,10 @@ namespace File_Manager
         {
             SelectFileDialog sfd = new SelectFileDialog();
             sfd.dialogMode = SelectFileDialogMode.OpenFile;
-            sfd.FilterMenu.Add(new SelectFileFilter() { display_name = Functions.GetFileType("ico"), extentions = SelectFileFilter.SetExtentions(".ico") });
-            sfd.CreateFolderEnable = true;
+            sfd.FilterMenu.Add(new SelectFileFilter() { display_name = "Icon, program or library (*.ico, *.exe, *.dll)", extentions = SelectFileFilter.SetExtentions(".ico|.exe|.dll") });
+            sfd.CreateFolderEnable = false;
             sfd.AddExtension = false;
-            sfd.DialogTitle = "Select Link Destination";
+            sfd.DialogTitle = "Select the icon of the shortcut";
             if (sfd.ShowWindow() == MyMessageBoxResult.OK)
                 icon_path.Text = sfd.SelectedItem;
         }
@@ -149,7 +221,7 @@ namespace File_Manager
                                 {  content_count = Directory.GetFiles(j_path.Text).Length + Directory.GetDirectories(j_path.Text).Length; }
                                 catch (Exception ex)
                                 {
-                                    Messages.ShowMessage("You do not have permition to access '" + j_path.Text + "'.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, ex.Message);
+                                    Messages.ShowMessage("You do not have permission to access '" + j_path.Text + "'.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, ex.Message);
                                     return;
                                 }
                             }
@@ -158,21 +230,21 @@ namespace File_Manager
                                 bool replay = false;
                                 do
                                 {
+                                    replay = false;
                                     try
                                     {
                                         Classes.JunctionPoint.Create(j_path.Text, d_path.Text, create_direcory.IsChecked.Value);
-                                        Messages.ShowMessage("Creating junction point done.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
+                                        Messages.ShowMessage("The junction has been created.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, true, j_path.Text + "  ->  " + d_path.Text);
                                         Close();
                                     }
-                                    catch (Exception)
+                                    catch (Exception ex)
                                     {
-                                        switch (Messages.ShowMessage("We can not create junction point.", "What do you want to do?", new ButtonContent("Retry creating shortcut", ModrenMessageBitmapImage.Retry, 1), new ButtonContent("Skip creating shortcut for this item.", ModrenMessageBitmapImage.Skip, 2), new ButtonContent("Cancel operation", ModrenMessageBitmapImage.Cancel, 3)))
+                                        switch (Messages.ShowMessage("We can not create the junction.", ex.Message, new ButtonContent("Retry creating the junction", ModrenMessageBitmapImage.Retry, 1), new ButtonContent("Cancel", ModrenMessageBitmapImage.Cancel, 2)))
                                         {
                                             case MyMessageBoxResult.Button1:
                                                 replay = true;
                                                 break;
-                                            case MyMessageBoxResult.Button2:
-                                            case MyMessageBoxResult.Button3:
+                                            default:
                                                 replay = false;
                                                 break;
                                         }
@@ -180,13 +252,13 @@ namespace File_Manager
                                 } while (replay);
                             }
                             else
-                                Messages.ShowMessage("Target directory is not empty.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
+                                Messages.ShowMessage("The junction target folder is not empty.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "Choose an empty folder, or a folder that does not exist yet.");
                         }
                         else
-                            Messages.ShowMessage("Directory is not exists and create parameter is false.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
+                            Messages.ShowMessage("The junction target folder does not exist.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "Tick 'Create the folder if it does not exist.' or choose an existing empty folder.");
                     }
                     else
-                        Messages.ShowMessage("Sorry we can not find source directory.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
+                        Messages.ShowMessage("Sorry, we can not find the source folder.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, d_path.Text);
                 }
                 else
                     Messages.ShowMessage("Please fill all field first.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
@@ -307,7 +379,7 @@ namespace File_Manager
             sfd.dialogMode = SelectFileDialogMode.SelectDirectory;
             sfd.CreateFolderEnable = true;
             sfd.AddExtension = false;
-            sfd.DialogTitle = "Select Link Destination";
+            sfd.DialogTitle = "Select where the junction is created (an empty folder)";
             if (sfd.ShowWindow() == MyMessageBoxResult.OK)
                 j_path.Text = sfd.SelectedItem;
         }
@@ -316,9 +388,9 @@ namespace File_Manager
         {
             SelectFileDialog sfd = new SelectFileDialog();
             sfd.dialogMode = SelectFileDialogMode.SelectDirectory;
-            sfd.CreateFolderEnable = true;
+            sfd.CreateFolderEnable = false;
             sfd.AddExtension = false;
-            sfd.DialogTitle = "Select Link Destination";
+            sfd.DialogTitle = "Select the folder the junction points to";
             if (sfd.ShowWindow() == MyMessageBoxResult.OK)
                 d_path.Text = sfd.SelectedItem;
         }
@@ -364,10 +436,7 @@ namespace File_Manager
         {
             New_Shortcut window = new New_Shortcut();
             if (path != null && path != "")
-            {
                 window.o_path.Text = path;
-                window.s_name.Text = System.IO.Path.GetFileNameWithoutExtension(path) + ".lnk";
-            }
             if (show_dialog)
                 window.ShowDialog();
             else

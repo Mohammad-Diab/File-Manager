@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -23,27 +24,25 @@ namespace File_Manager
     /// </summary>
     public partial class Compress_Files : Window
     {
-        ArchiveType archive_type;
         CompressItem root;
+        string confirmed_path = null;
 
-        Process P;
-        string compress_tool = "", type_extention = "";
         OutArchiveFormat extention_item = OutArchiveFormat.SevenZip;
-        List<byte> compress_level = new List<byte>();
         string[] sold_block_size = { "off", "1m", "2m", "4m", "8m", "16m", "32m", "64m", "128m", "256m", "512m", "1g", "2g", "4g", "8g", "16g", "32g", "64g", "on" };
-        bool go_again;
-        int done = -1, exit_code = -999000;
-        string error_message;
+        static string[] archive_extentions = { ".tar.gz", ".tar.bz2", ".tar.xz", ".7z", ".zip", ".tar", ".gz", ".bz2", ".xz" };
         public Compress_Files()
         {
             InitializeComponent();
             format.SelectedIndex = 0;
             priority.SelectedIndex = 1;
+            volume_size.SelectedIndex = 0;
         }
 
-        internal void ShowWindow(CompressItem root)
+        internal void ShowWindow(CompressItem root, string suggested_name)
         {
             this.root = root;
+            if (!string.IsNullOrEmpty(suggested_name))
+                file_name.Text = suggested_name + "." + ((ComboBoxItem)format.SelectedItem).Tag;
             ShowDialog();
         }
 
@@ -55,285 +54,209 @@ namespace File_Manager
             sfd.DialogTitle = "Select output file";
             sfd.AddExtension = true;
             sfd.MultiSelect = false;
-            string extention = ".7z";
-            if (sfx.IsChecked.Value)
-                extention = ".exe";
-            else
-                extention = "." + ((ComboBoxItem)format.SelectedItem).Tag;
-            sfd.FilterMenu.Add(new SelectFileFilter() { display_name = FileInfoCombonents.FilesInformation[extention].Description + string.Format(" (*{0})", extention), extentions = SelectFileFilter.SetExtentions(extention) });
+            string extention = "." + ((ComboBoxItem)format.SelectedItem).Tag;
+            string description = FileInfoCombonents.FilesInformation.ContainsKey(extention) ? FileInfoCombonents.FilesInformation[extention].Description : extention.ToUpper().Substring(1) + " File";
+            sfd.FilterMenu.Add(new SelectFileFilter() { display_name = description + string.Format(" (*{0})", extention), extentions = SelectFileFilter.SetExtentions(extention) });
             sfd.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            //****if (file_name.Text != "")
-            //    sfd.SelectedItem = file_name.Text;
+            try
+            {
+                string folder = Path.GetDirectoryName(file_name.Text.Trim());
+                if (!string.IsNullOrEmpty(folder) && Directory.Exists(folder))
+                    sfd.InitialDirectory = folder;
+            }
+            catch (Exception) { }
             if (sfd.ShowWindow() == MyMessageBoxResult.OK)
-                file_name.Text = sfd.SelectedItem;
+            {
+                string path = sfd.SelectedItem;
+                if (!path.ToLower().EndsWith(extention))
+                    path += extention;
+                file_name.Text = path;
+                confirmed_path = path;
+            }
         }
 
         private void Format_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (!sfx.IsChecked.Value)
-                SFX_Unchecked(null, null);
-            switch (((ComboBoxItem)format.SelectedItem).Tag.ToString())
+            string tag = ((ComboBoxItem)format.SelectedItem).Tag.ToString();
+            level.Items.Clear();
+            level.Items.Insert(0, "Just store");
+            for (int i = 1; i < 6; i++)
+                level.Items.Add(((CompressionLevel)i).ToString());
+            level.SelectedIndex = 3;
+            level.IsEnabled = true;
+            solid_block.IsEnabled = false;
+            password_box.IsEnabled = false;
+            password_checkbox.IsChecked = false;
+            encrypt_file_name.IsChecked = false;
+            switch (tag)
             {
                 case "7z":
-                    level.Items.Clear();
-                    level.Items.Insert(0, "Just store");
-                    for (int i = 1; i < 6; i++)
-                        level.Items.Add(((CompressionLevel)i).ToString());
-                    archive_type = ArchiveType.SevenZip;
+                    extention_item = OutArchiveFormat.SevenZip;
                     password_box.IsEnabled = true;
-                    password_checkbox.IsChecked = false;
-                    sfx.IsEnabled = true;
                     solid_block.IsEnabled = true;
                     solid_block.SelectedIndex = 3;
-                    level.SelectedIndex = 3;
-                    level.IsEnabled = true;
-                    encrypt_file_name.IsEnabled = true;
                     break;
-                //case "ace":
-                //    compress_tool = @"Tools\compress\ace\ace.exe";
-                //    break;
-                //case "arc":
-                //    level.Items.Clear();
-                //    level.Items.Insert(0, "Just store");
-                //    for (int i = 0; i < 9; i++)
-                //        level.Items.Add(i);
-                //    sfx.IsEnabled = true;
-                //    level.SelectedIndex = 5;
-                //    level.IsEnabled = true;
-                //    encrypt_file_name.IsChecked = encrypt_file_name.IsEnabled = false;
-                //    archive_type = ArchiveType.Arc;
-                //    break;
-                //case 3:
-                //    compress_tool = @"Tools\compress\ace\b1.exe";
-                //    break;
-                //case 4:
-                //    if (compress_level.Count == 5)
-                //    {
-                //        compress_level.RemoveAt(0);
-                //        level.Items.RemoveAt(0);
-                //    }
-                //    if (root.Children.Count == 1 && !root.Children[0].IsDirectory)
-                //    { type_extention = "bzip2"; extention_item = OutArchiveFormat.BZip2; }
-                //    else
-                //    { type_extention = "tar"; extention_item = OutArchiveFormat.Tar; }
-                //    password.IsEnabled = password_retry.IsEnabled = show_password.IsEnabled = encrypt_file_name.IsEnabled = password_textbox.IsEnabled = false;
-                //    solid_block.IsEnabled = false;
-                //    solid_block.SelectedIndex = solid_block.Items.Count - 1;
-                //    sfx.IsChecked = sfx.IsEnabled = false;
-                //    level.SelectedIndex = 1;
-                //    level.IsEnabled = true;
-                //    compress_tool = @"Tools\compress\7z\7z.exe";
-                //    break;
-                //case 5://cab
-                //    compress_tool = @"cmd.exe";
-                //    break;
-                //case 6:
-                //    if (compress_level.Count == 5)
-                //    {
-                //        compress_level.RemoveAt(0);
-                //        level.Items.RemoveAt(0);
-                //    }
-                //    if (root.Children.Count == 1 && !root.Children[0].IsDirectory)
-                //    { type_extention = "gzip"; extention_item = OutArchiveFormat.GZip; }
-                //    else
-                //    { type_extention = "tar"; extention_item = OutArchiveFormat.Tar; }
-                //    password.IsEnabled = password_retry.IsEnabled = show_password.IsEnabled = encrypt_file_name.IsEnabled = password_textbox.IsEnabled = false;
-                //    solid_block.IsEnabled = false;
-                //    solid_block.SelectedIndex = solid_block.Items.Count - 1;
-                //    sfx.IsChecked = sfx.IsEnabled = false;
-                //    level.SelectedIndex = 1;
-                //    level.IsEnabled = true;
-                //    compress_tool = @"Tools\compress\7z\7z.exe";
-                //    break;
-                //case 7:
-                //    if (compress_level.Count == 4)
-                //    {
-                //        compress_level.Insert(0, 0);
-                //        level.Items.Insert(0, "Just store");
-                //    }
-                //    sfx.IsChecked = sfx.IsEnabled = false;
-                //    password.IsEnabled = password_retry.IsEnabled = show_password.IsEnabled = encrypt_file_name.IsEnabled = password_textbox.IsEnabled = false;
-                //    level.SelectedIndex = 0;
-                //    solid_block.IsEnabled = false;
-                //    solid_block.SelectedIndex = solid_block.Items.Count - 1;
-                //    level.IsEnabled = false;
-                //    compress_tool = @"Tools\compress\iso\mkisofs.exe";
-                //    break;
-                //case 8:
-                //    level.SelectedIndex = 2;
-                //    level.IsEnabled = true;
-                //    solid_block.IsEnabled = false;
-                //    encrypt_file_name.IsChecked = encrypt_file_name.IsEnabled = false;
-                //    solid_block.SelectedIndex = solid_block.Items.Count - 1;
-                //    compress_tool = @"Tools\compress\kgb\kgb2_console.exe";
-                //    break;
-                //case 9:
-                //    compress_tool = @"Tools\compress\mou\mou.exe";
-                //    break;
-                //case 10:
-                //    level.SelectedIndex = 2;
-                //    level.IsEnabled = true;
-                //    compress_tool = @"Tools\compress\rar\rar.exe";
-                //    break;
-                //case 11:
-                //    level.SelectedIndex = 2;
-                //    level.IsEnabled = true;
-                //    compress_tool = @"Tools\compress\rar\rar.exe";
-                //    break;
-                //case 12:
-                //    compress_tool = @"Tools\compress\sit\sit.exe";
-                //    break;
-                //case 13:
-                //    compress_tool = @"Tools\compress\sit\sitx.exe";
-                //    break;
-                //case 14:
-                //    if (compress_level.Count == 4)
-                //    {
-                //        compress_level.Insert(0, 0);
-                //        level.Items.Insert(0, "Just store");
-                //    }
-                //    type_extention = "tar";
-                //    extention_item = OutArchiveFormat.Tar;
-                //    password.IsEnabled = password_retry.IsEnabled = show_password.IsEnabled = encrypt_file_name.IsEnabled = password_textbox.IsEnabled = false;
-                //    sfx.IsChecked = sfx.IsEnabled = false;
-                //    solid_block.IsEnabled = false;
-                //    solid_block.SelectedIndex = solid_block.Items.Count - 1;
-                //    level.SelectedIndex = 0;
-                //    level.IsEnabled = false;
-                //    compress_tool = @"Tools\compress\7z\7z.exe";
-                //    break;
-                //case 15:
-                //    sfx.IsEnabled = true;
-                //    level.SelectedIndex = 2;
-                //    level.IsEnabled = true;
-                //    compress_tool = @"Tools\compress\uha\uha.exe";
-                //    break;
-                //case 16:
-                //    if (compress_level.Count == 4)
-                //    {
-                //        compress_level.Insert(0, 0);
-                //        level.Items.Insert(0, "Just store");
-                //    }
-                //    type_extention = "wim";
-                //    password.IsEnabled = password_retry.IsEnabled = show_password.IsEnabled = encrypt_file_name.IsEnabled = password_textbox.IsEnabled = false;
-                //    sfx.IsChecked = sfx.IsEnabled = false;
-                //    level.SelectedIndex = 0;
-                //    solid_block.IsEnabled = false;
-                //    solid_block.SelectedIndex = solid_block.Items.Count - 1;
-                //    level.IsEnabled = false;
-                //    compress_tool = @"Tools\compress\7z\7z.exe";
-                //    break;
-                //case 17:
-                //    if (compress_level.Count == 5)
-                //    {
-                //        compress_level.RemoveAt(0);
-                //        level.Items.RemoveAt(0);
-                //    }
-                //    if (root.Children.Count == 1 && !root.Children[0].IsDirectory)
-                //    { type_extention = "xz"; extention_item = OutArchiveFormat.XZ; }
-                //    else
-                //    { type_extention = "tar"; extention_item = OutArchiveFormat.Tar; }
-                //    password.IsEnabled = password_retry.IsEnabled = show_password.IsEnabled = encrypt_file_name.IsEnabled = password_textbox.IsEnabled = false;
-                //    solid_block.IsEnabled = false;
-                //    solid_block.SelectedIndex = solid_block.Items.Count - 1;
-                //    sfx.IsChecked = sfx.IsEnabled = false;
-                //    level.SelectedIndex = 1;
-                //    level.IsEnabled = true;
-                //    compress_tool = @"Tools\compress\7z\7z.exe";
-                //    break;
-                //case 18:
-                //    if (compress_level.Count == 5)
-                //    {
-                //        compress_level.RemoveAt(0);
-                //        level.Items.RemoveAt(0);
-                //    }
-                //    type_extention = "zip";
-                //    extention_item = OutArchiveFormat.Zip;
-                //    solid_block.IsEnabled = false;
-                //    encrypt_file_name.IsChecked = encrypt_file_name.IsEnabled = false;
-                //    solid_block.SelectedIndex = solid_block.Items.Count - 1;
-                //    sfx.IsChecked = sfx.IsEnabled = false;
-                //    level.SelectedIndex = 1;
-                //    level.IsEnabled = true;
-                //    compress_tool = @"Tools\compress\7z\7z.exe";
-                //    break;
-                //case 19:
-                //    if (compress_level.Count == 5)
-                //    {
-                //        compress_level.RemoveAt(0);
-                //        level.Items.RemoveAt(0);
-                //    }
-                //    type_extention = "zip";
-                //    extention_item = OutArchiveFormat.Zip;
-                //    solid_block.IsEnabled = false;
-                //    encrypt_file_name.IsChecked = encrypt_file_name.IsEnabled = false;
-                //    solid_block.SelectedIndex = solid_block.Items.Count - 1;
-                //    sfx.IsChecked = sfx.IsEnabled = false;
-                //    level.SelectedIndex = 1;
-                //    level.IsEnabled = true;
-                //    compress_tool = @"Tools\compress\7z\7z.exe";
-                //    break;
+                case "zip":
+                    extention_item = OutArchiveFormat.Zip;
+                    password_box.IsEnabled = true;
+                    break;
+                case "tar":
+                    extention_item = OutArchiveFormat.Tar;
+                    level.SelectedIndex = 0;
+                    level.IsEnabled = false;
+                    break;
+                case "gz":
+                    extention_item = OutArchiveFormat.GZip;
+                    break;
+                case "bz2":
+                    extention_item = OutArchiveFormat.BZip2;
+                    break;
+                case "xz":
+                    extention_item = OutArchiveFormat.XZ;
+                    break;
             }
+            level.ToolTip = level.IsEnabled ? null : "tar only keeps the files together, it does not compress them.";
+            solid_block.ToolTip = solid_block.IsEnabled ? null : "Solid blocks are an option of 7z archives.";
+            password_box.ToolTip = password_box.IsEnabled ? null : "Only 7z and zip archives can have a password.";
+            UpdatePasswordState();
+            if (file_name.Text.Trim().Length > 0)
+            {
+                string path = file_name.Text.Trim();
+                string old_extention = archive_extentions.FirstOrDefault(x => path.EndsWith(x, StringComparison.OrdinalIgnoreCase));
+                if (old_extention != null)
+                    path = path.Remove(path.Length - old_extention.Length);
+                file_name.Text = path + "." + tag;
+            }
+        }
+
+        void UpdatePasswordState()
+        {
+            bool on = password_box.IsEnabled && password_checkbox.IsChecked == true;
+            password_enc.IsEnabled = password_textbox.IsEnabled = show_password.IsEnabled = on;
+            password_enc.ToolTip = on ? null : "Tick 'Password' first.";
+            encrypt_file_name.IsEnabled = on && extention_item == OutArchiveFormat.SevenZip;
+            if (!encrypt_file_name.IsEnabled)
+                encrypt_file_name.IsChecked = false;
+            encrypt_file_name.ToolTip = encrypt_file_name.IsEnabled ? "Nobody can see the list of files without the password." : extention_item != OutArchiveFormat.SevenZip ? "Only 7z archives can encrypt file names." : "Tick 'Password' and enter a password first.";
+        }
+
+        private void PasswordCheckbox_Changed(object sender, RoutedEventArgs e)
+        {
+            UpdatePasswordState();
+            if (password_checkbox.IsChecked == true)
+            {
+                if (show_password.IsChecked == true)
+                    password_textbox.Focus();
+                else
+                    password_enc.Focus();
+            }
+        }
+
+        static long ParseVolumeSize(string text)
+        {
+            text = text.Trim().ToUpper();
+            if (text == "" || text.StartsWith("DON"))
+                return 0;
+            int k = 0;
+            while (k < text.Length && (char.IsDigit(text[k]) || text[k] == '.' || text[k] == ','))
+                k++;
+            double number;
+            if (k == 0 || !double.TryParse(text.Substring(0, k).Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out number) || number <= 0)
+                return -1;
+            string unit = text.Substring(k).Trim();
+            double factor;
+            if (unit == "" || unit.StartsWith("M"))
+                factor = 1048576;
+            else if (unit.StartsWith("G"))
+                factor = 1073741824;
+            else if (unit.StartsWith("K"))
+                factor = 1024;
+            else if (unit.StartsWith("B"))
+                factor = 1;
+            else
+                return -1;
+            double size = number * factor;
+            if (size < 65536 || size > 1099511627776.0)
+                return -1;
+            return (long)size;
         }
 
         private void Compress_Click(object sender, RoutedEventArgs e)
         {
-            if (file_name.Text.Equals(string.Empty))
-                Messages.ShowMessage("Some field is missing.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "Please enter file path.");
-            else
+            string text = file_name.Text.Trim();
+            if (text.Equals(string.Empty))
             {
-                if (!file_name.Text.Any(x => Path.GetInvalidPathChars().Any(y => y == x)))
-                {
-                    if (File.Exists(file_name.Text) && new FileInfo(file_name.Text).Length > 0)
-                        if (Messages.ShowMessage("File is already exist, overwrite?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "") == MyMessageBoxResult.Yes)
-                            try
-                            {
-                                File.Delete(file_name.Text);
-                                File.Create(file_name.Text);
-                            }
-                            catch (Exception ex)
-                            {
-                                Messages.ShowMessage("Error while overwrite file, operation will cancel now.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message);
-                                return;
-                            }
-                        else
-                            return;
-                    ArchiveOperation op_window = new ArchiveOperation();
-                    if (password_checkbox.IsChecked.Value)
-                    {
-                        string password = "";
-                        if (show_password.IsChecked.Value)
-                        {
-                            if (password_textbox.Text.Equals(string.Empty))
-                            {
-                                Messages.ShowMessage("Some field is missing.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "Please enter a password.");
-                                return;
-                            }
-                            else
-                                password = password_textbox.Text;
-                        }
-                        else
-                        {
-                            if (password_enc.Password.Equals(string.Empty))
-                            {
-                                Messages.ShowMessage("Some field is missing.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "Please enter a password.");
-                                return;
-                            }
-                            else
-                                password = password_enc.Password;
-                        }
-                        op_window.StartCompressing(archive_type, file_name.Text, root, level.SelectedIndex, solid_block.SelectedItem.ToString(), sfx.IsChecked.Value, true, password, encrypt_file_name.IsChecked.Value, (priority.SelectedIndex - 1) * 2);
-                        Close();
-                    }
-                    else
-                    {
-                        op_window.StartCompressing(archive_type, file_name.Text, root, level.SelectedIndex, solid_block.SelectedItem.ToString(), sfx.IsChecked.Value, false, "", false, (priority.SelectedIndex - 1) * 2);
-                        Close();
-                    }
-                }
-                else
-                    Messages.ShowMessage("Some field has wrong values.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "Path contains unlegal charectars.");
+                Messages.ShowMessage("Some field is missing.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "Please enter file path.");
+                return;
             }
+            string output;
+            try
+            {
+                if (text.Any(x => Path.GetInvalidPathChars().Any(y => y == x)) || !Path.IsPathRooted(text))
+                    throw new ArgumentException("Please enter the full path of the archive, for example D:\\Backup\\photos.7z");
+                output = Path.GetFullPath(text);
+                if (Path.GetFileName(output).IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || Path.GetFileName(output) == "")
+                    throw new ArgumentException("The file name contains characters that can not be used.");
+            }
+            catch (Exception ex)
+            {
+                Messages.ShowMessage("Some field has wrong values.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, ex.Message);
+                return;
+            }
+            string folder = Path.GetDirectoryName(output);
+            if (folder == null || !Directory.Exists(folder))
+            {
+                Messages.ShowMessage("Some field has wrong values.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "The directory of the archive does not exist:\n" + folder);
+                return;
+            }
+            if (Directory.Exists(output))
+            {
+                Messages.ShowMessage("Some field has wrong values.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "A directory with this name already exists:\n" + output);
+                return;
+            }
+            if (root.AllFiles.Any(x => x.Item != null && (string.Equals(x.Item.FullName, output, StringComparison.OrdinalIgnoreCase) || (x.Item is DirectoryInfo && output.StartsWith(x.Item.FullName.TrimEnd('\\') + "\\", StringComparison.OrdinalIgnoreCase)))))
+            {
+                Messages.ShowMessage("Some field has wrong values.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "The archive can not be saved inside the files or directories that are being compressed.");
+                return;
+            }
+            long volume = ParseVolumeSize(volume_size.Text);
+            if (volume < 0)
+            {
+                Messages.ShowMessage("Some field has wrong values.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "The volume size is not valid, examples: 100 MB, 700M, 4 GB (at least 64 KB).");
+                return;
+            }
+            if (volume > 0 && File.Exists(output + ".001"))
+            {
+                if (Messages.ShowMessage("Volumes of this archive already exist, overwrite them?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, true, output + ".001 ...\nThe old volumes are replaced only after the new archive is created successfully.") != MyMessageBoxResult.Yes)
+                    return;
+            }
+            else if (volume == 0 && File.Exists(output) && !string.Equals(output, confirmed_path, StringComparison.OrdinalIgnoreCase))
+            {
+                if (Messages.ShowMessage("The file already exists, overwrite it?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, true, output + "\nThe old file is replaced only after the new archive is created successfully.") != MyMessageBoxResult.Yes)
+                    return;
+            }
+            string password = "";
+            bool has_password = password_box.IsEnabled && password_checkbox.IsChecked == true;
+            if (has_password)
+            {
+                password = show_password.IsChecked.Value ? password_textbox.Text : password_enc.Password;
+                if (password.Equals(string.Empty))
+                {
+                    Messages.ShowMessage("Some field is missing.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "Please enter a password.");
+                    return;
+                }
+            }
+            CompressOptions options = new CompressOptions();
+            options.Format = extention_item;
+            options.Output = output;
+            options.Level = level.SelectedIndex < 0 ? 3 : level.SelectedIndex;
+            options.SolidBlock = solid_block.IsEnabled && solid_block.SelectedIndex > -1 ? sold_block_size[solid_block.SelectedIndex] : null;
+            options.Password = password;
+            options.EncryptNames = has_password && encrypt_file_name.IsChecked == true;
+            options.VolumeSize = volume;
+            options.Priority = priority.SelectedIndex - 1;
+            Close();
+            new ArchiveOperation().StartCompressing(options, root);
         }
 
         private void ShowPassword_Checked(object sender, RoutedEventArgs e)
@@ -341,6 +264,7 @@ namespace File_Manager
             password_textbox.Visibility = Visibility.Visible;
             password_enc.Visibility = Visibility.Hidden;
             password_textbox.Text = password_enc.Password;
+            show_password.ToolTip = "Hide password";
         }
 
         private void ShowPassword_Unchecked(object sender, RoutedEventArgs e)
@@ -348,6 +272,7 @@ namespace File_Manager
             password_textbox.Visibility = Visibility.Hidden;
             password_enc.Visibility = Visibility.Visible;
             password_enc.Password = password_textbox.Text;
+            show_password.ToolTip = "Show password";
         }
 
         private void Close_Click(object sender, RoutedEventArgs e)
@@ -357,15 +282,23 @@ namespace File_Manager
 
         private void SFX_Checked(object sender, RoutedEventArgs e)
         {
-            if (file_name.Text.LastIndexOf('.') >= 0)
-                file_name.Text = file_name.Text.Remove(file_name.Text.LastIndexOf('.')) + ".exe";
         }
 
         private void SFX_Unchecked(object sender, RoutedEventArgs e)
         {
-            if (Path.HasExtension(file_name.Text))
-                file_name.Text = file_name.Text.Remove(file_name.Text.LastIndexOf('.')) + "." + ((ListBoxItem)format.SelectedItem).Tag;
         }
+    }
+
+    class CompressOptions
+    {
+        internal OutArchiveFormat Format = OutArchiveFormat.SevenZip;
+        internal string Output;
+        internal int Level = 3;
+        internal string SolidBlock;
+        internal string Password = "";
+        internal bool EncryptNames;
+        internal long VolumeSize;
+        internal int Priority;
     }
 
     enum ArchiveType

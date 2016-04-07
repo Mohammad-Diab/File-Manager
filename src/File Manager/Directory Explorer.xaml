@@ -5,7 +5,230 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:File_Manager"
         mc:Ignorable="d"
-        Title="Files Manager (APPS PREVIEW)" MinWidth="450" Width="800" Height="525" WindowStartupLocation="Manual" Icon="App Icon.ico" Loaded="Window_Loaded" FlowDirection="LeftToRight" Closing="Window_Closing">
+        Title="File Manager" MinWidth="450" Width="800" Height="525" WindowStartupLocation="Manual" Icon="App Icon.ico" Loaded="Window_Loaded" FlowDirection="LeftToRight" Closing="Window_Closing" Deactivated="Window_Deactivated" PreviewKeyDown="Window_PreviewKeyDown" PreviewMouseDown="Window_PreviewMouseDown">
+    <Window.Resources>
+        <Style x:Key="address_button" TargetType="{x:Type Button}">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#FF41403B"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="4,0"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="VerticalAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border x:Name="back" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="back" Property="Background" Value="#FFE5F3FB"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="back" Property="Background" Value="#FFCCE8FF"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="back" Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="panel_button" TargetType="{x:Type Button}">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Width" Value="26"/>
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="Padding" Value="5"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border x:Name="back" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" CornerRadius="2">
+                            <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="back" Property="Background" Value="#FF5A5A5A"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="back" Property="Background" Value="#FF707070"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="back" Property="Background" Value="#FF5A5A5A"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="back" Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="link_button" TargetType="{x:Type Button}">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="ToolTipService.ShowOnDisabled" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border Background="{TemplateBinding Background}" Padding="4,2">
+                            <TextBlock x:Name="link_text" Text="{Binding Content, RelativeSource={RelativeSource TemplatedParent}}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="link_text" Property="TextDecorations" Value="Underline"/>
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="link_text" Property="TextDecorations" Value="Underline"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="link_text" Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="column_header_button" TargetType="{x:Type Button}">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#FF41403B"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="7,0,2,0"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border x:Name="back" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Stretch"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="back" Property="Background" Value="#330078D7"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="column_item" TargetType="{x:Type ListBoxItem}">
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Margin" Value="3,1,3,0"/>
+            <Setter Property="Padding" Value="4,0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ListBoxItem}">
+                        <Border x:Name="pill" Background="Transparent" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="pill" Property="Background" Value="#1F0078D7"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="pill" Property="Background" Value="#FF0078D7"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <DataTemplate x:Key="icons_template">
+            <Grid Width="80" Height="86" ToolTip="{Binding Path=FileName}">
+                <Image Source="{Binding Path=LargeIcon}" Width="48" Height="48" Margin="0,4,0,0" HorizontalAlignment="Center" VerticalAlignment="Top"/>
+                <TextBlock x:Name="item_name" Text="{Binding Path=FileName}" Margin="0,54,0,0" Height="32" TextAlignment="Center" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" FontSize="12" VerticalAlignment="Top"/>
+                <Canvas x:Name="item_full_name" Margin="0,54,0,0" VerticalAlignment="Top" HorizontalAlignment="Left" Visibility="Collapsed" IsHitTestVisible="False">
+                    <Border Width="80" Background="#FFCCE8FF" BorderBrush="#FF99D1FF" BorderThickness="1,0,1,1">
+                        <TextBlock Text="{Binding Path=FileName}" Margin="-1,0,-1,1" TextAlignment="Center" TextWrapping="Wrap" FontSize="12"/>
+                    </Border>
+                </Canvas>
+            </Grid>
+            <DataTemplate.Triggers>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding Path=IsSelected, RelativeSource={RelativeSource AncestorType={x:Type ListViewItem}}}" Value="True"/>
+                        <Condition Binding="{Binding Path=SelectedItems.Count, RelativeSource={RelativeSource AncestorType={x:Type ListView}}}" Value="1"/>
+                    </MultiDataTrigger.Conditions>
+                    <Setter TargetName="item_name" Property="Visibility" Value="Hidden"/>
+                    <Setter TargetName="item_full_name" Property="Visibility" Value="Visible"/>
+                </MultiDataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+        <DataTemplate x:Key="large_icons_template">
+            <Grid Width="120" Height="134" ToolTip="{Binding Path=FileName}">
+                <Image Source="{Binding Path=HugeIcon}" Width="96" Height="96" Margin="0,4,0,0" HorizontalAlignment="Center" VerticalAlignment="Top"/>
+                <TextBlock x:Name="item_name" Text="{Binding Path=FileName}" Margin="0,102,0,0" Height="32" TextAlignment="Center" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" FontSize="12" VerticalAlignment="Top"/>
+                <Canvas x:Name="item_full_name" Margin="0,102,0,0" VerticalAlignment="Top" HorizontalAlignment="Left" Visibility="Collapsed" IsHitTestVisible="False">
+                    <Border Width="120" Background="#FFCCE8FF" BorderBrush="#FF99D1FF" BorderThickness="1,0,1,1">
+                        <TextBlock Text="{Binding Path=FileName}" Margin="-1,0,-1,1" TextAlignment="Center" TextWrapping="Wrap" FontSize="12"/>
+                    </Border>
+                </Canvas>
+            </Grid>
+            <DataTemplate.Triggers>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding Path=IsSelected, RelativeSource={RelativeSource AncestorType={x:Type ListViewItem}}}" Value="True"/>
+                        <Condition Binding="{Binding Path=SelectedItems.Count, RelativeSource={RelativeSource AncestorType={x:Type ListView}}}" Value="1"/>
+                    </MultiDataTrigger.Conditions>
+                    <Setter TargetName="item_name" Property="Visibility" Value="Hidden"/>
+                    <Setter TargetName="item_full_name" Property="Visibility" Value="Visible"/>
+                </MultiDataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+        <DataTemplate x:Key="list_template">
+            <StackPanel Orientation="Horizontal" Width="230" Height="20" ToolTip="{Binding Path=FileName}">
+                <Image Source="{Binding Path=Icon}" Width="16" Height="16" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding Path=FileName}" TextAlignment="Left" TextTrimming="CharacterEllipsis" Width="208" Margin="6,0,0,0" VerticalAlignment="Center"/>
+            </StackPanel>
+        </DataTemplate>
+        <DataTemplate x:Key="tiles_template">
+            <Grid Width="244" Height="56" ToolTip="{Binding Path=FileName}">
+                <Image Source="{Binding Path=LargeIcon}" Width="48" Height="48" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                <StackPanel Margin="56,0,0,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Path=FileName}" TextAlignment="Left" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding Path=FileType}" TextAlignment="Left" TextTrimming="CharacterEllipsis" Foreground="Gray" FontSize="11"/>
+                    <TextBlock Text="{Binding Path=FileSize}" TextAlignment="Left" TextTrimming="CharacterEllipsis" Foreground="Gray" FontSize="11"/>
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+        <DataTemplate x:Key="content_template">
+            <Grid Height="48" Margin="0,2" ToolTip="{Binding Path=FileName}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Image Source="{Binding Path=LargeIcon}" Width="40" Height="40" VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="1" Margin="10,0,10,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Path=FileName}" TextAlignment="Left" TextTrimming="CharacterEllipsis" FontSize="13"/>
+                    <TextBlock Text="{Binding Path=FileType}" TextAlignment="Left" TextTrimming="CharacterEllipsis" Foreground="Gray" FontSize="11"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Margin="0,0,10,0" VerticalAlignment="Center" MinWidth="150">
+                    <TextBlock Foreground="Gray" FontSize="11" TextAlignment="Left"><Run Text="Date modified: "/><Run Text="{Binding Path=DateModified, Mode=OneWay}"/></TextBlock>
+                    <TextBlock Foreground="Gray" FontSize="11" TextAlignment="Left" Text="{Binding Path=FileSize}"/>
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+        <DataTemplate x:Key="columns_template">
+            <Grid Height="22" ToolTip="{Binding Path=FileName}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Image Source="{Binding Path=Icon}" Width="16" Height="16" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="1" Text="{Binding Path=FileName}" TextAlignment="Left" TextTrimming="CharacterEllipsis" Margin="6,0,6,0" VerticalAlignment="Center"/>
+                <Path x:Name="item_chevron" Grid.Column="2" Data="M 0,0 L 3.5,3.5 L 0,7" Stroke="{Binding Path=Foreground, RelativeSource={RelativeSource AncestorType={x:Type ListBoxItem}}}" Opacity="0.7" StrokeThickness="1.2" Margin="0,0,4,0" VerticalAlignment="Center" Visibility="Hidden"/>
+            </Grid>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding Path=FileType}" Value="Directory">
+                    <Setter TargetName="item_chevron" Property="Visibility" Value="Visible"/>
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+    </Window.Resources>
     <Grid>
         <Grid x:Name="controls_content" VerticalAlignment="Top" Margin="45,3,0,0">
             <StackPanel Height="25" Orientation="Horizontal" VerticalAlignment="Top" HorizontalAlignment="Left">
@@ -33,22 +256,52 @@
                         <Image Stretch="Fill" Source="Images/Explorer Interface/up.png"/>
                     </Button.Content>
                 </Button>
-                <ProgressBar x:Name="exploring_progress" Maximum="256" Height="21" Margin="14,0,0,0" VerticalAlignment="Top" Background="{x:Null}" Visibility="Hidden" Value="0" Foreground="#7F87CEFA" BorderBrush="{x:Null}"/>
-                <TextBox x:Name="address_textblock" FontSize="14" Text="root" VerticalAlignment="Top" Margin="14,0,20,0" BorderBrush="#FF707070" PreviewKeyUp="AddressTextBlock_PreviewKeyUp" FlowDirection="LeftToRight" Background="{x:Null}"/>
-                <Button HorizontalAlignment="Right" Margin="0,0,0,0" Width="21" Height="21" Background="{x:Null}" Click="Refresh_btm_Click">
+                <TextBox x:Name="address_textblock" FontSize="14" Text="root" VerticalAlignment="Top" Margin="14,0,41,0" BorderBrush="#FF707070" PreviewKeyUp="AddressTextBlock_PreviewKeyUp" FlowDirection="LeftToRight" Background="{x:Null}" Visibility="Hidden" LostKeyboardFocus="AddressTextBlock_LostKeyboardFocus"/>
+                <Border x:Name="address_bar" Margin="14,0,41,0" BorderBrush="#FF707070" BorderThickness="1" Background="Transparent" ClipToBounds="True" MouseLeftButtonUp="AddressBar_MouseLeftButtonUp" SizeChanged="AddressBar_SizeChanged" ToolTip="Click an empty place here to type a path (Ctrl+L)">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                        <Button x:Name="address_root_btm" Style="{StaticResource address_button}" ToolTip="root" Click="AddressRoot_Click">
+                            <StackPanel Orientation="Horizontal">
+                                <Image Width="16" Height="16" Stretch="Uniform" Source="Images/Appearance/go-home-28.png"/>
+                                <TextBlock x:Name="address_root_text" Text="root" Margin="4,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="address_root_chevron" Style="{StaticResource address_button}" Padding="3,0" ToolTip="Drives" Click="AddressChevron_Click">
+                            <Path Data="M 0,0 L 3.5,3.5 L 0,7" Stroke="#FF41403B" StrokeThickness="1.2" RenderTransformOrigin="0.5,0.5" VerticalAlignment="Center"/>
+                        </Button>
+                        <Button x:Name="address_overflow" Style="{StaticResource address_button}" Content="..." ToolTip="Hidden parent directories" Visibility="Collapsed" Click="AddressOverflow_Click"/>
+                        <StackPanel x:Name="address_segments" Orientation="Horizontal"/>
+                        <TextBlock x:Name="address_trail" Visibility="Collapsed" Foreground="#FF707070" FontSize="13" Margin="4,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="Each folder of this path is a column title below. Click here to type a path (Ctrl+L)"/>
+                    </StackPanel>
+                </Border>
+                <Grid x:Name="loading_bar" Margin="15,0,42,1" Height="2" VerticalAlignment="Bottom" ClipToBounds="True" IsHitTestVisible="False" Visibility="Collapsed">
+                    <Rectangle x:Name="loading_bar_runner" Width="90" HorizontalAlignment="Left" Fill="#FF0078D7" RadiusX="1" RadiusY="1">
+                        <Rectangle.RenderTransform>
+                            <TranslateTransform/>
+                        </Rectangle.RenderTransform>
+                    </Rectangle>
+                </Grid>
+                <Button x:Name="bookmark_star" HorizontalAlignment="Right" Margin="0,0,20,0" Width="21" Height="21" Background="{x:Null}" BorderBrush="{x:Null}" ToolTip="Add this location to the bookmarks" ToolTipService.ShowOnDisabled="True" Click="bookmark_Star_Click">
                     <Button.Content>
-                        <Image Stretch="Fill" Height="17" Width="17" Source="Images/Explorer Interface/refresh.png"/>
+                        <Image Stretch="Uniform" Height="15" Width="15" Source="Images/Explorer Interface/bookmark.png"/>
+                    </Button.Content>
+                </Button>
+                <Button x:Name="refresh_btm" HorizontalAlignment="Right" Margin="0,0,0,0" Width="21" Height="21" Background="{x:Null}" ToolTip="Refresh" Click="Refresh_btm_Click">
+                    <Button.Content>
+                        <Grid>
+                            <Image x:Name="refresh_image" Stretch="Fill" Height="17" Width="17" Source="Images/Explorer Interface/refresh.png"/>
+                            <Path x:Name="refresh_stop" Width="11" Height="11" Stretch="Uniform" Fill="#FF41403B" Visibility="Collapsed" Data="F1 M2.65 2.65a.5.5 0 0 1 .7 0L8 7.29l4.65-4.64a.5.5 0 0 1 .7.7L8.71 8l4.64 4.65a.5.5 0 0 1-.7.7L8 8.71l-4.65 4.64a.5.5 0 0 1-.7-.7L7.29 8 2.65 3.35a.5.5 0 0 1 0-.7z"/>
+                        </Grid>
                     </Button.Content>
                 </Button>
             </Grid>
             <Grid VerticalAlignment="Top" HorizontalAlignment="Right" Width="200" Margin="0,2,0,0">
                 <Grid>
                     <TextBlock x:Name="filter_placeholder" FontSize="14" TextWrapping="Wrap" Margin="5,0,26,0" Text="filter or search" FontStyle="Italic" Foreground="Gray"/>
-                    <TextBox x:Name="filter_TextBox" FontSize="14" TextWrapping="Wrap" Margin="0,0,26,0" BorderBrush="#FF707070" Background="Transparent" TextChanged="FilterTextBox_TextChanged"/>
+                    <TextBox x:Name="filter_TextBox" FontSize="14" TextWrapping="Wrap" Margin="0,0,26,0" BorderBrush="#FF707070" Background="Transparent" TextChanged="FilterTextBox_TextChanged" KeyUp="FilterTextBox_KeyUp" ToolTip="Type to filter this directory, press Enter or the search button to search in all its subdirectories"/>
                 </Grid>
-                <Button HorizontalAlignment="Right" Width="21" Margin="0,0,6,0" Height="21" Background="{x:Null}" Click="NotAvailyable_btm_Click">
+                <Button HorizontalAlignment="Right" Width="21" Margin="0,0,6,0" Height="21" Background="{x:Null}" Click="Search_btm_Click" ToolTip="Search in this directory and its subdirectories">
                     <Button.Content>
-                        <Image Stretch="Fill" Height="17" Width="17" Source="Images/Explorer Interface/search.png"/>
+                        <Image Stretch="Uniform" Height="15" Width="15" Source="Images/Explorer Interface/search.png"/>
                     </Button.Content>
                 </Button>
             </Grid>
@@ -59,43 +312,58 @@
             <Grid HorizontalAlignment="Left" Margin="0,30,0,20" Width="200" Background="#FF404040">
                 <StackPanel Background="Black" x:Name="navigation_panal" Orientation="Horizontal" Height="34" VerticalAlignment="Top">
                     <Grid Height="34" Background="White" Cursor="Hand" ToolTip="Quick access list" PreviewMouseLeftButtonUp="Navigation_Click" Tag="Quick access">
-                        <Image Source="Images/Explorer Interface/quick-access.png" Margin="0,0,0,4" HorizontalAlignment="Left" Width="30"/>
-                        <TextBlock Margin="32,6,5,0" Text="Quick access" VerticalAlignment="Top" FontSize="14"/>
+                        <Image Source="Images/Explorer Interface/quick-access.png" Margin="6,5,6,9" HorizontalAlignment="Left" VerticalAlignment="Top" Width="20" Height="20" Stretch="Uniform"/>
+                        <TextBlock Margin="32,6,6,0" Text="Quick access" VerticalAlignment="Top" FontSize="14"/>
                     </Grid>
                     <Grid Height="34" Background="Black" Cursor="Hand" ToolTip="Bookmarks" Margin="0,0,0,0" PreviewMouseLeftButtonUp="Navigation_Click" Tag="Bookmarks">
-                        <Image Source="Images/Explorer Interface/bookmark.png" Margin="0,0,0,4" HorizontalAlignment="Left" Width="30"/>
+                        <Image Source="Images/Explorer Interface/bookmark.png" Margin="4,3,4,7" HorizontalAlignment="Left" VerticalAlignment="Top" Width="24" Height="24" Stretch="Uniform"/>
                         <TextBlock VerticalAlignment="Top" Foreground="Black"/>
                     </Grid>
                     <Grid x:Name="history_tab_grid" Height="34" Background="Black" Cursor="Hand" ToolTip="History" Margin="0,0,0,0" PreviewMouseLeftButtonUp="Navigation_Click" Tag="History">
-                        <Image Source="Images/Explorer Interface/history.png" Margin="0,0,0,6" Height="28" HorizontalAlignment="Left" Width="28"/>
+                        <Image Source="Images/Explorer Interface/history.png" Margin="6,5,6,9" HorizontalAlignment="Left" VerticalAlignment="Top" Width="20" Height="20" Stretch="Uniform"/>
                         <TextBlock VerticalAlignment="Top" Foreground="Black"/>
                     </Grid>
                 </StackPanel>
-                <Rectangle x:Name="rec" Fill="RoyalBlue" HorizontalAlignment="Left" Width="115" Margin="0,30,0,0" VerticalAlignment="Top" Height="4"/>
+                <Rectangle x:Name="rec" Fill="RoyalBlue" HorizontalAlignment="Left" Width="0" Margin="0,30,0,0" VerticalAlignment="Top" Height="4" IsHitTestVisible="False"/>
                 <Grid x:Name="quick_access_grids" Margin="0,34,0,0">
                     <Grid HorizontalAlignment="Left" Width="200">
                         <ListBox x:Name="quick_access_list" ScrollViewer.HorizontalScrollBarVisibility="Disabled" Background="#FF404040" BorderBrush="{x:Null}"/>
                     </Grid>
                     <Grid Visibility="Collapsed" HorizontalAlignment="Left" Width="200" Margin="200,0,0,0">
-                        <StackPanel>
-                            <Grid Margin="5,5,0,0">
-                                <Image HorizontalAlignment="Left" Height="24" Margin="5,1,0,0" VerticalAlignment="Top" Width="24" Stretch="Fill" Source="Images/Explorer Interface/bookmark.png"/>
-                                <TextBlock HorizontalAlignment="Left" Margin="34,0,0,0" TextWrapping="Wrap" Text="Bookmarks" VerticalAlignment="Top" Foreground="White" FontSize="20"/>
-                            </Grid>
-                            <Grid Margin="5,5,5,0">
-                                <Button Content="Add this location" HorizontalAlignment="Left" Margin="0,0,0,0" VerticalAlignment="Top" Width="90" Click="bookmark_AddThisLocation_Click"/>
-                                <Button Content="Manage" HorizontalAlignment="Left" Margin="100,0,0,0" VerticalAlignment="Top" Width="90"/>
-                            </Grid>
-                            <ListBox x:Name="bookmark_list" ScrollViewer.HorizontalScrollBarVisibility="Disabled" Margin="5" Background="#FF404040" BorderBrush="{x:Null}"/>
-                        </StackPanel>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <Grid Margin="5,5,5,0">
+                            <Image HorizontalAlignment="Left" Height="24" Margin="5,1,0,0" VerticalAlignment="Top" Width="24" Stretch="Uniform" Source="Images/Explorer Interface/bookmark.png"/>
+                            <TextBlock HorizontalAlignment="Left" Margin="34,0,0,0" Text="Bookmarks" VerticalAlignment="Top" Foreground="White" FontSize="20"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                <Button Style="{StaticResource panel_button}" ToolTip="Add this location" Click="bookmark_AddThisLocation_Click">
+                                    <Image Source="Images/Explorer Interface/new.png" Width="16" Height="16" Stretch="Uniform"/>
+                                </Button>
+                                <Button Style="{StaticResource panel_button}" Margin="2,0,0,0" ToolTip="Manage bookmarks" Click="bookmark_Manage_Click">
+                                    <Image Source="Images/Explorer Interface/edit.png" Width="16" Height="16" Stretch="Uniform"/>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                        <ListBox x:Name="bookmark_list" Grid.Row="1" ScrollViewer.HorizontalScrollBarVisibility="Disabled" Margin="5" Background="#FF404040" BorderBrush="{x:Null}" AllowDrop="True" DragOver="BookmarkList_DragOver" Drop="BookmarkList_Drop"/>
                     </Grid>
                     <Grid Visibility="Collapsed" HorizontalAlignment="Left" Width="200" Margin="400,0,0,0">
-                        <Grid>
-                            <Grid Margin="5,5,0,0" VerticalAlignment="Top">
-                                <Image HorizontalAlignment="Left" Height="24" Margin="5,1,0,0" VerticalAlignment="Top" Width="24" Stretch="Fill" Source="Images/Explorer Interface/history.png"/>
-                                <TextBlock HorizontalAlignment="Left" Margin="34,0,0,0" TextWrapping="Wrap" Text="History" VerticalAlignment="Top" Foreground="White" FontSize="20"/>
-                            </Grid>
-                            <ListBox x:Name="history_list" Margin="5,37,5,31" ItemsSource="{Binding}" Background="#FF404040" BorderBrush="{x:Null}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectionChanged="HistoryLst_SelectionChanged">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <Grid Margin="5,5,5,0">
+                            <Image HorizontalAlignment="Left" Height="24" Margin="5,1,0,0" VerticalAlignment="Top" Width="24" Stretch="Uniform" Source="Images/Explorer Interface/history.png"/>
+                            <TextBlock HorizontalAlignment="Left" Margin="34,0,0,0" Text="History" VerticalAlignment="Top" Foreground="White" FontSize="20"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                <Button x:Name="history_clear_btm" Style="{StaticResource panel_button}" ToolTip="Clear the history" ToolTipService.ShowOnDisabled="True" IsEnabled="False" Click="ClearHistor_btm_Click">
+                                    <Path Width="16" Height="16" Stretch="Uniform" Fill="White" Data="F1 M10 4a6 6 0 0 1 5.95 5.2q.53.15 1.04.4A7 7 0 0 0 5 5.1V3.5a.5.5 0 0 0-1 0v3c0 .28.22.5.5.5h3a.5.5 0 0 0 0-1H5.53c1.1-1.23 2.7-2 4.47-2m.26 7q.47-.58 1.08-1H10V6.5a.5.5 0 0 0-1 0v4c0 .28.22.5.5.5zm-.67 5.99q-.24-.5-.4-1.04a6 6 0 0 1-5.17-6.41.5.5 0 1 0-1-.08L3 10a7 7 0 0 0 6.6 6.99M19 14.5a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0m-2.65-1.15a.5.5 0 0 0-.7-.7l-1.15 1.14-1.15-1.14a.5.5 0 0 0-.7.7l1.14 1.15-1.14 1.15a.5.5 0 0 0 .7.7l1.15-1.14 1.15 1.14a.5.5 0 0 0 .7-.7l-1.14-1.15z"/>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                        <Grid Grid.Row="1">
+                            <ListBox x:Name="history_list" Margin="5" ItemsSource="{Binding}" Background="#FF404040" BorderBrush="{x:Null}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectionChanged="HistoryLst_SelectionChanged">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal" ToolTip="{Binding Path=Path}">
@@ -105,7 +373,6 @@
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                             </ListBox>
-                            <Button Content="Clear" Margin="5,0,10,6" VerticalAlignment="Bottom" Click="ClearHistor_btm_Click"/>
                         </Grid>
                     </Grid>
                 </Grid>
@@ -113,60 +380,18 @@
 
             <Grid Margin="205,33,10,20">
 
-                <ListView x:Name="directories_list" Visibility="Collapsed" TextBlock.TextAlignment="Right" ItemsSource="{Binding}" Foreground="#FF41403B" Background="White" SelectionChanged="DirectoriesList_SelectionChanged" MouseRightButtonUp="Explorer_MouseRightButtonUp" PreviewKeyUp="DirectoryList_KeyUp" AllowDrop="True" Drop="DirectoryList_Drop">
-                    <ListView.View>
-                        <GridView>
-                            <GridViewColumn Header="Name" Width="250">
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Orientation="Horizontal" AllowDrop="True">
-                                            <Image Source="{Binding Path=Icon}" Height="24" Width="24" VerticalAlignment="Top" HorizontalAlignment="Left"/>
-                                            <TextBlock Margin="4,4,0,0" Text="{Binding Path=FileName}" HorizontalAlignment="Left"/>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-                            <GridViewColumn Header="Size" Width="90" DisplayMemberBinding="{Binding Path=FileSize}"/>
-                            <GridViewColumn Header="Type" Width="85" DisplayMemberBinding="{Binding Path=FileType}"/>
-                            <GridViewColumn Header="Data Modified" Width="100" DisplayMemberBinding="{Binding Path=DateModified}"/>
-                        </GridView>
-                    </ListView.View>
-                    <ListView.GroupStyle>
-                        <GroupStyle>
-                            <GroupStyle.ContainerStyle>
-                                <Style TargetType="{x:Type GroupItem}">
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate>
-                                                <Expander IsExpanded="True" Header="{Binding Name}" Foreground="DimGray" FontSize="18">
-                                                    <ItemsPresenter/>
-                                                </Expander>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
-                                </Style>
-                            </GroupStyle.ContainerStyle>
-                        </GroupStyle>
-                    </ListView.GroupStyle>
-                    <ListView.Resources>
-                        <Style TargetType="{x:Type ListViewItem}">
-                            <EventSetter Event='MouseDoubleClick' Handler='DirectoryItem_DoubleClick'/>
-                            <EventSetter Event='Drop' Handler='DirectoryItem_DropOn'/>
-                        </Style>
-                    </ListView.Resources>
-                </ListView>
-
                 <ListView x:Name="root_list" Visibility="Visible" TextBlock.TextAlignment="Right" ItemsSource="{Binding}" Foreground="#FF41403B" Background="White" SelectionChanged="RootList_SelectionChanged" ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectionMode="Single" ScrollViewer.VerticalScrollBarVisibility="Auto" MouseRightButtonUp="Explorer_MouseRightButtonUp" PreviewKeyUp="RootList_KeyUp">
                     <ListView.ItemTemplate>
                         <DataTemplate>
-                            <StackPanel Orientation="Horizontal" Height="48" Width="200" ToolTip="{Binding Path=toolTip}">
+                            <StackPanel Orientation="Horizontal" Height="56" Width="220" ToolTip="{Binding Path=Tip}">
                                 <Image Margin="0" Source="{Binding Path=Image}" Height="48" Width="48" VerticalAlignment="Top" HorizontalAlignment="Left"/>
-                                <StackPanel>
-                                    <TextBlock Margin="10,2,0,0" Text="{Binding Path=FullPath}" HorizontalAlignment="Left" FontSize="14" TextTrimming="CharacterEllipsis" TextWrapping="Wrap" MaxHeight="35"/>
-                                    <Grid Height="13" HorizontalAlignment="Left" Width="127" Margin="10,5,0,0" VerticalAlignment="Top" Visibility="{Binding Path=ShowUsedSpace}">
+                                <StackPanel Width="172">
+                                    <TextBlock Margin="10,2,0,0" Text="{Binding Path=FullPath}" HorizontalAlignment="Left" TextAlignment="Left" FontSize="14" TextTrimming="CharacterEllipsis" TextWrapping="Wrap" MaxHeight="35"/>
+                                    <Grid Height="13" HorizontalAlignment="Left" Width="127" Margin="10,4,0,0" VerticalAlignment="Top" Visibility="{Binding Path=ShowUsedSpace}">
                                         <Rectangle Fill="#FFE8E8E8" Stroke="Black"/>
                                         <Rectangle Fill="{Binding Path=Color}" Margin="1,1,0,1" StrokeThickness="0" HorizontalAlignment="Left" Width="{Binding Path=UsedSpace}"/>
                                     </Grid>
+                                    <TextBlock Margin="10,2,0,0" Text="{Binding Path=SpaceText}" HorizontalAlignment="Left" TextAlignment="Left" FontSize="11" Foreground="Gray" TextTrimming="CharacterEllipsis" Visibility="{Binding Path=ShowUsedSpace}"/>
                                 </StackPanel>
                             </StackPanel>
                         </DataTemplate>
@@ -200,20 +425,102 @@
                     </ListView.Resources>
                 </ListView>
 
-                <TextBlock x:Name="info_textblock" Visibility="Hidden" Margin="25,25,25,0" TextWrapping="Wrap" Text="This directory is empty." VerticalAlignment="Top" FontSize="14" TextAlignment="Center" Foreground="#FF202020" Opacity="0.75" FontWeight="Bold">
-                    <TextBlock.Background>
-                        <RadialGradientBrush>
-                            <GradientStop Color="#FFCBD7FF" Offset="0.8"/>
-                            <GradientStop Color="#FFB3C4FF" Offset="0.6"/>
-                            <GradientStop Color="#FF94ACFF" Offset="0.15"/>
-                            <GradientStop Color="#FF839FFF"/>
-                            <GradientStop Color="#FFE6E6F0" Offset="0.93"/>
-                            <GradientStop Color="#FFF0F0F0" Offset="1"/>
-                            <GradientStop Color="#FFA4B8FF" Offset="0.3"/>
-                            <GradientStop Color="#FFABBEFF" Offset="0.45"/>
-                        </RadialGradientBrush>
-                    </TextBlock.Background>
-                </TextBlock>
+                <ScrollViewer x:Name="columns_scroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled" Focusable="False">
+                    <Grid x:Name="columns_grid" SizeChanged="ColumnsGrid_SizeChanged">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition x:Name="columns_current" Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel x:Name="columns_headers" Orientation="Horizontal" Visibility="Collapsed"/>
+                        <Border x:Name="columns_current_header" Grid.Column="1" Visibility="Collapsed"/>
+                        <Border x:Name="columns_preview_header" Grid.Column="2" Width="260" Visibility="Collapsed"/>
+                        <StackPanel x:Name="columns_parents" Grid.Row="1" Orientation="Horizontal" Visibility="Collapsed"/>
+                        <ListView x:Name="directories_list" Grid.Row="1" Grid.Column="1" Visibility="Collapsed" TextBlock.TextAlignment="Right" ItemsSource="{Binding}" Foreground="#FF41403B" Background="White" SelectionChanged="DirectoriesList_SelectionChanged" MouseRightButtonUp="Explorer_MouseRightButtonUp" PreviewKeyUp="DirectoryList_KeyUp" PreviewKeyDown="DirectoryList_PreviewKeyDown" AllowDrop="True" Drop="DirectoryList_Drop" DragOver="DirectoryList_DragOver">
+                            <ListView.View>
+                                <GridView>
+                                    <GridViewColumn Header="Name" Width="250">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" AllowDrop="True">
+                                                    <Image Source="{Binding Path=Icon}" Height="24" Width="24" VerticalAlignment="Top" HorizontalAlignment="Left"/>
+                                                    <TextBlock Margin="4,4,0,0" Text="{Binding Path=FileName}" HorizontalAlignment="Left"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                    <GridViewColumn Header="Size" Width="90" DisplayMemberBinding="{Binding Path=FileSize}"/>
+                                    <GridViewColumn Header="Type" Width="85" DisplayMemberBinding="{Binding Path=FileType}"/>
+                                    <GridViewColumn Header="Data Modified" Width="100" DisplayMemberBinding="{Binding Path=DateModified}"/>
+                                </GridView>
+                            </ListView.View>
+                            <ListView.GroupStyle>
+                                <GroupStyle>
+                                    <GroupStyle.ContainerStyle>
+                                        <Style TargetType="{x:Type GroupItem}">
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate>
+                                                        <Expander IsExpanded="True" Header="{Binding Name}" Foreground="DimGray" FontSize="18">
+                                                            <ItemsPresenter/>
+                                                        </Expander>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </GroupStyle.ContainerStyle>
+                                </GroupStyle>
+                            </ListView.GroupStyle>
+                            <ListView.Resources>
+                                <Style TargetType="{x:Type ListViewItem}">
+                                    <EventSetter Event='MouseDoubleClick' Handler='DirectoryItem_DoubleClick'/>
+                                    <EventSetter Event='Drop' Handler='DirectoryItem_DropOn'/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter Property="Panel.ZIndex" Value="1"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ListView.Resources>
+                        </ListView>
+                        <TextBlock x:Name="info_textblock" Grid.Row="1" Grid.Column="1" Visibility="Hidden" Margin="25,25,25,0" TextWrapping="Wrap" Text="This directory is empty." VerticalAlignment="Top" FontSize="14" TextAlignment="Center" Foreground="#FF202020" Opacity="0.75" FontWeight="Bold">
+                            <TextBlock.Background>
+                                <RadialGradientBrush>
+                                    <GradientStop Color="#FFCBD7FF" Offset="0.8"/>
+                                    <GradientStop Color="#FFB3C4FF" Offset="0.6"/>
+                                    <GradientStop Color="#FF94ACFF" Offset="0.15"/>
+                                    <GradientStop Color="#FF839FFF"/>
+                                    <GradientStop Color="#FFE6E6F0" Offset="0.93"/>
+                                    <GradientStop Color="#FFF0F0F0" Offset="1"/>
+                                    <GradientStop Color="#FFA4B8FF" Offset="0.3"/>
+                                    <GradientStop Color="#FFABBEFF" Offset="0.45"/>
+                                </RadialGradientBrush>
+                            </TextBlock.Background>
+                        </TextBlock>
+                        <Border x:Name="columns_preview" Grid.Row="1" Grid.Column="2" Width="260" Visibility="Collapsed" Background="White" BorderBrush="#FFABADB3" BorderThickness="0,0,1,1">
+                            <Grid>
+                                <ListBox x:Name="columns_preview_list" Visibility="Collapsed" BorderThickness="0" Foreground="#FF41403B" Background="Transparent" ItemTemplate="{StaticResource columns_template}" HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled" VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling" AllowDrop="True"/>
+                                <ScrollViewer x:Name="columns_preview_info" Visibility="Collapsed" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                    <StackPanel Margin="12,12,12,12">
+                                        <Image x:Name="columns_preview_image" Width="232" Height="160" Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Center"/>
+                                        <TextBlock x:Name="columns_preview_name" Margin="0,10,0,0" TextWrapping="Wrap" TextAlignment="Center" FontSize="14" FontWeight="SemiBold" Foreground="#FF41403B"/>
+                                        <TextBlock x:Name="columns_preview_details" Margin="0,10,0,0" TextWrapping="Wrap" TextAlignment="Left" FontSize="12" Foreground="Gray"/>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">
+                                            <Button Style="{StaticResource link_button}" Content="Open" Foreground="DodgerBlue" FontSize="12" ToolTip="Open this file" Click="ColumnsPreviewOpen_Click"/>
+                                            <Button Style="{StaticResource link_button}" Content="Properties" Foreground="DodgerBlue" FontSize="12" Margin="8,0,0,0" ToolTip="Show the details of this file" Click="details_view_btm_Click"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </ScrollViewer>
+                                <TextBlock x:Name="columns_preview_text" Visibility="Collapsed" Margin="12,20,12,0" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Top" FontSize="12" Foreground="Gray"/>
+                            </Grid>
+                        </Border>
+                        <Canvas x:Name="columns_links" Grid.RowSpan="2" Grid.ColumnSpan="3" IsHitTestVisible="False" Panel.ZIndex="5"/>
+                    </Grid>
+                </ScrollViewer>
             </Grid>
             <Grid x:Name="back_grid" Margin="-250,0,0,0" Background="#00000000" Visibility="Collapsed" PreviewMouseUp="Background_PreviewMouseUp"/>
             <Grid x:Name="file_menu" Margin="-350,30,0,20" Visibility="Collapsed" Background="#FF404040" HorizontalAlignment="Left" Width="550">
@@ -223,15 +530,8 @@
                 </Grid.RowDefinitions>
                 
                 
-                <Rectangle Fill="Gray" Margin="11,11,0,0" HorizontalAlignment="Left" Width="25" Height="3" VerticalAlignment="Top"/>
-                <Rectangle Fill="White" Margin="10,10,0,0" HorizontalAlignment="Left" Width="25" Height="3" VerticalAlignment="Top"/>
-                <Rectangle Fill="Gray" Margin="11,18,0,0" HorizontalAlignment="Left" Width="25" Height="3" VerticalAlignment="Top"/>
-                <Rectangle Fill="White" Margin="10,17,0,0" HorizontalAlignment="Left" Width="25" Height="3" VerticalAlignment="Top"/>
-                <Rectangle Fill="Gray" Margin="11,25,0,0" HorizontalAlignment="Left" Width="25" Height="3" VerticalAlignment="Top"/>
-                <Rectangle Fill="White" Margin="10,24,0,0" HorizontalAlignment="Left" Width="25" Height="3" VerticalAlignment="Top"/>
-
-                <TextBlock Foreground="Gray" FontSize="22" Margin="46,4,0,0" VerticalAlignment="Top" HorizontalAlignment="Left" Text="FILE MANAGER"/>
-                <TextBlock Foreground="White" FontSize="22" Margin="45,3,0,0" VerticalAlignment="Top" HorizontalAlignment="Left" Text="FILE MANAGER"/>
+                <TextBlock Foreground="Gray" FontSize="22" Margin="9,4,0,0" VerticalAlignment="Top" HorizontalAlignment="Left" Text="FILE MANAGER"/>
+                <TextBlock Foreground="White" FontSize="22" Margin="8,3,0,0" VerticalAlignment="Top" HorizontalAlignment="Left" Text="FILE MANAGER"/>
                 <Grid x:Name="file_menu_grids" Margin="0,0,0,0" Grid.Row="1">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="170"/>
@@ -287,7 +587,7 @@
                                     </StackPanel>
                                 </MenuItem.Header>
                             </MenuItem>
-                            <MenuItem Height="32" Click="MainMenuItem_Click">
+                            <MenuItem Height="32" Click="MainMenuItem_Click" Visibility="Collapsed">
                                 <MenuItem.Header>
                                     <StackPanel Orientation="Horizontal">
                                         <Image Width="20" Height="20" Stretch="Fill" Source="Images/Explorer Interface/option.png"/>
@@ -303,7 +603,14 @@
                                     </StackPanel>
                                 </MenuItem.Header>
                             </MenuItem>
-                            <MenuItem ToolTip="legacy explorer" Header="old explorer" Height="32" FontSize="14" Foreground="White" Click="MainMenuItem_Click"/>
+                            <MenuItem Height="32" Click="MainMenuItem_Click">
+                                <MenuItem.Header>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Image Width="20" Height="20" Stretch="Fill" Source="Images/Explorer Interface/about.png"/>
+                                        <TextBlock Text="about" VerticalAlignment="Top" Foreground="White" Margin="10,0,0,0" FontSize="14"/>
+                                    </StackPanel>
+                                </MenuItem.Header>
+                            </MenuItem>
                             <MenuItem Height="32" Click="MainMenuItem_Click">
                                 <MenuItem.Header>
                                     <StackPanel Orientation="Horizontal">
@@ -344,7 +651,7 @@
                                 </MenuItem.Header>
                             </MenuItem>
                             <Separator Height="1" HorizontalAlignment="Stretch" Width="250" Margin="0,10,0,10" Background="WhiteSmoke"/>
-                            <MenuItem Height="30" Click="NotAvailyable_btm_Click">
+                            <MenuItem Height="30" Click="NotAvailyable_btm_Click" Visibility="Collapsed">
                                 <MenuItem.Header>
                                     <StackPanel Orientation="Horizontal">
                                         <Image Width="24" Height="24" Stretch="Fill" Source="Images/Explorer Interface/new-tab.png"/>
@@ -379,7 +686,7 @@
                                 <ProgressBar x:Name="details_calc_size_pb" Height="5" VerticalAlignment="Top" Foreground="DodgerBlue" Margin="10,0" Value="50" ToolTip="We are getting size and other information about selected items" IsIndeterminate="False"/>
                                 <Grid VerticalAlignment="Top" Margin="10,5,0,0">
                                     <TextBlock x:Name="details_title" HorizontalAlignment="Left" Text="2 directories and 1 file (425 MiB)" VerticalAlignment="Top" Foreground="White" FontSize="20"/>
-                                    <ToggleButton IsEnabled="False" IsChecked="True" HorizontalAlignment="Right" ToolTip="Show details in full window mode || Show more details" Height="28" Margin="0,0,10,0" VerticalAlignment="Top" Width="28" Background="{x:Null}" BorderBrush="{x:Null}">
+                                    <ToggleButton Visibility="Collapsed" IsEnabled="False" IsChecked="True" HorizontalAlignment="Right" ToolTip="Show details in full window mode || Show more details" Height="28" Margin="0,0,10,0" VerticalAlignment="Top" Width="28" Background="{x:Null}" BorderBrush="{x:Null}">
                                         <ToggleButton.Content>
                                             <Rectangle Fill="WhiteSmoke" Height="2" Width="15" RenderTransformOrigin="0.5,0.5">
                                                 <Rectangle.RenderTransform>
@@ -399,22 +706,22 @@
                                     <TextBox x:Name="details_total_count" Background="{x:Null}" HorizontalAlignment="Left" Margin="0,2,0,0" TextWrapping="Wrap" Text="contains 325 directories and 851 files" VerticalAlignment="Top" Foreground="White" IsReadOnly="True" BorderBrush="{x:Null}"/>
                                     <Grid Margin="0,2,0,0">
                                         <TextBox x:Name="details_size" HorizontalAlignment="Left" TextWrapping="Wrap" MaxWidth="280" Text="total size 288 MiB on disk (1.58 %)" VerticalAlignment="Top" Foreground="White" Background="{x:Null}" IsReadOnly="True" BorderBrush="{x:Null}"/>
-                                        <Button x:Name="view_details_btm" FontSize="11" ToolTip="View details via Directories Analizer" HorizontalAlignment="Left" Margin="285,0,-4,0" Content="view details" Foreground="DodgerBlue" Background="{x:Null}" BorderBrush="{x:Null}" Click="DetailsAnalizeDirectory_Click"/>
+                                        <Button x:Name="view_details_btm" Style="{StaticResource link_button}" FontSize="11" ToolTip="View details in the Directory analyzer" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="285,0,-4,0" Content="view details" Foreground="DodgerBlue" Click="DetailsAnalizeDirectory_Click"/>
                                     </Grid>
                                     <TextBox x:Name="details_location" HorizontalAlignment="Left" Margin="0,2,0,0" TextWrapping="Wrap" Text="all items in: 'C:\Windows\ISO'" VerticalAlignment="Top" Foreground="White" Background="{x:Null}" IsReadOnly="True" BorderBrush="{x:Null}"/>
                                 </StackPanel>
                                 <StackPanel x:Name="details_date" VerticalAlignment="Top" Margin="15,20,0,0">
                                     <Grid VerticalAlignment="Top" >
                                         <TextBlock x:Name="details_creation_time" Margin="0,2" Foreground="White" VerticalAlignment="Top" Text="creation time: 30/2/2007 8:12" HorizontalAlignment="Left"/>
-                                        <Button Content="change" FontSize="11" Margin="285,0,0,0" Visibility="Visible" Background="{x:Null}" BorderBrush="{x:Null}" Foreground="#FFFF8B00" HorizontalAlignment="Left" VerticalAlignment="Top" Click="DetailsCreationChange_Click"/>
+                                        <Button Style="{StaticResource link_button}" Content="change" FontSize="11" Margin="285,0,0,0" Visibility="Visible" Foreground="#FFFF8B00" HorizontalAlignment="Left" VerticalAlignment="Top" Click="DetailsCreationChange_Click"/>
                                     </Grid>
                                     <Grid VerticalAlignment="Top" Margin="0,2,0,0">
                                         <TextBlock x:Name="details_modified_time" Margin="0,2"  Foreground="White" VerticalAlignment="Top" Text="last modified time: 30/2/2007 8:12" HorizontalAlignment="Left"/>
-                                        <Button Content="change" FontSize="11" Margin="285,0,0,0" Visibility="Visible" Background="{x:Null}" BorderBrush="{x:Null}" Foreground="#FFFF8B00" HorizontalAlignment="Left" VerticalAlignment="Top" Click="DetailsModifiedChange_Click"/>
+                                        <Button Style="{StaticResource link_button}" Content="change" FontSize="11" Margin="285,0,0,0" Visibility="Visible" Foreground="#FFFF8B00" HorizontalAlignment="Left" VerticalAlignment="Top" Click="DetailsModifiedChange_Click"/>
                                     </Grid>
                                     <Grid VerticalAlignment="Top" Margin="0,2,0,0">
                                         <TextBlock x:Name="details_last_accessed_time" Margin="0,2" Foreground="White" VerticalAlignment="Top" Text="last accessed time: 30/2/2007 8:12" HorizontalAlignment="Left"/>
-                                        <Button Content="change" FontSize="11" Margin="285,0,0,0" Visibility="Visible" Background="{x:Null}" BorderBrush="{x:Null}" Foreground="#FFFF8B00" HorizontalAlignment="Left" VerticalAlignment="Top" Click="DetailsLastAccessChange_Click"/>
+                                        <Button Style="{StaticResource link_button}" Content="change" FontSize="11" Margin="285,0,0,0" Visibility="Visible" Foreground="#FFFF8B00" HorizontalAlignment="Left" VerticalAlignment="Top" Click="DetailsLastAccessChange_Click"/>
                                     </Grid>
                                 </StackPanel>
                                 <Grid x:Name="details_attribute" VerticalAlignment="Top" Margin="10,20,0,0">
@@ -468,7 +775,7 @@
                                         <Button x:Name="details_copy_to_btm" Width="140" Height="22" BorderBrush="DodgerBlue" Margin="5,5" FontSize="12" HorizontalAlignment="Left" Content="copy to" VerticalAlignment="Top" Foreground="DodgerBlue" Background="{x:Null}" Click="details_copy_to_btm_Click"/>
                                         <Button x:Name="details_encrypt_btm" Width="140" Height="22" BorderBrush="DodgerBlue" Margin="5,5" FontSize="12" HorizontalAlignment="Left" Content="encrypt" VerticalAlignment="Top" Foreground="DodgerBlue" Background="{x:Null}" Click="details_encrypt_to_btm_Click"/>
                                         <Button x:Name="details_destroy_btm" Width="140" Height="22" BorderBrush="DodgerBlue" Margin="5,5" FontSize="12" HorizontalAlignment="Left" Content="destroy" VerticalAlignment="Top" Foreground="DodgerBlue" Background="{x:Null}" Click="details_destroy_btm_Click"/>
-                                        <Button x:Name="details_calc_hash_btm" Width="140" Height="22" BorderBrush="DodgerBlue" Margin="5,5" FontSize="12" HorizontalAlignment="Left" Content="calc hash" VerticalAlignment="Top" Foreground="DodgerBlue" Background="{x:Null}" Click="NotAvailyable_btm_Click"/>
+                                        <Button x:Name="details_calc_hash_btm" Width="140" Height="22" BorderBrush="DodgerBlue" Margin="5,5" FontSize="12" HorizontalAlignment="Left" Content="calc hash" VerticalAlignment="Top" Foreground="DodgerBlue" Background="{x:Null}" Click="details_calc_hash_btm_Click"/>
                                         <Button x:Name="details_find_extension_btm" Width="140" Height="22" BorderBrush="DodgerBlue" Margin="5,5" FontSize="12" HorizontalAlignment="Left" Content="find suitable extension" VerticalAlignment="Top" Foreground="DodgerBlue" Background="{x:Null}" Click="details_find_extension_btm_Click"/>
                                         <Button x:Name="details_find_dublicate_btm" Width="140" Height="22" BorderBrush="DodgerBlue" Margin="5,5" FontSize="12" HorizontalAlignment="Left" Content="search for duplicate" VerticalAlignment="Top" Foreground="DodgerBlue" Background="{x:Null}" Click="details_find_duplicate_btm_Click"/>
                                         <Button x:Name="details_find_empty_btm" Width="140" Height="22" BorderBrush="DodgerBlue" Margin="5,5" FontSize="12" HorizontalAlignment="Left" Content="find empty items" VerticalAlignment="Top" Foreground="DodgerBlue" Background="{x:Null}" Click="details_find_empty_btm_Click"/>
@@ -483,7 +790,7 @@
                         <TextBlock HorizontalAlignment="Left" Margin="10,10,0,0" Text="EDIT" VerticalAlignment="Top" Foreground="White" FontSize="20"/>
                         <ScrollViewer Margin="20,42,0,0" VerticalScrollBarVisibility="Auto">
                             <ItemsControl VerticalAlignment="Top" ScrollViewer.VerticalScrollBarVisibility="Disabled">
-                            <MenuItem Height="30" Click="NotAvailyable_btm_Click">
+                            <MenuItem Height="30" Click="NotAvailyable_btm_Click" Visibility="Collapsed">
                                 <MenuItem.Header>
                                     <StackPanel Orientation="Horizontal">
                                         <Image Width="24" Height="24" Stretch="Fill" Source="Images/Explorer Interface/undo.png"/>
@@ -492,7 +799,7 @@
                                 </MenuItem.Header>
                             </MenuItem>
 
-                            <MenuItem Height="30" Click="NotAvailyable_btm_Click">
+                            <MenuItem Height="30" Click="NotAvailyable_btm_Click" Visibility="Collapsed">
                                 <MenuItem.Header>
                                     <StackPanel Orientation="Horizontal">
                                         <Image Width="24" Height="24" Stretch="Fill" Source="Images/Explorer Interface/redo.png"/>
@@ -501,9 +808,9 @@
                                 </MenuItem.Header>
                             </MenuItem>
 
-                            <Separator Height="1" HorizontalAlignment="Stretch" Width="250" Margin="0,10,0,10" Background="WhiteSmoke"/>
+                            <Separator Height="1" HorizontalAlignment="Stretch" Width="250" Margin="0,10,0,10" Background="WhiteSmoke" Visibility="Collapsed"/>
 
-                            <MenuItem Click="EditCut_Btm_Click" Height="30">
+                            <MenuItem x:Name="edit_cut" ToolTipService.ShowOnDisabled="True" Click="EditCut_Btm_Click" Height="30">
                                 <MenuItem.Header>
                                     <StackPanel Orientation="Horizontal">
                                         <Image Width="24" Height="24" Stretch="Fill" Source="Images/Explorer Interface/cut.png"/>
@@ -512,7 +819,7 @@
                                 </MenuItem.Header>
                             </MenuItem>
 
-                            <MenuItem Click="EditCopy_Btm_Click" Height="30">
+                            <MenuItem x:Name="edit_copy" ToolTipService.ShowOnDisabled="True" Click="EditCopy_Btm_Click" Height="30">
                                 <MenuItem.Header>
                                     <StackPanel Orientation="Horizontal">
                                         <Image Width="24" Height="24" Stretch="Fill" Source="Images/Explorer Interface/copy.png"/>
@@ -521,7 +828,7 @@
                                 </MenuItem.Header>
                             </MenuItem>
 
-                            <MenuItem Click="EditPaste_Btm_Click" Height="30">
+                            <MenuItem x:Name="edit_paste" ToolTipService.ShowOnDisabled="True" Click="EditPaste_Btm_Click" Height="30">
                                 <MenuItem.Header>
                                     <StackPanel Orientation="Horizontal">
                                         <Image Width="24" Height="24" Stretch="Fill" Source="Images/Explorer Interface/paste.png"/>
@@ -532,7 +839,7 @@
 
                             <Separator Height="1" HorizontalAlignment="Stretch" Width="250" Margin="0,10,0,10" Background="WhiteSmoke"/>
 
-                            <MenuItem Click="details_delete_btm_Click" Height="30">
+                            <MenuItem x:Name="edit_delete" ToolTipService.ShowOnDisabled="True" Click="details_delete_btm_Click" Height="30">
                                 <MenuItem.Header>
                                     <StackPanel Orientation="Horizontal">
                                         <Image Width="24" Height="24" Stretch="Fill" Source="Images/Explorer Interface/delete.png"/>
@@ -541,7 +848,7 @@
                                 </MenuItem.Header>
                             </MenuItem>
 
-                            <MenuItem Click="details_rename_btm_Click" Height="30">
+                            <MenuItem x:Name="edit_rename" ToolTipService.ShowOnDisabled="True" Click="details_rename_btm_Click" Height="30">
                                 <MenuItem.Header>
                                     <StackPanel Orientation="Horizontal">
                                         <Image Width="24" Height="24" Stretch="Fill" Source="Images/Appearance/rename.png"/>
@@ -553,7 +860,7 @@
                             <Separator Height="1" HorizontalAlignment="Stretch" Width="250" Margin="0,10,0,10" Background="WhiteSmoke"/>
 
 
-                            <MenuItem Click="EditSelectAll_Btm_Click" Height="30">
+                            <MenuItem x:Name="edit_select_all" ToolTipService.ShowOnDisabled="True" Click="EditSelectAll_Btm_Click" Height="30">
                                 <MenuItem.Header>
                                     <StackPanel Orientation="Horizontal">
                                         <Image Width="24" Height="24" Stretch="Fill" Source="Images/Explorer Interface/select-all.png"/>
@@ -562,7 +869,7 @@
                                 </MenuItem.Header>
                             </MenuItem>
 
-                            <MenuItem Click="EditSelectNone_Btm_Click" Height="30">
+                            <MenuItem x:Name="edit_select_none" ToolTipService.ShowOnDisabled="True" Click="EditSelectNone_Btm_Click" Height="30">
                                 <MenuItem.Header>
                                     <StackPanel Orientation="Horizontal">
                                         <Image Width="24" Height="24" Stretch="Fill" Source="Images/Explorer Interface/select-none.png"/>
@@ -571,7 +878,7 @@
                                 </MenuItem.Header>
                             </MenuItem>
 
-                            <MenuItem Click="EditInvertSelection_Btm_Click" Height="30">
+                            <MenuItem x:Name="edit_invert" ToolTipService.ShowOnDisabled="True" Click="EditInvertSelection_Btm_Click" Height="30">
                                 <MenuItem.Header>
                                     <StackPanel Orientation="Horizontal">
                                         <Image Width="24" Height="24" Stretch="Fill" Source="Images/Explorer Interface/invert-selection.png"/>
@@ -588,28 +895,32 @@
                     <Grid x:Name="view_menu_grid" Grid.Column="1" Margin="7,0,0,0" Visibility="Collapsed">
                         <TextBlock HorizontalAlignment="Left" Margin="10,10,0,0" Text="VIEW" VerticalAlignment="Top" Foreground="White" FontSize="20"/>
                         <ScrollViewer Margin="10,42,0,0" VerticalScrollBarVisibility="Auto">
+                            <StackPanel VerticalAlignment="Top">
                             <Grid VerticalAlignment="Top">
-                                <CheckBox Content="Show hidden files" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Background="White" FontSize="16" BorderBrush="Black" Foreground="White" IsChecked="True" Checked="ViewShowHiddenFiles_Checked" Unchecked="ViewShowHiddenFiles_Unchecked"/>
-                                <CheckBox Content="Show files extension" HorizontalAlignment="Left" Margin="10,35,0,0" VerticalAlignment="Top" Background="White" FontSize="16" BorderBrush="Black" Foreground="White"  IsChecked="True" Checked="ViewShowExtension_Checked" Unchecked="ViewShowExtension_Unchecked"/>
+                                <CheckBox x:Name="view_show_hidden" Content="Show hidden files" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Background="White" FontSize="16" BorderBrush="Black" Foreground="White" IsChecked="True" Checked="ViewShowHiddenFiles_Checked" Unchecked="ViewShowHiddenFiles_Unchecked"/>
+                                <CheckBox x:Name="view_show_extension" Content="Show files extension" HorizontalAlignment="Left" Margin="10,35,0,0" VerticalAlignment="Top" Background="White" FontSize="16" BorderBrush="Black" Foreground="White"  IsChecked="True" Checked="ViewShowExtension_Checked" Unchecked="ViewShowExtension_Unchecked"/>
                                 <Separator Height="1" HorizontalAlignment="Stretch" Width="250" Margin="48,65,48,0" Background="WhiteSmoke" VerticalAlignment="Top"/>
                                 <TextBlock HorizontalAlignment="Left" Margin="10,71,0,0" Text="View mode" VerticalAlignment="Top" Foreground="White" FontSize="18"/>
-                                <ListView SelectedIndex="3" Height="120" Margin="20,100,10,0" VerticalAlignment="Top" Background="{x:Null}" Foreground="White" FontSize="16" SelectionChanged="ViewAsList_SelectionChanged">
+                            </Grid>
+                                <ListView x:Name="view_mode_list" SelectedIndex="3" Margin="20,5,10,0" VerticalAlignment="Top" Background="{x:Null}" Foreground="White" FontSize="16" ScrollViewer.VerticalScrollBarVisibility="Disabled" ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectionChanged="ViewAsList_SelectionChanged">
                                     <ListViewItem Content="Icons"/>
                                     <ListViewItem Content="Large icons"/>
                                     <ListViewItem Content="List"/>
                                     <ListViewItem Content="Details"/>
                                     <ListViewItem Content="Tiles"/>
-                                    <ListViewItem Content="panels"/>
+                                    <ListViewItem Content="Content"/>
+                                    <ListViewItem Content="Columns"/>
                                 </ListView>
-                                <Separator Height="1" HorizontalAlignment="Stretch" Width="250" Margin="48,235,48,0" Background="WhiteSmoke" VerticalAlignment="Top"/>
-                                <TextBlock HorizontalAlignment="Left" Margin="10,241,0,0" Text="Sort by" VerticalAlignment="Top" Foreground="White" FontSize="18"/>
-                                <RadioButton IsChecked="True" Content="Name" HorizontalAlignment="Left" Margin="30,270,0,0" FontSize="16" VerticalAlignment="Top" Background="White" BorderBrush="Black" Foreground="White" Checked="ViewSortbyName_Checked"/>
-                                <RadioButton Content="Type" HorizontalAlignment="Left" Margin="30,295,0,0" FontSize="16" VerticalAlignment="Top" Background="White" BorderBrush="Black" Foreground="White" Checked="ViewSortbyType_Checked"/>
-                                <RadioButton Content="Size" HorizontalAlignment="Left" Margin="30,320,0,0" FontSize="16" VerticalAlignment="Top" Background="White" BorderBrush="Black" Foreground="White" Checked="ViewSortbySize_Checked"/>
-                                <RadioButton Content="Last modified date" HorizontalAlignment="Left" Margin="30,345,0,0" FontSize="16" VerticalAlignment="Top" Background="White" BorderBrush="Black" Foreground="White" Checked="ViewSortbyDate_Checked"/>
-                                <RadioButton Content="Random" HorizontalAlignment="Left" Margin="30,370,0,0" FontSize="16" VerticalAlignment="Top" Background="White" BorderBrush="Black" Foreground="White" Checked="ViewSortRandom_Checked"/>
-                                <Separator Height="1" HorizontalAlignment="Stretch" Width="250" Margin="48,400,48,0" Background="WhiteSmoke" VerticalAlignment="Top"/>
-                                <ToggleButton IsChecked="True" HorizontalAlignment="Left" Margin="24,420,0,50" VerticalAlignment="Top" Width="146" HorizontalContentAlignment="Left" Background="{x:Null}" BorderBrush="White" Foreground="RoyalBlue" Checked="ViewSortByAscending_Checked" Unchecked="ViewSortByAscending_Unchecked">
+                            <Grid VerticalAlignment="Top">
+                                <Separator Height="1" HorizontalAlignment="Stretch" Width="250" Margin="48,15,48,0" Background="WhiteSmoke" VerticalAlignment="Top"/>
+                                <TextBlock HorizontalAlignment="Left" Margin="10,21,0,0" Text="Sort by" VerticalAlignment="Top" Foreground="White" FontSize="18"/>
+                                <RadioButton x:Name="view_sort_name" IsChecked="True" Content="Name" HorizontalAlignment="Left" Margin="30,50,0,0" FontSize="16" VerticalAlignment="Top" Background="White" BorderBrush="Black" Foreground="White" Checked="ViewSortbyName_Checked"/>
+                                <RadioButton x:Name="view_sort_type" Content="Type" HorizontalAlignment="Left" Margin="30,75,0,0" FontSize="16" VerticalAlignment="Top" Background="White" BorderBrush="Black" Foreground="White" Checked="ViewSortbyType_Checked"/>
+                                <RadioButton x:Name="view_sort_size" Content="Size" HorizontalAlignment="Left" Margin="30,100,0,0" FontSize="16" VerticalAlignment="Top" Background="White" BorderBrush="Black" Foreground="White" Checked="ViewSortbySize_Checked"/>
+                                <RadioButton x:Name="view_sort_date" Content="Last modified date" HorizontalAlignment="Left" Margin="30,125,0,0" FontSize="16" VerticalAlignment="Top" Background="White" BorderBrush="Black" Foreground="White" Checked="ViewSortbyDate_Checked"/>
+                                <RadioButton x:Name="view_sort_random" Content="Random" HorizontalAlignment="Left" Margin="30,150,0,0" FontSize="16" VerticalAlignment="Top" Background="White" BorderBrush="Black" Foreground="White" Checked="ViewSortRandom_Checked"/>
+                                <Separator Height="1" HorizontalAlignment="Stretch" Width="250" Margin="48,180,48,0" Background="WhiteSmoke" VerticalAlignment="Top"/>
+                                <ToggleButton x:Name="view_sort_ascending" IsChecked="True" HorizontalAlignment="Left" Margin="24,200,0,50" VerticalAlignment="Top" Width="146" HorizontalContentAlignment="Left" Background="{x:Null}" BorderBrush="White" Foreground="RoyalBlue" Checked="ViewSortByAscending_Checked" Unchecked="ViewSortByAscending_Unchecked">
                                     <ToggleButton.Content>
                                         <StackPanel Orientation="Horizontal">
                                             <Image Width="24" Height="24" Source="Images/Explorer Interface/Ascending.png"/>
@@ -618,6 +929,7 @@
                                     </ToggleButton.Content>
                                 </ToggleButton>
                             </Grid>
+                            </StackPanel>
                         </ScrollViewer>
 
                     </Grid>
@@ -657,12 +969,12 @@
                                     </Grid>
                                 </ListBoxItem.Content>
                             </ListBoxItem>
-                            <ListBoxItem Tag="4" ToolTip="Duplicat files remover" MouseDoubleClick="tools_open_Btm_DoubleClick">
+                            <ListBoxItem Tag="4" ToolTip="Duplicate Files Remover" MouseDoubleClick="tools_open_Btm_DoubleClick">
                                 <ListBoxItem.Content>
                                     <Grid Width="160" Height="90" >
                                         <Image Stretch="Uniform" Source="Images/Tools Icon/dublicate-files-remover.png"/>
                                         <Rectangle Height="20" VerticalAlignment="Bottom" Fill="#54000000" Margin="0,0,0,0"/>
-                                        <TextBlock Text="Duplicat files remover" Foreground="White" Margin="1,0,1,0" TextTrimming="CharacterEllipsis" FontSize="14" VerticalAlignment="Bottom"/>
+                                        <TextBlock Text="Duplicate Files Remover" Foreground="White" Margin="1,0,1,0" TextTrimming="CharacterEllipsis" FontSize="14" VerticalAlignment="Bottom"/>
                                     </Grid>
                                 </ListBoxItem.Content>
                             </ListBoxItem>
@@ -675,30 +987,30 @@
                                     </Grid>
                                 </ListBoxItem.Content>
                             </ListBoxItem>
-                            <ListBoxItem Tag="6" ToolTip="Empty directories remover" MouseDoubleClick="tools_open_Btm_DoubleClick">
+                            <ListBoxItem Tag="6" ToolTip="Empty Folders Remover" MouseDoubleClick="tools_open_Btm_DoubleClick">
                                 <ListBoxItem.Content>
                                     <Grid Width="160" Height="90" >
                                         <Image Stretch="Uniform" Source="Images/Tools Icon/empty-directory-remover.png"/>
                                         <Rectangle Height="20" VerticalAlignment="Bottom" Fill="#54000000" Margin="0,0,0,0"/>
-                                        <TextBlock Text="Empty directories remover" Foreground="White" Margin="1,0,1,0" TextTrimming="CharacterEllipsis" FontSize="14" VerticalAlignment="Bottom"/>
+                                        <TextBlock Text="Empty Folders Remover" Foreground="White" Margin="1,0,1,0" TextTrimming="CharacterEllipsis" FontSize="14" VerticalAlignment="Bottom"/>
                                     </Grid>
                                 </ListBoxItem.Content>
                             </ListBoxItem>
-                            <ListBoxItem Tag="7" ToolTip="Files destoyer" MouseDoubleClick="tools_open_Btm_DoubleClick">
+                            <ListBoxItem Tag="7" ToolTip="Files destroyer" MouseDoubleClick="tools_open_Btm_DoubleClick">
                                 <ListBoxItem.Content>
                                     <Grid Width="160" Height="90">
                                         <Image Stretch="Uniform" Source="Images/Tools Icon/files-destroyer.png"/>
                                         <Rectangle Height="20" VerticalAlignment="Bottom" Fill="#54000000" Margin="0,0,0,0"/>
-                                        <TextBlock Text="Files destoyer" Foreground="White" Margin="1,0,1,0" TextTrimming="CharacterEllipsis" FontSize="14" VerticalAlignment="Bottom"/>
+                                        <TextBlock Text="Files destroyer" Foreground="White" Margin="1,0,1,0" TextTrimming="CharacterEllipsis" FontSize="14" VerticalAlignment="Bottom"/>
                                     </Grid>
                                 </ListBoxItem.Content>
                             </ListBoxItem>
-                            <ListBoxItem Tag="8" ToolTip="Files encreptor" MouseDoubleClick="tools_open_Btm_DoubleClick">
+                            <ListBoxItem Tag="8" ToolTip="Files encrypter" MouseDoubleClick="tools_open_Btm_DoubleClick">
                                 <ListBoxItem.Content>
                                     <Grid Width="160" Height="90" >
                                         <Image Stretch="Uniform" Source="Images/Tools Icon/encrypt.png"/>
                                         <Rectangle Height="20" VerticalAlignment="Bottom" Fill="#54000000" Margin="0,0,0,0"/>
-                                        <TextBlock Text="Files encreptor" Foreground="White" Margin="1,0,1,0" TextTrimming="CharacterEllipsis" FontSize="14" VerticalAlignment="Bottom"/>
+                                        <TextBlock Text="Files encrypter" Foreground="White" Margin="1,0,1,0" TextTrimming="CharacterEllipsis" FontSize="14" VerticalAlignment="Bottom"/>
                                     </Grid>
                                 </ListBoxItem.Content>
                             </ListBoxItem>
@@ -711,7 +1023,7 @@
                                     </Grid>
                                 </ListBoxItem.Content>
                             </ListBoxItem>
-                            <ListBoxItem Tag="100" ToolTip="new tools coming soon..." MouseDoubleClick="tools_open_Btm_DoubleClick">
+                            <ListBoxItem Tag="100" ToolTip="new tools coming soon..." MouseDoubleClick="tools_open_Btm_DoubleClick" Visibility="Collapsed">
                                 <ListBoxItem.Content>
                                     <Grid Width="160" Height="90" >
                                         <Image Stretch="Uniform" Source="Images/Tools Icon/coming-soon.png"/>
@@ -727,93 +1039,89 @@
                     <Grid x:Name="recent_menu_grid" Grid.Column="1" Margin="7,0,0,0" Visibility="Collapsed">
                         <TextBlock HorizontalAlignment="Left" Margin="10,10,0,0" Text="RECENT" VerticalAlignment="Top" Foreground="White" FontSize="20"/>
                         <Grid x:Name="recent_tabs_gird" Margin="0,68,0,0">
-                            <ListBox x:Name="recent_directories_list" Background="#FF404040" BorderBrush="{x:Null}" HorizontalAlignment="Left" Width="360">
-                                <ListBoxItem Content="today" Margin="0,10,0,0" Background="{x:Null}" Foreground="#FFAFAFAF" IsEnabled="False"/>
-                                <StackPanel Margin="5,0,0,0" Orientation="Horizontal" Height="18">
-                                    <Image Width="14" Height="14" Margin="5,0,0,0" Stretch="Fill" Source="Images/Explorer Interface/recent.png"/>
-                                    <TextBlock Text="C:\Windows\" VerticalAlignment="Top" Foreground="White" Margin="5,1,0,0" FontSize="12"/>
-                                </StackPanel>
-                                <StackPanel Margin="5,0,0,0" Orientation="Horizontal" Height="18">
-                                    <Image Width="14" Height="14" Margin="5,0,0,0" Stretch="Fill" Source="Images/Explorer Interface/recent.png"/>
-                                    <TextBlock Text="D:\" VerticalAlignment="Top" Foreground="White" Margin="5,1,0,0" FontSize="12"/>
-                                </StackPanel>
-                                <ListBoxItem Content="yesterday" Margin="0,10,0,0" Background="{x:Null}" Foreground="#FFAFAFAF" IsEnabled="False"/>
-                                <StackPanel Margin="5,0,0,0" Orientation="Horizontal" Height="18">
-                                    <Image Width="14" Height="14" Margin="5,0,0,0" Stretch="Fill" Source="Images/Explorer Interface/recent.png"/>
-                                    <TextBlock Text="C:\Users\" VerticalAlignment="Top" Foreground="White" Margin="5,1,0,0" FontSize="12"/>
-                                </StackPanel>
-                                <StackPanel Margin="5,0,0,0" Orientation="Horizontal" Height="18">
-                                    <Image Width="14" Height="14" Margin="5,0,0,0" Stretch="Fill" Source="Images/Explorer Interface/recent.png"/>
-                                    <TextBlock Text="F:\" VerticalAlignment="Top" Foreground="White" Margin="5,1,0,0" FontSize="12"/>
-                                </StackPanel>
-                                <StackPanel Margin="5,0,0,0" Orientation="Horizontal" Height="18">
-                                    <Image Width="14" Height="14" Margin="5,0,0,0" Stretch="Fill" Source="Images/Explorer Interface/recent.png"/>
-                                    <TextBlock Text="G:\Games\" VerticalAlignment="Top" Foreground="White" Margin="5,1,0,0" FontSize="12"/>
-                                </StackPanel>
-                                <ListBoxItem Content="29/5/2015" Margin="0,10,0,0" Background="{x:Null}" Foreground="#FFAFAFAF" IsEnabled="False"/>
-                                <StackPanel Margin="5,0,0,0" Orientation="Horizontal" Height="18">
-                                    <Image Width="14" Height="14" Margin="5,0,0,0" Stretch="Fill" Source="Images/Explorer Interface/recent.png"/>
-                                    <TextBlock Text="C:\Windows\Fonts\" VerticalAlignment="Top" Foreground="White" Margin="5,1,0,0" FontSize="12"/>
-                                </StackPanel>
-                            </ListBox>
-                            <ListBox x:Name="recent_files_list" Visibility="Collapsed" Margin="-400,0,0,0" Background="#FF404040" BorderBrush="{x:Null}" HorizontalAlignment="Left" Width="360">
-                                <ListBoxItem Content="today" Margin="0,10,0,0" Background="{x:Null}" Foreground="#FFAFAFAF" IsEnabled="False"/>
-                                <StackPanel Margin="5,0,0,0" Orientation="Horizontal" Height="18">
-                                    <Image Width="14" Height="14" Margin="5,0,0,0" Stretch="Fill" Source="Images/Explorer Interface/recent.png"/>
-                                    <TextBlock Text="C:\Windows\explorer.exe" VerticalAlignment="Top" Foreground="White" Margin="5,1,0,0" FontSize="12"/>
-                                </StackPanel>
-                                <StackPanel Margin="5,0,0,0" Orientation="Horizontal" Height="18">
-                                    <Image Width="14" Height="14" Margin="5,0,0,0" Stretch="Fill" Source="Images/Explorer Interface/recent.png"/>
-                                    <TextBlock Text="D:\" VerticalAlignment="Top" Foreground="White" Margin="5,1,0,0" FontSize="12"/>
-                                </StackPanel>
-                                <ListBoxItem Content="yesterday" Margin="0,10,0,0" Background="{x:Null}" Foreground="#FFAFAFAF" IsEnabled="False"/>
-                                <StackPanel Margin="5,0,0,0" Orientation="Horizontal" Height="18">
-                                    <Image Width="14" Height="14" Margin="5,0,0,0" Stretch="Fill" Source="Images/Explorer Interface/recent.png"/>
-                                    <TextBlock Text="C:\Users\file.odf" VerticalAlignment="Top" Foreground="White" Margin="5,1,0,0" FontSize="12"/>
-                                </StackPanel>
-                                <StackPanel Margin="5,0,0,0" Orientation="Horizontal" Height="18">
-                                    <Image Width="14" Height="14" Margin="5,0,0,0" Stretch="Fill" Source="Images/Explorer Interface/recent.png"/>
-                                    <TextBlock Text="F:\autorun.exe" VerticalAlignment="Top" Foreground="White" Margin="5,1,0,0" FontSize="12"/>
-                                </StackPanel>
-                                <StackPanel Margin="5,0,0,0" Orientation="Horizontal" Height="18">
-                                    <Image Width="14" Height="14" Margin="5,0,0,0" Stretch="Fill" Source="Images/Explorer Interface/recent.png"/>
-                                    <TextBlock Text="G:\Games\All games.exe" VerticalAlignment="Top" Foreground="White" Margin="5,1,0,0" FontSize="12"/>
-                                </StackPanel>
-                                <ListBoxItem Content="29/5/2015" Margin="0,10,0,0" Background="{x:Null}" Foreground="#FFAFAFAF" IsEnabled="False"/>
-                                <StackPanel Margin="5,0,0,0" Orientation="Horizontal" Height="18">
-                                    <Image Width="14" Height="14" Margin="5,0,0,0" Stretch="Fill" Source="Images/Explorer Interface/recent.png"/>
-                                    <TextBlock Text="C:\Windows\Fonts\Arial.ttf" VerticalAlignment="Top" Foreground="White" Margin="5,1,0,0" FontSize="12"/>
-                                </StackPanel>
-                            </ListBox>
+                            <ListBox x:Name="recent_directories_list" Background="#FF404040" BorderBrush="{x:Null}" HorizontalAlignment="Left" Width="360"/>
+                            <ListBox x:Name="recent_files_list" Visibility="Collapsed" Margin="-400,0,0,0" Background="#FF404040" BorderBrush="{x:Null}" HorizontalAlignment="Left" Width="360"/>
                         </Grid>
 
                         <StackPanel x:Name="recent_tab_header" Margin="0,42,0,0" HorizontalAlignment="Stretch" Orientation="Horizontal" VerticalAlignment="Top">
                             <Label x:Name="recent_directories_lbl" Content="directory" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="5,0,5,0" Background="{x:Null}" Foreground="White" MouseEnter="recent_lbl_MouseEnter" MouseLeave="recent_lbl_MouseLeave" MouseUp="recent_lbl_MouseUp"/>
                             <Label x:Name="recent_files_lbl" Content="files" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="2,0,5,0" Background="{x:Null}" Foreground="White" MouseEnter="recent_lbl_MouseEnter" MouseLeave="recent_lbl_MouseLeave" MouseUp="recent_lbl_MouseUp"/>
                         </StackPanel>
-                        <TextBlock HorizontalAlignment="Right" Margin="0,15,10,0" Text="this contains dummy data" VerticalAlignment="Top" Foreground="Tomato"/>
                     </Grid>
 
                     <Rectangle Fill="WhiteSmoke" Grid.Column="1" Width="1" HorizontalAlignment="Left" Margin="2,10,0,25"/>
 
                     
                     <Grid x:Name="HELP" Grid.Column="1" Margin="7,0,0,0" Visibility="Collapsed">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <Grid VerticalAlignment="Top">
                         <TextBlock HorizontalAlignment="Left" Margin="10,10,0,0" Text="HELP" VerticalAlignment="Top" Foreground="White" FontSize="20"/>
-                                <Button Content="View help" HorizontalAlignment="Left" Margin="20,42,0,0" VerticalAlignment="Top" Width="200" Background="{x:Null}" Foreground="White" FontSize="16" BorderBrush="#FF8F8F8F" Click="NotAvailyable_btm_Click"/>
-                        <Rectangle Fill="WhiteSmoke" Height="1" HorizontalAlignment="Left" Width="250" IsEnabled="False" Margin="10,80,0,0" VerticalAlignment="Top"/>
-                        <Image Margin="100,105,0,0" Height="128" VerticalAlignment="Top" Source="Images/App Icon.png" HorizontalAlignment="Left" Width="128"/>
-                        <TextBlock Text="mohammad.diab93@outlook.com " Margin="66,301,0,0" VerticalAlignment="Top" FontSize="16" FontFamily="Segoe Print" Foreground="Lime" TextAlignment="Center" HorizontalAlignment="Left"/>
-                        <TextBlock Margin="30,250,0,0" VerticalAlignment="Top" FontSize="18" TextAlignment="Center" Text="FILE MANAGER 0.9.0" HorizontalAlignment="Left">
-                            <TextBlock.Foreground>
-                                <LinearGradientBrush EndPoint="0.5,1" MappingMode="RelativeToBoundingBox" StartPoint="0.5,0">
-                                    <GradientStop Color="#FFFFFF61" Offset="0.996"/>
-                                    <GradientStop Color="White"/>
-                                </LinearGradientBrush>
-                            </TextBlock.Foreground></TextBlock>
-                        <Image HorizontalAlignment="Left" Margin="30,294,0,0" Width="30" Height="40" VerticalAlignment="Top" Source="Images/xbill.png" FlowDirection="LeftToRight"/>
+                        <ScrollViewer Margin="0,42,0,0" VerticalScrollBarVisibility="Auto">
+                            <StackPanel Margin="10,0,10,10">
+                                <Button Content="View help" HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Top" Width="200" Background="{x:Null}" Foreground="White" FontSize="16" BorderBrush="#FF8F8F8F" Click="ViewHelp_Click" ToolTip="Opens the File Manager page on GitHub (README)"/>
+                                <Separator Height="1" HorizontalAlignment="Left" Width="250" Margin="10,15,0,0" Background="WhiteSmoke"/>
+                                <TextBlock Margin="0,6,0,6" Text="Keyboard shortcuts" Foreground="White" FontSize="18"/>
+                                <Grid Margin="10,0,0,0" TextBlock.FontSize="14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" MaxWidth="150"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Text="Ctrl+L, Alt+D, F4" Foreground="White" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,3,12,3"/>
+                                    <TextBlock Grid.Column="1" Text="Type a path in the address bar" Foreground="#FFCCCCCC" TextWrapping="Wrap" Margin="0,3,0,3"/>
+                                    <TextBlock Grid.Row="1" Text="Enter" Foreground="White" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,3,12,3"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="Open the selected items, or go to the typed path" Foreground="#FFCCCCCC" TextWrapping="Wrap" Margin="0,3,0,3"/>
+                                    <TextBlock Grid.Row="2" Text="Esc" Foreground="White" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,3,12,3"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="Stop loading, leave the address bar or close this menu" Foreground="#FFCCCCCC" TextWrapping="Wrap" Margin="0,3,0,3"/>
+                                    <TextBlock Grid.Row="3" Text="Backspace, Alt+Left" Foreground="White" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,3,12,3"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="Back" Foreground="#FFCCCCCC" TextWrapping="Wrap" Margin="0,3,0,3"/>
+                                    <TextBlock Grid.Row="4" Text="Alt+Right" Foreground="White" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,3,12,3"/>
+                                    <TextBlock Grid.Row="4" Grid.Column="1" Text="Forward" Foreground="#FFCCCCCC" TextWrapping="Wrap" Margin="0,3,0,3"/>
+                                    <TextBlock Grid.Row="5" Text="Alt+Up" Foreground="White" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,3,12,3"/>
+                                    <TextBlock Grid.Row="5" Grid.Column="1" Text="Up one level" Foreground="#FFCCCCCC" TextWrapping="Wrap" Margin="0,3,0,3"/>
+                                    <TextBlock Grid.Row="6" Text="F5" Foreground="White" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,3,12,3"/>
+                                    <TextBlock Grid.Row="6" Grid.Column="1" Text="Refresh" Foreground="#FFCCCCCC" TextWrapping="Wrap" Margin="0,3,0,3"/>
+                                    <TextBlock Grid.Row="7" Text="Space" Foreground="White" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,3,12,3"/>
+                                    <TextBlock Grid.Row="7" Grid.Column="1" Text="Details of the selected items" Foreground="#FFCCCCCC" TextWrapping="Wrap" Margin="0,3,0,3"/>
+                                    <TextBlock Grid.Row="8" Text="F2" Foreground="White" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,3,12,3"/>
+                                    <TextBlock Grid.Row="8" Grid.Column="1" Text="Rename" Foreground="#FFCCCCCC" TextWrapping="Wrap" Margin="0,3,0,3"/>
+                                    <TextBlock Grid.Row="9" Text="Delete" Foreground="White" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,3,12,3"/>
+                                    <TextBlock Grid.Row="9" Grid.Column="1" Text="Delete to the Recycle Bin" Foreground="#FFCCCCCC" TextWrapping="Wrap" Margin="0,3,0,3"/>
+                                    <TextBlock Grid.Row="10" Text="Shift+Delete" Foreground="White" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,3,12,3"/>
+                                    <TextBlock Grid.Row="10" Grid.Column="1" Text="Delete permanently" Foreground="#FFCCCCCC" TextWrapping="Wrap" Margin="0,3,0,3"/>
+                                    <TextBlock Grid.Row="11" Text="Ctrl+C, Ctrl+X, Ctrl+V" Foreground="White" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,3,12,3"/>
+                                    <TextBlock Grid.Row="11" Grid.Column="1" Text="Copy, cut and paste" Foreground="#FFCCCCCC" TextWrapping="Wrap" Margin="0,3,0,3"/>
+                                    <TextBlock Grid.Row="12" Text="Ctrl+A" Foreground="White" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,3,12,3"/>
+                                    <TextBlock Grid.Row="12" Grid.Column="1" Text="Select all" Foreground="#FFCCCCCC" TextWrapping="Wrap" Margin="0,3,0,3"/>
+                                    <TextBlock Grid.Row="13" Text="Left, Right" Foreground="White" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,3,12,3"/>
+                                    <TextBlock Grid.Row="13" Grid.Column="1" Text="Columns view: parent folder, open the selected folder" Foreground="#FFCCCCCC" TextWrapping="Wrap" Margin="0,3,0,3"/>
+                                    <TextBlock Grid.Row="14" Text="Enter in the filter box" Foreground="White" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,3,12,3"/>
+                                    <TextBlock Grid.Row="14" Grid.Column="1" Text="Search in all sub-folders" Foreground="#FFCCCCCC" TextWrapping="Wrap" Margin="0,3,0,3"/>
+                                </Grid>
+                                <Separator Height="1" HorizontalAlignment="Left" Width="250" Margin="10,15,0,0" Background="WhiteSmoke"/>
+                                <Button Style="{StaticResource link_button}" Content="Open the old explorer (legacy)" HorizontalAlignment="Left" Margin="6,10,0,0" VerticalAlignment="Top" FontSize="14" Foreground="DodgerBlue" ToolTip="Opens the legacy explorer window of File Manager" Click="OldExplorer_Click"/>
+                            </StackPanel>
+                        </ScrollViewer>
                     </Grid>
+
+                    <Grid x:Name="ABOUT" Grid.Column="1" Margin="7,0,0,0" Visibility="Collapsed">
+                        <TextBlock HorizontalAlignment="Left" Margin="10,10,0,0" Text="ABOUT" VerticalAlignment="Top" Foreground="White" FontSize="20"/>
+                        <ScrollViewer Margin="0,42,0,0" VerticalScrollBarVisibility="Auto">
+                            <local:About_Panel Foreground="White" LinkClick="AboutPanel_LinkClick"/>
                         </ScrollViewer>
                     </Grid>
                 </Grid>

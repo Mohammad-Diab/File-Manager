@@ -19,35 +19,33 @@ namespace File_Manager
         public static bool IsAdmin = false;
         private void Application_Startup(object sender, StartupEventArgs e)
         {
-            IsAdmin = Functions.IsRunningAsAdmin();
-            BinaryFormatter BF = new BinaryFormatter();
-            if (File.Exists("FileInfo.dat"))
+            DispatcherUnhandledException += (object sender_ex, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e_ex) =>
             {
-                List<BasicFileInfoCombonents> info = null;
-                Stream filestream = File.Open("FileInfo.dat", FileMode.Open);
-                bool err = false;
-                for (int i = 0; i < 4; i++)
-                {
-                    try
-                    {
-                        info = (List<BasicFileInfoCombonents>)BF.Deserialize(filestream);
-                        err = false; break;
-                    }
-                    catch (Exception)
-                    {
-                        Thread.Sleep(250);
-                        err = true;
-                    }
-                }
-                filestream.Close();
-                if (err)
-                    ShowErrorAndClose("Can not load 'FileInfo.dat' File.");
-
-                if (info == null || !BasicFileInfoCombonents.ConvertToStandard(info))
-                    ShowErrorAndClose("The file 'FileInfo.dat' is not valid.");
+                Functions.LogError(e_ex.Exception);
+                e_ex.Handled = true;
+                try { Messages.ShowMessage("Something went wrong.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, e_ex.Exception.Message); }
+                catch (Exception) { }
+            };
+            AppDomain.CurrentDomain.UnhandledException += (object sender_ex, UnhandledExceptionEventArgs e_ex) =>
+            {
+                if (e_ex.ExceptionObject is Exception)
+                    Functions.LogError((Exception)e_ex.ExceptionObject);
+            };
+            TaskScheduler.UnobservedTaskException += (object sender_ex, UnobservedTaskExceptionEventArgs e_ex) =>
+            {
+                Functions.LogError(e_ex.Exception);
+                e_ex.SetObserved();
+            };
+            IsAdmin = Functions.IsRunningAsAdmin();
+            string error = Functions.LoadFileInfo();
+            if (error != null)
+            {
+                ShowErrorAndClose(error);
+                return;
             }
-            else
-                ShowErrorAndClose("Can not find 'FileInfo.dat' File.");
+            new Thread(() => { Operation.CleanWipeFolders(); }) { IsBackground = true }.Start();
+            if (!SafetyTools.OpenToolFromArguments(e.Args))
+                new Directory_Explorer().Show();
         }
 
         void ShowErrorAndClose(string error)

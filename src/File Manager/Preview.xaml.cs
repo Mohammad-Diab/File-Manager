@@ -7,6 +7,9 @@ using System.Linq;
 using System.Management;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Security.AccessControl;
+using System.Security.Cryptography;
+using System.Security.Principal;
 using System.Text;
 using System.Threading;
 using System.Windows;
@@ -66,6 +69,11 @@ namespace File_Manager
                 case ItemType.File:
                     fi = (FileInfo)Item;
                     InitializeForFile(fi);
+                    if (start_with_hash)
+                    {
+                        TabItem_MouseLeftButtonUp(hash_tab, null);
+                        Loaded += (object sender, RoutedEventArgs e) => { HashCalculate_Click(null, null); };
+                    }
                     controler.DoWork += controler_DoWork;
                     controler.WorkerReportsProgress = true;
                     controler.ProgressChanged += controler_ProgressChanged;
@@ -83,12 +91,13 @@ namespace File_Manager
             rename_textbox.Text = file.Name;
             item_name.Text = "Name: " + file.Name;
             item_type.Text = file.Extension;
-            creation_time.Text = "Creation: " + file.CreationTimeUtc.ToString();
-            modified_time.Text = "Modified: " + file.LastWriteTimeUtc.ToString();
+            creation_time.Text = "Creation: " + file.CreationTime.ToString();
+            modified_time.Text = "Modified: " + file.LastWriteTime.ToString();
             last_accessed_time.Text = "Last accessed: " + file.LastAccessTime.ToString();
             //Create flowshart;
             GetAttributes(file);
             reverse.Visibility = Visibility.Collapsed;
+            FillMoreInformation(file);
         }
 
         private void GetAttributes(FileSystemInfo f)
@@ -116,6 +125,22 @@ namespace File_Manager
                 if (f.Attributes.HasFlag(FileAttributes.NotContentIndexed))
                     not_content_indexed.IsChecked = true;
             }
+            loaded_attributes = SelectedAttributes();
+        }
+
+        bool?[] loaded_attributes;
+
+        void RefreshAttributes()
+        {
+            try
+            {
+                if (fi != null)
+                    GetAttributes(new FileInfo(fi.FullName));
+                else
+                    GetAttributes(new DirectoryInfo(di == null ? dri.Name : di.FullName));
+                reverse.Visibility = Visibility.Collapsed;
+            }
+            catch (Exception) { }
         }
 
         #region File Region
@@ -123,8 +148,10 @@ namespace File_Manager
         private void InitializeForFile(FileInfo file)
         {
             //Information Tab
+            cloud_only = IsCloudOnly(file);
             PrimeInitialize(file);
-            change_name_expander.IsEnabled = attribute_grid.IsEnabled = security_tab.IsEnabled = !file.IsReadOnly;
+            string extension = file.Extension.ToLower();
+            Dispatcher.BeginInvoke(new Action(() => { FillApps(extension); }), System.Windows.Threading.DispatcherPriority.Background);
             item_location.Text = "Path: " + file.DirectoryName;
             if (FileInfoCombonents.FilesInformation.ContainsKey(file.Extension.ToLower()))
             {
@@ -140,6 +167,14 @@ namespace File_Manager
             item_ondisk_size.Text = "on disk: " + Functions.FileSize(SizeOnDisk(file), 2);
             directory_content.Text = "This is a file.";
             item_image.Source = Functions.GetFileImage256(file.Extension);
+            if (file.Extension.ToLower() == ".enf" || file.Extension.ToLower() == ".enp")
+            {
+                List<string> names = Operation.ReadPlainNames(file.FullName);
+                if (names != null)
+                    directory_content.Text = "Encrypted " + (names.Count > 1 ? "package of " + names.Count + " files: " : "file, original name: ") + string.Join(", ", names.Take(5).ToArray()) + (names.Count > 5 ? ", ..." : "");
+                else
+                    directory_content.Text = "Encrypted file, its name is encrypted too.";
+            }
 
             //Atribute Tab
             apply_to_all.Visibility = Visibility.Collapsed;
@@ -147,16 +182,14 @@ namespace File_Manager
             //Main menu and Tabs
             if ((!FileInfoCombonents.FilesInformation.ContainsKey(file.Extension.ToLower())) || FileInfoCombonents.FilesInformation[file.Extension.ToLower()].Category == FileCategory.Unknown || FileInfoCombonents.FilesInformation[file.Extension.ToLower()].Category == FileCategory.CannotOpen)
             {
-                preview_tab.IsEnabled = false;
-                TabItem_MouseLeftButtonUp(information_tab, null);
+                PreviewWithShell(file);
                 extract_button.Visibility = Visibility.Collapsed;
                 explore_button.Visibility = Visibility.Collapsed;
                 open_button.Margin = new Thickness(0, 89, 0, 0);
             }
             else if (FileInfoCombonents.FilesInformation[file.Extension.ToLower()].Category == FileCategory.Application)
             {
-                preview_tab.IsEnabled = false;
-                TabItem_MouseLeftButtonUp(information_tab, null);
+                PreviewWithShell(file);
                 if (file.Extension.ToLower().Equals(".msi"))
                 {
                     open_button_image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Menu/install-package.png"));
@@ -185,8 +218,7 @@ namespace File_Manager
             }
             else if (FileInfoCombonents.FilesInformation[file.Extension.ToLower()].Category == FileCategory.Archive)
             {
-                preview_tab.IsEnabled = false;
-                TabItem_MouseLeftButtonUp(information_tab, null);                    //may then remove it to standalone condition to explore archive file
+                PreviewWithShell(file);                    //may then remove it to standalone condition to explore archive file
                 explore_button.ToolTip = "Explorer archive";                         //may then remove it to standalone condition to explore archive file
                 explore_button.Click += ExplorerArchiveButton_Click;
                 explore_button_image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Menu/explore-archive.png"));
@@ -197,14 +229,11 @@ namespace File_Manager
             else if (FileInfoCombonents.FilesInformation[file.Extension.ToLower()].Category == FileCategory.Document)
             {
                 if (file.Extension.ToLower() == ".rtf")
-                    MakeRTFViewer(file);
+                    PreviewWith(() => { MakeRTFViewer(file); });
                 else if (file.Extension.ToLower() == ".xps" || file.Extension.ToLower() == ".oxps")
-                    MakeXPSViewer(file);
+                    PreviewWith(() => { MakeXPSViewer(file); });
                 else
-                {
-                    preview_tab.IsEnabled = false;
-                    TabItem_MouseLeftButtonUp(information_tab, null);
-                }
+                    PreviewWithShell(file);
                 extract_button.Visibility = Visibility.Collapsed;
                 explore_button.Visibility = Visibility.Collapsed;
                 open_button.Margin = new Thickness(0, 89, 0, 0);
@@ -214,16 +243,9 @@ namespace File_Manager
                 extract_button.Visibility = Visibility.Collapsed;
                 open_button.Margin = new Thickness(0, 57, 0, 0);
                 if (FileInfoCombonents.FilesInformation[file.Extension.ToLower()].Category == FileCategory.Html)
-                    MakeHtmlViewer(file);
+                    PreviewWith(() => { MakeHtmlViewer(file); });
                 else
-                    MakeTextViewer(file);
-                if (file.Extension.ToLower() == ".mht" || file.Extension.ToLower() == ".mhtml")
-                {
-                    explore_button.ToolTip = "Extract files from archive";
-                    explore_button_image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Menu/extract-archive.png"));
-                    explore_button.Click += ExtractArchiveButton_Click;
-                }
-                else
+                    PreviewWith(() => { MakeTextViewer(file); });
                 {
                     explore_button.ToolTip = "Edit";
                     explore_button_image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Menu/document-edit.png"));
@@ -249,15 +271,15 @@ namespace File_Manager
                 explore_button.Visibility = Visibility.Collapsed;
                 open_button.Margin = new Thickness(0, 89, 0, 0);
                 if (FileInfoCombonents.FilesInformation[file.Extension.ToLower()].Category == FileCategory.Image)
-                    MakeImageViewer(file);
+                    PreviewWith(() => { MakeImageViewer(file); });
                 else if (FileInfoCombonents.FilesInformation[file.Extension.ToLower()].Category == FileCategory.Vedio)
-                    MakeVedioViewer(file);
+                    PreviewWith(() => { MakeVedioViewer(file); });
                 else
-                    MakeAudioViewer(file);
+                    PreviewWith(() => { MakeAudioViewer(file); });
             }
             else if (FileInfoCombonents.FilesInformation[file.Extension.ToLower()].Category == FileCategory.Font)
             {
-                MakeFontViewer(file);
+                PreviewWith(() => { MakeFontViewer(file); });
                 explore_button.ToolTip = "Install font";
                 explore_button.Click += InstallFontButton_Click;
                 explore_button_image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Menu/font-install.png"));
@@ -266,21 +288,22 @@ namespace File_Manager
             }
             else if (FileInfoCombonents.FilesInformation[file.Extension.ToLower()].Category == FileCategory.DiskImage)
             {
-                preview_tab.IsEnabled = false;
-                TabItem_MouseLeftButtonUp(information_tab, null);
+                PreviewWithShell(file);
                 extract_button.Visibility = Visibility.Collapsed;
                 open_button.Margin = new Thickness(0, 57, 0, 0);
                 if (file.Extension.ToLower() == ".isz")
                 {
-                    explore_button.ToolTip = "Convert to ISO";
-                    explore_button.Click += ConvertToISOButton_Click;
+                    explore_button.ToolTip = "Convert to ISO is not available: it needs 'unisz.exe', which has no official installer or download.";
+                    ToolTipService.SetShowOnDisabled(explore_button, true);
+                    explore_button.IsEnabled = false;
+                    explore_button.Opacity = 0.5;
                     explore_button_image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Menu/covert-to-iso.png"));
                 }
-                else if (file.Extension.ToLower() == ".mou")
+                else if (file.Extension.ToLower() == ".iso" || file.Extension.ToLower() == ".img" || file.Extension.ToLower() == ".vhd" || file.Extension.ToLower() == ".wim")
                 {
-                    explore_button.ToolTip = "Extract files from archive";
-                    explore_button_image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Menu/extract-archive.png"));
-                    explore_button.Click += ExtractArchiveButton_Click;
+                    explore_button.ToolTip = "Explorer archive";
+                    explore_button_image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Menu/explore-archive.png"));
+                    explore_button.Click += ExplorerArchiveButton_Click;
                 }
                 else
                 {
@@ -359,7 +382,6 @@ namespace File_Manager
             if (neighbors == null)
             {
                 neighbors = new List<FileInfo>();
-                special_function.Visibility = Visibility.Visible;
                 BackgroundWorker get_audio_neighbor = new BackgroundWorker();
                 get_audio_neighbor.DoWork += GetAudioNeighbor_DoWork;
                 get_audio_neighbor.WorkerReportsProgress = get_audio_neighbor.WorkerSupportsCancellation = true;
@@ -697,7 +719,7 @@ namespace File_Manager
             try
             {
                 image_viewer_grid.Visibility = Visibility.Visible;
-                image_view.Source = new BitmapImage(new Uri(file.FullName));
+                image_view.Source = LoadImage(file.FullName);
                 controler.RunWorkerAsync(image_control);
                 BackgroundWorker get_image_neighbor = new BackgroundWorker();
                 get_image_neighbor.DoWork += get_image_neighbor_DoWork;
@@ -710,17 +732,31 @@ namespace File_Manager
             }
         }
 
+        BitmapImage LoadImage(string path)
+        {
+            BitmapImage image = new BitmapImage();
+            image.BeginInit();
+            image.CacheOption = BitmapCacheOption.OnLoad;
+            image.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
+            image.UriSource = new Uri(path);
+            image.EndInit();
+            image.Freeze();
+            return image;
+        }
+
         void get_image_neighbor_DoWork(object sender, DoWorkEventArgs e)
         {
-            neighbors = new List<FileInfo>();
+            List<FileInfo> list = new List<FileInfo>();
             FileInfo file = ((FileInfo)e.Argument);
-            neighbors.Add(file);
-            foreach (var i in file.Directory.GetFiles())
-                if (i.FullName != file.FullName && FileInfoCombonents.FilesInformation.ContainsKey(i.Extension.ToLower()) && FileInfoCombonents.FilesInformation[i.Extension.ToLower()].Category == FileCategory.Image)
-                {
-                    neighbors.Add(i);
-                    Thread.Sleep(2);
-                }
+            list.Add(file);
+            try
+            {
+                foreach (var i in file.Directory.GetFiles())
+                    if (i.FullName != file.FullName && FileInfoCombonents.FilesInformation.ContainsKey(i.Extension.ToLower()) && FileInfoCombonents.FilesInformation[i.Extension.ToLower()].Category == FileCategory.Image)
+                        list.Add(i);
+            }
+            catch (Exception) { }
+            neighbors = list;
         }
 
         private void Control_MouseMove(object sender, MouseEventArgs e)
@@ -763,19 +799,49 @@ namespace File_Manager
             }
         }
 
+        int image_angle = 0;
+
         private void RotateRight_Click(object sender, RoutedEventArgs e)
         {
-
+            image_angle = (image_angle + 90) % 360;
+            image_view.LayoutTransform = new RotateTransform(image_angle);
         }
 
         private void SaveImage_Click(object sender, RoutedEventArgs e)
         {
-
+            if (image_view.Source == null)
+                return;
+            SelectFileDialog sfd = new SelectFileDialog();
+            sfd.dialogMode = SelectFileDialogMode.SaveFile;
+            sfd.CreateFolderEnable = true;
+            sfd.DialogTitle = "Save a copy of the image as (PNG)";
+            sfd.AddExtension = true;
+            sfd.MultiSelect = false;
+            sfd.FilterMenu.Add(new SelectFileFilter() { display_name = "PNG Image File (*.png)", extentions = SelectFileFilter.SetExtentions(".png") });
+            if (sfd.ShowWindow() == MyMessageBoxResult.OK)
+            {
+                string path = sfd.SelectedItem;
+                if (!path.ToLower().EndsWith(".png"))
+                    path += ".png";
+                if (File.Exists(path) && Messages.ShowMessage("File is already exist, overwrite?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "") != MyMessageBoxResult.Yes)
+                    return;
+                try
+                {
+                    PngBitmapEncoder encoder = new PngBitmapEncoder();
+                    encoder.Frames.Add(BitmapFrame.Create(new TransformedBitmap((BitmapSource)image_view.Source, new RotateTransform(image_angle))));
+                    using (FileStream stream = new FileStream(path, FileMode.Create, FileAccess.Write))
+                        encoder.Save(stream);
+                    Messages.ShowMessage("The image has been saved.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, true, path);
+                }
+                catch (Exception ex)
+                { Messages.ShowMessage("We can not save the image.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
+            }
         }
 
         private void RotateLeft_Click(object sender, RoutedEventArgs e)
         {
-
+            image_angle = (image_angle + 270) % 360;
+            image_view.LayoutTransform = new RotateTransform(image_angle);
         }
 
         private void ImageControl_MouseLeave(object sender, MouseEventArgs e)
@@ -790,23 +856,29 @@ namespace File_Manager
 
         private void ImageViewer_KeyDown(object sender, KeyEventArgs e)
         {
+            if (neighbors == null)
+                return;
             if (e.Key == Key.NumPad4 && current_item_in_viewer > 0)
             {
                 current_item_in_viewer--;
                 try
                 {
-                    image_view.Source = new BitmapImage(new Uri(neighbors[current_item_in_viewer].FullName));
+                    image_angle = 0;
+                    image_view.LayoutTransform = null;
+                    image_view.Source = LoadImage(neighbors[current_item_in_viewer].FullName);
                     ThicknessAnimation ta = new ThicknessAnimation(new Thickness(-798, 2, 2, 2), new Thickness(2, 2, 2, 2), show_duration);
                     image_view.BeginAnimation(MarginProperty, ta);
                 }
                 catch (Exception) { }
             }
-            else if (e.Key == Key.NumPad6 && current_item_in_viewer < neighbors.Count - 2)
+            else if (e.Key == Key.NumPad6 && current_item_in_viewer < neighbors.Count - 1)
             {
                 current_item_in_viewer++;
                 try
                 {
-                    image_view.Source = new BitmapImage(new Uri(neighbors[current_item_in_viewer].FullName));
+                    image_angle = 0;
+                    image_view.LayoutTransform = null;
+                    image_view.Source = LoadImage(neighbors[current_item_in_viewer].FullName);
                     ThicknessAnimation ta = new ThicknessAnimation(new Thickness(802, 2, 2, 2), new Thickness(2, 2, 2, 2), show_duration);
                     image_view.BeginAnimation(MarginProperty, ta);
                 }
@@ -824,6 +896,8 @@ namespace File_Manager
             preview_grid.Children.Add(web);
         }
 
+        XpsDocument xps_document;
+
         private void MakeXPSViewer(FileInfo file)
         {
             DocumentViewer doc_viewer = new DocumentViewer();
@@ -832,8 +906,8 @@ namespace File_Manager
             {
                 TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.Indeterminate;
                 preview_grid.Children.Add(doc_viewer);
-                XpsDocument XPS = new XpsDocument(file.FullName, FileAccess.Read);
-                doc_viewer.Document = XPS.GetFixedDocumentSequence();
+                xps_document = new XpsDocument(file.FullName, FileAccess.Read);
+                doc_viewer.Document = xps_document.GetFixedDocumentSequence();
                 TaskbarItemInfo.ProgressState = System.Windows.Shell.TaskbarItemProgressState.None;
             }
             catch (Exception ex)
@@ -867,9 +941,15 @@ namespace File_Manager
             rich.IsReadOnly = true;
             try
             {
-                StreamReader SR = new StreamReader(file.FullName);
-                rich.Document = new FlowDocument(new Paragraph(new Run(SR.ReadToEnd())));
-                SR.Close();
+                using (StreamReader SR = new StreamReader(new FileStream(file.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)))
+                {
+                    char[] buffer = new char[4 * 1024 * 1024];
+                    int count = SR.ReadBlock(buffer, 0, buffer.Length);
+                    string text = new string(buffer, 0, count);
+                    if (!SR.EndOfStream)
+                        text += "\n\n... (only the first 4 MB of the file are shown)";
+                    rich.Document = new FlowDocument(new Paragraph(new Run(text)));
+                }
             }
             catch (Exception ex)
             { Messages.ShowMessage("We can not view this file.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
@@ -881,7 +961,13 @@ namespace File_Manager
         {
             //font name and version
             font_viewer.Visibility = Visibility.Visible;
-            ((ListBox)font_viewer.Children[0]).FontFamily = new FontFamily(new Uri(file.FullName), "Name"); //wrong
+            try
+            {
+                var families = Fonts.GetFontFamilies(new Uri(file.FullName));
+                if (families.Count > 0)
+                    ((ListBox)font_viewer.Children[0]).FontFamily = families.First();
+            }
+            catch (Exception) { }
         }
 
         private  void MakeDataBaseViewer(FileInfo file)
@@ -978,9 +1064,7 @@ namespace File_Manager
             //calc_directory_change_value.DoWork += CalcDirectorySizeChangeValue_DoWork;
             //calc_directory_change_value.RunWorkerAsync(calc_directory_size);
 
-            app_can_open_this_type.Items.Add("File Manager");
-            app_can_open_this_type.Items.Add("File Explorer");
-            app_can_open_this_type.Items.Add("Windows Explorer");
+            FillFolderApps();
 
             item_image.Source = FileInfoCombonents.FilesInformation["directory"].Bitmap256;
 
@@ -989,6 +1073,10 @@ namespace File_Manager
 
             preview_tab.IsEnabled = false;
             hash_tab.IsEnabled = false;
+            preview_tab.ToolTip = "Preview is for files, use Open to browse this directory";
+            hash_tab.ToolTip = "Hashes are calculated for files only";
+            ToolTipService.SetShowOnDisabled(preview_tab, true);
+            ToolTipService.SetShowOnDisabled(hash_tab, true);
             TabItem_MouseLeftButtonUp(information_tab, null);
             extract_button.Visibility = Visibility.Collapsed;
             explore_button.Visibility = Visibility.Collapsed;
@@ -1036,12 +1124,17 @@ namespace File_Manager
         {
             if (CancelEveryThinig)
                 return;
+            if (Functions.IsLink(directory) && directory_list.Count > 0)
+                return;
             var d = directory.GetDirectories();
             foreach (var i in d)
             {
                 directory_list.Add(new FileOperationItem(i, false, null));
                 try
-                { GetSubFilesAndDirectories(i); }
+                {
+                    if (!Functions.IsLink(i))
+                        GetSubFilesAndDirectories(i);
+                }
                 catch (Exception) { }
             }
             var f = directory.GetFiles();
@@ -1067,9 +1160,7 @@ namespace File_Manager
             item_location.Text = "Path: root";
             change_name_expander.Header = "Change Label: ";
             item_type.Text = driveInfo.DriveType.ToString();
-            app_can_open_this_type.Items.Add("File Manager");
-            app_can_open_this_type.Items.Add("File Explorer");
-            app_can_open_this_type.Items.Add("Windows Explorer");
+            FillFolderApps();
             time_region.Visibility = Visibility.Hidden;
             item_image.Source = Functions.GetDriveImage(driveInfo, 256);
 
@@ -1077,6 +1168,10 @@ namespace File_Manager
             move_to_button.Visibility = delete_button.Visibility = Visibility.Collapsed;
             preview_tab.IsEnabled = false;
             hash_tab.IsEnabled = false;
+            preview_tab.ToolTip = "Preview is for files, use Open to browse this drive";
+            hash_tab.ToolTip = "Hashes are calculated for files only";
+            ToolTipService.SetShowOnDisabled(preview_tab, true);
+            ToolTipService.SetShowOnDisabled(hash_tab, true);
             open_with_button.ToolTip = "Open in new window";
             open_button_image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Menu/harddisk.png"));
             open_with_button_image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Menu/window-new.png"));
@@ -1117,6 +1212,8 @@ namespace File_Manager
                 item_name.Text = "Name: " + driveInfo.Name;
                 attribute_grid.IsEnabled = false;
                 security_tab.IsEnabled = false;
+                security_tab.ToolTip = "The drive is not ready";
+                ToolTipService.SetShowOnDisabled(security_tab, true);
                 change_name_expander.IsEnabled = false;
                 item_type_discriotion.Text = "Drive is not ready!";
                 item_size.Text = "0 byte";
@@ -1141,138 +1238,630 @@ namespace File_Manager
         {
             try
             {
-                if (File.Exists(Environment.CurrentDirectory + "\\Tools\\notepad++\\notepad++.exe"))
-                    Process.Start(new ProcessStartInfo("Tools\\notepad++\\notepad++.exe", fi.FullName));
+                string editor = Functions.FindProgram("notepad++.exe", "Notepad++", @"SOFTWARE\Notepad++", "");
+                if (editor != null)
+                    Process.Start(new ProcessStartInfo(editor, "\"" + fi.FullName + "\""));
                 else
-                    Messages.ShowMessage("'Notepad++' is missing.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "We can not find some components, please reinstall the app.");
+                    Process.Start(new ProcessStartInfo(System.IO.Path.Combine(Environment.SystemDirectory, "notepad.exe"), "\"" + fi.FullName + "\""));
             }
-            catch (Exception ex) { Messages.ShowMessage("We found error while starting the editor 'Notepad++'.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
+            catch (Exception ex) { Messages.ShowMessage("We found error while starting the editor.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
         }
 
         private void ConvertToISOButton_Click(object sender, RoutedEventArgs e)
         {
-            if (File.Exists(Environment.CurrentDirectory + "\\Tools\\compress\\iso\\unisz.exe"))
-            {
-                if (File.Exists(fi.FullName))
-                {
-                    bool go = true;
-                    if (File.Exists(fi.FullName.Remove(fi.FullName.Length - 1) + "o"))
-                        if (Messages.ShowMessage("File is already exist overwrite?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "A file with name '" + fi.FullName.Remove(fi.FullName.Length - 1) + "o' is already in '" + fi.DirectoryName + " ' please move it or select other location.") == MyMessageBoxResult.No)
-                            go = false;
-                    if (go)
-                        new Operation().ConvertToIso(fi, "", true);
-                }
-                else
-                    Messages.ShowMessage("We can not find the file.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "This file '" + fi.FullName + "' is not exist.");
-            }
-            else
-                Messages.ShowMessage("'UnISZ' is missing.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "We can not find some components, please reinstall the app.");
-
-            //password is needed.
-            //File open error.
-            //Error filename.
-            //Not an .ISZ file.
-            //File create error.
-            //Read error.Error uncompressing ISZ file. wrong password
-            //password and exit code message box (event 'exited')
-            //System.Windows.Forms.SaveFileDialog SFD = new System.Windows.Forms.SaveFileDialog();
-            //SFD.Filter = "ISO File (*.iso)|*.iso";
-            //if (SFD.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-            //{
-            //    Process.Start(new ProcessStartInfo(Environment.CurrentDirectory + "\\Tools\\compress\\iso\\unisz.exe", " \"" + fi.FullName + "\""));
-            //    File.Move(fi.FullName.Remove(fi.FullName.Length - 1) + "o", SFD.FileName);
-            //}
+            Messages.ShowMessage("Convert to ISO is not available.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "It needs the tool 'unisz.exe', which has no official installer or download.");
         }
+
+        [DllImport("gdi32.dll", CharSet = CharSet.Unicode)]
+        static extern int AddFontResource(string lpszFilename);
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam, uint fuFlags, uint uTimeout, out IntPtr lpdwResult);
 
         private void InstallFontButton_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                if (File.Exists(Environment.CurrentDirectory + "\\Tools\\InstallFonts.exe"))
+                string fonts_folder = System.IO.Path.Combine(System.IO.Path.Combine(System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Microsoft"), "Windows"), "Fonts");
+                string target = System.IO.Path.Combine(fonts_folder, fi.Name);
+                string system_font = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Fonts), fi.Name);
+                if (File.Exists(target) || File.Exists(system_font))
                 {
-                    ProcessStartInfo PSI = new ProcessStartInfo("Tools\\InstallFonts.exe", "\"" + fi.FullName + "\"");
-                    PSI.Verb = "runas";
-                    var Pr = Process.Start(PSI);
-                    if (Pr.ExitCode == 1)
-                        Messages.ShowMessage("Font has been installed successfully.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
-                    else
-                        Messages.ShowMessage("We find error while installing font.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, false, "");
+                    Messages.ShowMessage("This font is already installed.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, false, "");
+                    return;
                 }
-                else
-                    Messages.ShowMessage("'InstallFonts' tool is missing.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, "We can not find some components, please reinstall the app.");
+                string font_name = System.IO.Path.GetFileNameWithoutExtension(fi.Name);
+                try
+                {
+                    var families = Fonts.GetFontFamilies(new Uri(fi.FullName));
+                    if (families.Count > 0)
+                        font_name = families.First().Source.Split('#').Last();
+                }
+                catch (Exception) { }
+                Directory.CreateDirectory(fonts_folder);
+                File.Copy(fi.FullName, target);
+                using (Microsoft.Win32.RegistryKey key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows NT\CurrentVersion\Fonts"))
+                    key.SetValue(font_name + (fi.Extension.ToLower() == ".otf" ? " (OpenType)" : " (TrueType)"), target);
+                AddFontResource(target);
+                IntPtr result;
+                SendMessageTimeout(new IntPtr(0xffff), 0x001D, IntPtr.Zero, IntPtr.Zero, 0x0002, 1000, out result);
+                Messages.ShowMessage("Font has been installed successfully.", ModrenMessageButton.OK, ModrenMessageImage.Information, ModrenMessageSound.Information, true, "The font was installed for your user account only.");
             }
             catch (Exception ex) { Messages.ShowMessage("We found error while trying to install the font.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
         }
 
         private void ExtractArchiveButton_Click(object sender, RoutedEventArgs e)
         {
-            //Move to operation
-            string path = new Folder_Picker().ShowThisDialog();
-            if (path != null)
-            {
-                ProcessStartInfo PSI;
-                Dictionary<int, string> exit_code = new Dictionary<int, string>(6);
-                switch (fi.Extension.ToLower())
-                {
-                    case ".uha":
-                        PSI = new ProcessStartInfo("Tools\\UHARC.exe", " x \"" + path + "\" \"" + path + "\"");
-                        exit_code.Add(0, "Complete"); exit_code.Add(1, "Waring: Something maybe not complete successfuly."); exit_code.Add(2, "Fatal error"); exit_code.Add(7, "Command line error"); exit_code.Add(8, "No enough memory "); exit_code.Add(255, "You stopped the process");
-                        break;
-                    case ".kgb":
-                        PSI = new ProcessStartInfo("Tools\\KGB.exe", " x \"" + path + "\" \"" + path + "\"");
-                        exit_code.Add(0, "Complete"); exit_code.Add(1, "Waring: Something maybe not complete successfuly."); exit_code.Add(2, "Fatal error"); exit_code.Add(7, "Command line error"); exit_code.Add(8, "No enough memory "); exit_code.Add(255, "You stopped the process");
-                        break;
-                    case ".mht":
-                        PSI = new ProcessStartInfo("Tools\\extractMHT.exe", " \"" + path + "\" \"" + path + "\"");
-                        exit_code.Add(0, "Complete"); exit_code.Add(1, "Waring: Something maybe not complete successfuly."); exit_code.Add(2, "Fatal error"); exit_code.Add(7, "Command line error"); exit_code.Add(8, "No enough memory "); exit_code.Add(255, "You stopped the process");
-                        break;
-                    case ".mhtml":
-                        PSI = new ProcessStartInfo("Tools\\extractMHT.exe", " \"" + path + "\" \"" + path + "\"");
-                        exit_code.Add(0, "Complete"); exit_code.Add(1, "Waring: Something maybe not complete successfuly."); exit_code.Add(2, "Fatal error"); exit_code.Add(7, "Command line error"); exit_code.Add(8, "No enough memory "); exit_code.Add(255, "You stopped the process");
-                        break;
-                    case ".mou":
-                        PSI = new ProcessStartInfo("Tools\\WinMount\\winmount", " -e \"" + path + "\" -s:\"" + path + "\"");
-                        exit_code.Add(0, "Complete"); exit_code.Add(1, "Waring: Something maybe not complete successfuly."); exit_code.Add(2, "Fatal error"); exit_code.Add(7, "Command line error"); exit_code.Add(8, "No enough memory "); exit_code.Add(255, "You stopped the process");
-                        break;
-                    default:
-                        PSI = new ProcessStartInfo("Tools\\7z.exe", " x \"" + path + "\" -o\"" + path + "\"");
-                        exit_code.Add(0, "Complete"); exit_code.Add(1, "Waring: Something maybe not complete successfuly."); exit_code.Add(2, "Fatal error"); exit_code.Add(7, "Command line error"); exit_code.Add(8, "No enough memory "); exit_code.Add(255, "You stopped the process");
-                        break;
-                }
-                try
-                {
-
-                    Process process =Process.Start(PSI);
-                    process.WaitForExit(int.MaxValue);
-                    exit_code = new Dictionary<int, string>(6);
-                    Messages.ShowMessage(exit_code[process.ExitCode], ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, false, "");
-                }
-                catch (Exception ex)
-                {
-                    Messages.ShowMessage("Something went wrong.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message);
-                    Close();
-                }
-            }
+            File_Compresser window = new File_Compresser();
+            Functions.ShowTool(window);
+            window.OpenArchive(fi.FullName, true);
         }
 
         private void ExplorerArchiveButton_Click(object sender, RoutedEventArgs e)
         {
-            //move to Compress File Manager
-            //catch Error massages
-            try
-            {
-                if (fi.Extension.ToLower() == ".uha")
-                    Process.Start(new ProcessStartInfo("Tools\\WinUha.exe", "\"" + fi.FullName + "\""));
-                else if (fi.Extension.ToLower() == ".kgb")
-                    Process.Start(new ProcessStartInfo("Tools\\KGB.exe", "\"" + fi.FullName + "\""));
-                else
-                    Process.Start(new ProcessStartInfo("Tools\\7zFM.exe", "\"" + fi.FullName + "\""));
-            }
-            catch (Exception ex)
-            { Messages.ShowMessage("Something went wrong.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
+            File_Compresser window = new File_Compresser();
+            Functions.ShowTool(window);
+            window.OpenArchive(fi.FullName, false);
         }
 
 
+
+        #endregion
+
+        #region Shell preview and messages
+
+        bool cloud_only = false, start_with_hash = false;
+        ShellPreviewHost shell_host;
+
+        internal void ShowHashDialog(FileInfo file)
+        {
+            start_with_hash = true;
+            ShowDialog(file, ItemType.File);
+        }
+
+        static bool IsCloudOnly(FileInfo file)
+        {
+            try
+            {
+                return ((int)file.Attributes & (0x400000 | 0x40000 | 0x1000)) != 0;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        void PreviewWith(Action make)
+        {
+            if (!cloud_only && !start_with_hash)
+            {
+                make();
+                return;
+            }
+            Button show = new Button() { Content = cloud_only ? "Download and preview" : "Show preview" };
+            Button open = new Button() { Content = "Open" };
+            Grid panel = ShowPreviewMessage(Functions.GetFileImage256(fi.Extension), cloud_only ? "This file is stored only in the cloud" : "Preview is paused", cloud_only ? "Previewing it downloads it from OneDrive (or your cloud provider) to this PC." : "Press 'Show preview' to load the preview of this file.", show, open);
+            show.Click += (object sender, RoutedEventArgs e) =>
+            {
+                cloud_only = start_with_hash = false;
+                preview_grid.Children.Remove(panel);
+                make();
+            };
+            open.Click += MainMenuOpen_Click;
+        }
+
+        void PreviewWithShell(FileInfo file)
+        {
+            Guid handler;
+            if (!ShellPreviewHost.FindHandler(file.Extension, out handler))
+            {
+                ShowNoPreview(file, null);
+                TabItem_MouseLeftButtonUp(information_tab, null);
+                return;
+            }
+            PreviewWith(() =>
+            {
+                ShellPreviewHost host = new ShellPreviewHost();
+                host.Margin = new Thickness(6, 0, 12, 0);
+                shell_host = host;
+                preview_grid.Children.Add(host);
+                bool opened = false;
+                host.Loaded += (object sender, RoutedEventArgs e) =>
+                {
+                    if (opened)
+                        return;
+                    opened = true;
+                    Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        if (CancelEveryThinig)
+                            return;
+                        string error = host.Open(file.FullName, handler);
+                        if (error != null)
+                        {
+                            preview_grid.Children.Remove(host);
+                            host.Dispose();
+                            if (shell_host == host)
+                                shell_host = null;
+                            ShowNoPreview(file, "The preview handler of this file type failed: " + error);
+                        }
+                    }), System.Windows.Threading.DispatcherPriority.Background);
+                };
+            });
+        }
+
+        void ShowNoPreview(FileInfo file, string reason)
+        {
+            Button open = new Button() { Content = "Open" };
+            open.Click += MainMenuOpen_Click;
+            ShowPreviewMessage(Functions.GetFileImage256(file.Extension), "No preview available for " + (file.Extension.Length > 0 ? file.Extension.ToLower() : "this file"), reason ?? "Windows has no preview handler for this file type.", open);
+        }
+
+        Grid ShowPreviewMessage(ImageSource icon, string title, string detail, params Button[] buttons)
+        {
+            Grid panel = new Grid() { Background = new SolidColorBrush(Color.FromRgb(0xF4, 0xF4, 0xF4)), Margin = new Thickness(0, 0, 10, 0) };
+            StackPanel stack = new StackPanel() { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center, MaxWidth = 600 };
+            stack.Children.Add(new Image() { Source = icon, Width = 128, Height = 128 });
+            stack.Children.Add(new TextBlock() { Text = title, FontSize = 22, Foreground = new SolidColorBrush(Color.FromRgb(0x40, 0x40, 0x40)), TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 16, 0, 0) });
+            if (!string.IsNullOrEmpty(detail))
+                stack.Children.Add(new TextBlock() { Text = detail, FontSize = 14, Foreground = Brushes.Gray, TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) });
+            StackPanel row = new StackPanel() { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 20, 0, 0) };
+            foreach (var i in buttons)
+            {
+                i.MinWidth = 150;
+                i.Height = 32;
+                i.Margin = new Thickness(5, 0, 5, 0);
+                i.FontSize = 14;
+                i.Background = null;
+                i.BorderBrush = i.Foreground = new SolidColorBrush(Color.FromRgb(0x2A, 0xB0, 0x48));
+                row.Children.Add(i);
+            }
+            stack.Children.Add(row);
+            panel.Children.Add(stack);
+            preview_grid.Children.Add(panel);
+            return panel;
+        }
+
+        #endregion
+
+        #region More information
+
+        void FillMoreInformation(FileSystemInfo item)
+        {
+            info_owner.Text = "Owner: " + OwnerName(item);
+            info_owner.ToolTip = info_owner.Text;
+            FileInfo file = item as FileInfo;
+            if (file == null || cloud_only)
+                return;
+            string extension = file.Extension.ToLower();
+            if (extension == ".exe" || extension == ".dll" || extension == ".sys" || extension == ".ocx" || extension == ".scr" || extension == ".cpl")
+                try
+                {
+                    FileVersionInfo version = FileVersionInfo.GetVersionInfo(file.FullName);
+                    if (!string.IsNullOrEmpty(version.FileVersion))
+                    {
+                        info_version.Text = "Version: " + version.FileVersion + (string.IsNullOrEmpty(version.ProductName) ? "" : " (" + version.ProductName + ")");
+                        info_version.ToolTip = info_version.Text + (string.IsNullOrEmpty(version.CompanyName) ? "" : "\n" + version.CompanyName);
+                        info_version.Visibility = Visibility.Visible;
+                    }
+                }
+                catch (Exception) { }
+            if (FileInfoCombonents.FilesInformation.ContainsKey(extension) && FileInfoCombonents.FilesInformation[extension].Category == FileCategory.Image)
+                try
+                {
+                    using (FileStream stream = new FileStream(file.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                    {
+                        BitmapDecoder decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.DelayCreation | BitmapCreateOptions.IgnoreColorProfile, BitmapCacheOption.None);
+                        info_dimensions.Text = "Dimensions: " + decoder.Frames[0].PixelWidth + " x " + decoder.Frames[0].PixelHeight + " pixels";
+                        info_dimensions.Visibility = Visibility.Visible;
+                    }
+                }
+                catch (Exception) { }
+        }
+
+        static string OwnerName(FileSystemInfo item)
+        {
+            try
+            {
+                FileSystemSecurity security = item is FileInfo ? (FileSystemSecurity)((FileInfo)item).GetAccessControl(AccessControlSections.Owner) : ((DirectoryInfo)item).GetAccessControl(AccessControlSections.Owner);
+                return IdentityName(security.GetOwner(typeof(SecurityIdentifier)));
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return "(no permission to read)";
+            }
+            catch (Exception)
+            {
+                return "(unknown)";
+            }
+        }
+
+        static string IdentityName(IdentityReference identity)
+        {
+            if (identity == null)
+                return "(unknown)";
+            try
+            {
+                return identity.Translate(typeof(NTAccount)).Value;
+            }
+            catch (Exception)
+            {
+                return identity.Value;
+            }
+        }
+
+        void FillApps(string extension)
+        {
+            ClearApps();
+            string default_name = ShellPreviewHost.QueryAssociation(4, extension, null), default_exe = ShellPreviewHost.QueryAssociation(2, extension, null), default_id = ShellPreviewHost.QueryAssociation(21, extension, null);
+            List<OpenWithApp> apps = ShellAssociations.Handlers(extension, default_name, default_exe, default_id);
+            if (!apps.Any(x => x.IsDefault) && !string.IsNullOrEmpty(default_name))
+                apps.Insert(0, new OpenWithApp() { Name = default_name, Id = default_exe, Kind = OpenWithKind.Default, IsDefault = true, Icon = ShellAssociations.LoadIcon(default_exe, 0), Tip = default_name + (string.IsNullOrEmpty(default_exe) ? "" : "\n" + default_exe) });
+            foreach (var i in apps)
+                app_can_open_this_type.Items.Add(CreateAppItem(i, extension));
+            if (apps.Count == 0)
+                app_can_open_this_type.Items.Add(new ListBoxItem() { Content = new TextBlock() { Text = "No app is registered for this type", TextTrimming = TextTrimming.CharacterEllipsis, FontSize = 13 }, Foreground = Brushes.Gray, IsEnabled = false });
+            app_can_open_this_type.Items.Add(CreateAppItem(new OpenWithApp() { Name = "Other app...", Kind = OpenWithKind.Other, Icon = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Menu/open-with.png")), Tip = "Choose another app in the Windows \"Open with\" dialog" }, extension));
+        }
+
+        void FillFolderApps()
+        {
+            ClearApps();
+            app_can_open_this_type.Items.Add(CreateAppItem(new OpenWithApp() { Name = "File Manager", Kind = OpenWithKind.FileManager, Icon = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/App Icon.png")), Tip = "Open in a new File Manager window" }, null));
+            app_can_open_this_type.Items.Add(CreateAppItem(new OpenWithApp() { Name = "File Explorer", Kind = OpenWithKind.FileExplorer, Icon = ShellAssociations.LoadIcon(System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe"), 0), Tip = "Open in Windows File Explorer" }, null));
+        }
+
+        void ClearApps()
+        {
+            foreach (var i in app_can_open_this_type.Items.OfType<ListBoxItem>())
+                if (i.Tag is OpenWithApp)
+                    ShellAssociations.Release(((OpenWithApp)i.Tag).Handler);
+            app_can_open_this_type.Items.Clear();
+        }
+
+        ListBoxItem CreateAppItem(OpenWithApp app, string extension)
+        {
+            DockPanel row = new DockPanel() { Height = 20 };
+            row.Children.Add(new Image() { Source = app.Icon, Width = 16, Height = 16, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center });
+            row.Children.Add(new TextBlock() { Text = app.Title, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, FontSize = 13 });
+            ListBoxItem item = new ListBoxItem() { Content = row, Tag = app, ToolTip = app.Tip };
+            item.MouseDoubleClick += (object sender, MouseButtonEventArgs e) =>
+            {
+                if (e.ChangedButton != MouseButton.Left)
+                    return;
+                e.Handled = true;
+                OpenApp(app);
+            };
+            if (app.Kind == OpenWithKind.Other)
+                return item;
+            ContextMenu menu = new ContextMenu();
+            MenuItem open = new MenuItem() { Header = "Open with this app", FontWeight = FontWeights.Bold };
+            open.Click += (object sender, RoutedEventArgs e) => { OpenApp(app); };
+            menu.Items.Add(open);
+            if (app.Kind == OpenWithKind.Handler || app.Kind == OpenWithKind.Default)
+            {
+                MenuItem set_default = new MenuItem() { Header = "Set as default..." };
+                ToolTipService.SetShowOnDisabled(set_default, true);
+                if (app.IsDefault)
+                {
+                    set_default.IsEnabled = false;
+                    set_default.ToolTip = "This is already the default app for " + extension + " files";
+                }
+                else
+                {
+                    set_default.ToolTip = "Opens the Windows \"Open with\" dialog with \"Always use this app\" ticked: choose " + app.Name + " there (the file opens with it)";
+                    set_default.Click += (object sender, RoutedEventArgs e) =>
+                    {
+                        string error = ShellAssociations.OpenWithDialog(new WindowInteropHelper(this).Handle, fi.FullName, true);
+                        if (error != null)
+                            Messages.ShowMessage("We can not open the Windows \"Open with\" dialog.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, error);
+                        else
+                            FillApps(extension);
+                    };
+                }
+                menu.Items.Add(set_default);
+            }
+            menu.Items.Add(new Separator());
+            MenuItem copy = new MenuItem() { Header = "Copy name" };
+            copy.Click += (object sender, RoutedEventArgs e) =>
+            {
+                try
+                {
+                    Clipboard.SetText(app.Name);
+                }
+                catch (Exception ex)
+                {
+                    Messages.ShowMessage("We can not copy to the clipboard.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, ex.Message);
+                }
+            };
+            menu.Items.Add(copy);
+            item.ContextMenu = menu;
+            return item;
+        }
+
+        void OpenApp(OpenWithApp app)
+        {
+            string path = fi != null ? fi.FullName : dri != null ? dri.Name : di.FullName, error = null;
+            try
+            {
+                if (app.Kind == OpenWithKind.FileManager)
+                    Directory_Explorer.ExplorePath(path);
+                else if (app.Kind == OpenWithKind.FileExplorer)
+                    Process.Start(System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe"), "\"" + path + "\"");
+                else if (app.Kind == OpenWithKind.Other)
+                    error = ShellAssociations.OpenWithDialog(new WindowInteropHelper(this).Handle, path, false);
+                else if (app.IsDefault || app.Handler == null)
+                    Process.Start(path);
+                else
+                    error = ShellAssociations.Invoke(app.Handler, path);
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+            }
+            if (error != null)
+                Messages.ShowMessage(string.Format("Sorry we can not open '{0}' with {1}.", path, app.Name), ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, error);
+        }
+
+        private void AppsList_KeyDown(object sender, KeyEventArgs e)
+        {
+            ListBoxItem item = app_can_open_this_type.SelectedItem as ListBoxItem;
+            if (e.Key == Key.Enter && item != null && item.Tag is OpenWithApp)
+            {
+                e.Handled = true;
+                OpenApp((OpenWithApp)item.Tag);
+            }
+        }
+
+        private void CopyDetails_Click(object sender, RoutedEventArgs e)
+        {
+            StringBuilder text = new StringBuilder();
+            text.AppendLine(item_path.Text);
+            foreach (var i in new TextBlock[] { item_name, item_location, item_type, item_type_discriotion, item_category, item_size, item_ondisk_size, directory_content, creation_time, modified_time, last_accessed_time, info_owner, info_version, info_dimensions })
+                if (i.Visibility == Visibility.Visible && !string.IsNullOrEmpty(i.Text))
+                    text.AppendLine(i.Text);
+            try
+            {
+                Clipboard.SetText(text.ToString());
+            }
+            catch (Exception ex)
+            {
+                Messages.ShowMessage("We can not copy to the clipboard.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, ex.Message);
+            }
+        }
+
+        #endregion
+
+        #region Hash
+
+        BackgroundWorker hash_worker;
+        string[] hash_results;
+
+        private void HashCalculate_Click(object sender, RoutedEventArgs e)
+        {
+            if (fi == null || (hash_worker != null && hash_worker.IsBusy))
+                return;
+            string path = fi.FullName;
+            string[] results = null;
+            string error = null;
+            hash_md5.Text = hash_sha1.Text = hash_sha256.Text = hash_sha512.Text = "";
+            hash_results = null;
+            hash_copy_md5.IsEnabled = hash_copy_sha1.IsEnabled = hash_copy_sha256.IsEnabled = hash_copy_sha512.IsEnabled = false;
+            HashCompare_TextChanged(null, null);
+            hash_worker = new BackgroundWorker();
+            hash_worker.WorkerReportsProgress = hash_worker.WorkerSupportsCancellation = true;
+            background_workers.Add(hash_worker);
+            hash_worker.DoWork += (object sender2, DoWorkEventArgs e2) =>
+            {
+                BackgroundWorker worker = (BackgroundWorker)sender2;
+                try
+                {
+                    using (FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 1024 * 1024, FileOptions.SequentialScan))
+                    using (MD5 md5 = new MD5CryptoServiceProvider())
+                    using (SHA1 sha1 = new SHA1CryptoServiceProvider())
+                    using (SHA256 sha256 = new SHA256Managed())
+                    using (SHA512 sha512 = new SHA512Managed())
+                    {
+                        HashAlgorithm[] algorithms = { md5, sha1, sha256, sha512 };
+                        byte[] buffer = new byte[1024 * 1024];
+                        long done = 0, length = Math.Max(1, stream.Length);
+                        int read, last_percent = -1;
+                        while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+                        {
+                            if (worker.CancellationPending)
+                            {
+                                e2.Cancel = true;
+                                return;
+                            }
+                            foreach (var i in algorithms)
+                                i.TransformBlock(buffer, 0, read, null, 0);
+                            done += read;
+                            int percent = (int)(done * 100 / length);
+                            if (percent != last_percent)
+                            {
+                                last_percent = percent;
+                                worker.ReportProgress(percent);
+                            }
+                        }
+                        foreach (var i in algorithms)
+                            i.TransformFinalBlock(buffer, 0, 0);
+                        results = algorithms.Select(x => BitConverter.ToString(x.Hash).Replace("-", "").ToLower()).ToArray();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    error = ex.Message;
+                }
+            };
+            hash_worker.ProgressChanged += (object sender2, ProgressChangedEventArgs e2) =>
+            {
+                hash_progress.Value = e2.ProgressPercentage;
+                hash_status.Text = "Calculating... " + e2.ProgressPercentage + "%";
+            };
+            hash_worker.RunWorkerCompleted += (object sender2, RunWorkerCompletedEventArgs e2) =>
+            {
+                if (CancelEveryThinig)
+                    return;
+                hash_progress.Visibility = Visibility.Hidden;
+                hash_calculate_btm.IsEnabled = true;
+                hash_calculate_btm.ToolTip = null;
+                hash_cancel_btm.IsEnabled = false;
+                hash_cancel_btm.ToolTip = "Nothing is being calculated";
+                if (e2.Cancelled)
+                    hash_status.Text = "Canceled.";
+                else if (error != null)
+                {
+                    hash_status.Text = "We can not calculate the hash of this file: " + error;
+                    Messages.ShowMessage("We can not calculate the hash of this file.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, error);
+                }
+                else if (results != null)
+                {
+                    hash_results = results;
+                    hash_md5.Text = results[0];
+                    hash_sha1.Text = results[1];
+                    hash_sha256.Text = results[2];
+                    hash_sha512.Text = results[3];
+                    hash_copy_md5.IsEnabled = hash_copy_sha1.IsEnabled = hash_copy_sha256.IsEnabled = hash_copy_sha512.IsEnabled = true;
+                    hash_copy_md5.ToolTip = hash_copy_sha1.ToolTip = hash_copy_sha256.ToolTip = hash_copy_sha512.ToolTip = "Copy to the clipboard";
+                    hash_status.Text = "Done.";
+                    HashCompare_TextChanged(null, null);
+                }
+            };
+            hash_progress.Value = 0;
+            hash_progress.Visibility = Visibility.Visible;
+            hash_status.Text = "Calculating... 0%";
+            hash_calculate_btm.IsEnabled = false;
+            hash_calculate_btm.ToolTip = "Already calculating";
+            hash_cancel_btm.IsEnabled = true;
+            hash_cancel_btm.ToolTip = null;
+            hash_worker.RunWorkerAsync();
+        }
+
+        private void HashCancel_Click(object sender, RoutedEventArgs e)
+        {
+            if (hash_worker != null && hash_worker.IsBusy)
+                hash_worker.CancelAsync();
+        }
+
+        private void HashCopy_Click(object sender, RoutedEventArgs e)
+        {
+            TextBox box = FindName("hash_" + (sender as Button).Tag) as TextBox;
+            if (box != null && box.Text.Length > 0)
+                try
+                {
+                    Clipboard.SetText(box.Text);
+                }
+                catch (Exception ex)
+                {
+                    Messages.ShowMessage("We can not copy to the clipboard.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, ex.Message);
+                }
+        }
+
+        private void HashCompare_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (hash_compare == null || hash_compare_result == null)
+                return;
+            string value = new string(hash_compare.Text.Where(x => !char.IsWhiteSpace(x) && x != '-').ToArray()).ToLower();
+            if (value.Length == 0)
+            {
+                hash_compare.ClearValue(TextBox.BackgroundProperty);
+                hash_compare_result.Text = "";
+            }
+            else if (hash_results == null)
+            {
+                hash_compare.ClearValue(TextBox.BackgroundProperty);
+                hash_compare_result.Foreground = Brushes.Gray;
+                hash_compare_result.Text = "Press Calculate to compare.";
+            }
+            else
+            {
+                int index = Array.IndexOf(hash_results, value);
+                string[] names = { "MD5", "SHA-1", "SHA-256", "SHA-512" };
+                hash_compare.Background = new SolidColorBrush(index >= 0 ? Color.FromRgb(0xD4, 0xF5, 0xD9) : Color.FromRgb(0xFA, 0xD4, 0xD2));
+                hash_compare_result.Foreground = index >= 0 ? Brushes.ForestGreen : Brushes.Tomato;
+                hash_compare_result.Text = index >= 0 ? "Matches the " + names[index] + " of this file." : "Does not match any hash of this file.";
+            }
+        }
+
+        #endregion
+
+        #region Security
+
+        bool security_loaded = false;
+
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+        static extern bool SHObjectProperties(IntPtr hwnd, uint shopObjectType, string pszObjectName, string pszPropertyPage);
+
+        string ItemPath()
+        {
+            return fi != null ? fi.FullName : di != null ? di.FullName : dri.Name;
+        }
+
+        void LoadSecurity()
+        {
+            security_loaded = true;
+            security_list.Items.Clear();
+            security_error.Visibility = Visibility.Collapsed;
+            security_list.Visibility = Visibility.Visible;
+            try
+            {
+                FileSystemSecurity security = fi != null ? (FileSystemSecurity)new FileInfo(fi.FullName).GetAccessControl() : new DirectoryInfo(ItemPath()).GetAccessControl();
+                security_owner.Text = IdentityName(security.GetOwner(typeof(SecurityIdentifier)));
+                foreach (FileSystemAccessRule i in security.GetAccessRules(true, true, typeof(SecurityIdentifier)))
+                    security_list.Items.Add(new SecurityRuleItem(IdentityName(i.IdentityReference), i.AccessControlType == AccessControlType.Allow ? "Allow" : "Deny", RightsName(i.FileSystemRights), i.IsInherited ? "Yes" : "No"));
+                if (security_list.Items.Count == 0)
+                {
+                    security_error.Text = "This item has no permission entries.";
+                    security_error.Visibility = Visibility.Visible;
+                }
+            }
+            catch (UnauthorizedAccessException)
+            {
+                security_owner.Text = "(no permission to read)";
+                security_list.Visibility = Visibility.Hidden;
+                security_error.Text = "You do not have permission to read the security settings of this item.\nPress 'Advanced...' to open the Windows security properties, it can ask for administrator rights.";
+                security_error.Visibility = Visibility.Visible;
+            }
+            catch (Exception ex)
+            {
+                security_list.Visibility = Visibility.Hidden;
+                security_error.Text = "We can not read the security settings of this item: " + ex.Message;
+                security_error.Visibility = Visibility.Visible;
+            }
+        }
+
+        static string RightsName(FileSystemRights rights)
+        {
+            int value = (int)rights;
+            List<string> names = new List<string>();
+            if ((value & 0x10000000) != 0)
+                names.Add("Full control");
+            if ((value & unchecked((int)0x80000000)) != 0)
+                names.Add("Read");
+            if ((value & 0x40000000) != 0)
+                names.Add("Write");
+            if ((value & 0x20000000) != 0)
+                names.Add("Execute");
+            FileSystemRights specific = (FileSystemRights)(value & 0x0FFFFFFF);
+            if ((specific & FileSystemRights.FullControl) == FileSystemRights.FullControl)
+                names.Add("Full control");
+            else if ((specific & FileSystemRights.Modify) == FileSystemRights.Modify)
+                names.Add("Modify");
+            else if ((specific & FileSystemRights.ReadAndExecute) == FileSystemRights.ReadAndExecute)
+            {
+                names.Add("Read & execute");
+                if ((specific & FileSystemRights.Write) == FileSystemRights.Write)
+                    names.Add("Write");
+            }
+            else if ((specific & ~FileSystemRights.Synchronize) != 0)
+                names.Add((specific & ~FileSystemRights.Synchronize).ToString());
+            return names.Count == 0 ? "Special" : string.Join(", ", names.Distinct().ToArray());
+        }
+
+        private void SecurityAdvanced_Click(object sender, RoutedEventArgs e)
+        {
+            if (!SHObjectProperties(new WindowInteropHelper(this).Handle, 2, ItemPath(), "Security"))
+                Messages.ShowMessage("We can not open the Windows security properties of this item.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
+        }
 
         #endregion
 
@@ -1293,6 +1882,8 @@ namespace File_Manager
             foreach (Label i in tab_control.Children)
                 i.Background = null;
             ((Label)sender).Background = Brushes.White;
+            if (sender == security_tab && !security_loaded)
+                LoadSecurity();
             ThicknessAnimation an = new ThicknessAnimation(new Thickness(tab_control.Children.IndexOf(((Label)sender)) * -800, 0, 0, 0), new Duration(new TimeSpan(1000000)));
             mother_of_all_grid.BeginAnimation(Grid.MarginProperty, an);
         }
@@ -1305,6 +1896,8 @@ namespace File_Manager
         {
             if (main_menu.Margin.Left < -60)
             {
+                if (shell_host != null)
+                    shell_host.Visibility = Visibility.Hidden;
                 ThicknessAnimation animation = new ThicknessAnimation(new Thickness(0, 0, 0, 0), new Duration(new TimeSpan(1000000)));
                 main_menu.BeginAnimation(Grid.MarginProperty, animation);
                 BackgroundWorker bw = new BackgroundWorker();
@@ -1366,6 +1959,8 @@ namespace File_Manager
         {
             ThicknessAnimation animation = new ThicknessAnimation(new Thickness(-64, 0, 0, 0), new Duration(new TimeSpan(750000)));
             main_menu.BeginAnimation(Grid.MarginProperty, animation);
+            if (shell_host != null)
+                shell_host.Visibility = Visibility.Visible;
         }
 
 
@@ -1509,17 +2104,19 @@ namespace File_Manager
         private void MainMenuDelete_Click(object sender, RoutedEventArgs e)
         {
             //Move to operation
-            if (Messages.ShowMessage("Do you want to delete '" + ((type == ItemType.Directory) ? di.Name : fi.Name) + "'?", ModrenMessageButton.YesNo, ModrenMessageImage.Delete, ModrenMessageSound.Question, true, Messages.GetItemInfo((type == ItemType.Directory) ? di : (FileSystemInfo)fi)) == MyMessageBoxResult.Yes)
-                try
-                {
-                    if (type == ItemType.Directory)
-                        di.Delete(true);
-                    else
-                        if (!fi.IsReadOnly && fi.Exists)
-                        fi.Delete();
-                }
-                catch (Exception ex)
-                { Messages.ShowMessage("Something went wrong.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
+            bool permanent = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
+            if (type != ItemType.Directory && type != ItemType.File)
+                return;
+            List<FileSystemInfo> items = new List<FileSystemInfo>() { (type == ItemType.Directory) ? di : (FileSystemInfo)fi };
+            if (xps_document != null)
+                try { xps_document.Close(); }
+                catch (Exception) { }
+            if (Functions.ConfirmDelete(items, permanent) && Functions.DeleteItems(items, permanent, this))
+            {
+                items[0].Refresh();
+                if (!items[0].Exists)
+                    Close();
+            }
         }
 
         #endregion
@@ -1594,12 +2191,25 @@ namespace File_Manager
         {
             if (rename_textbox.Text.Length > 0 && rename_textbox.Text != "." && rename_textbox.Text[rename_textbox.Text.Length - 1] != '.' /*&& !File.Exists(dir.Parent.FullName + "\\" + name.Text) && !Directory.Exists(dir.Parent.FullName + "\\" + name.Text)*/)
             {
-                if (type == ItemType.Directory)
-                    di.MoveTo(di.Parent.FullName + "\\" + rename_textbox.Text);
-                else if (type == ItemType.File)
-                    fi.MoveTo(fi.Directory.FullName + "\\" + rename_textbox.Text);
-                name_error.Visibility = Visibility.Collapsed;
-                rename_button.Visibility = Visibility.Hidden;
+                try
+                {
+                    if (type == ItemType.Drive)
+                        dri.VolumeLabel = rename_textbox.Text;
+                    else if (!Functions.ConfirmRiskyItems(new string[] { type == ItemType.Directory ? di.FullName : fi.FullName }, "rename"))
+                        return;
+                    else if (type == ItemType.Directory)
+                        di.MoveTo(di.Parent.FullName + "\\" + rename_textbox.Text);
+                    else if (type == ItemType.File)
+                        fi.MoveTo(fi.Directory.FullName + "\\" + rename_textbox.Text);
+                    name_error.Visibility = Visibility.Collapsed;
+                    rename_button.Visibility = Visibility.Hidden;
+                    item_name.Text = "Name: " + rename_textbox.Text;
+                }
+                catch (Exception ex)
+                {
+                    name_error.Text = ex.Message;
+                    name_error.Visibility = Visibility.Visible;
+                }
             }
             else
             {
@@ -1653,13 +2263,15 @@ namespace File_Manager
 
         private void ApplyAttrepute_Click(object sender, RoutedEventArgs e)
         {
-            bool?[] attributes = { read_only.IsChecked, hidden.IsChecked, system.IsChecked, archive.IsChecked, compressed.IsChecked, encrypted.IsChecked, not_content_indexed.IsChecked, normal.IsChecked };
+            bool?[] attributes = SelectedAttributes();
             List<FileOperationItem> list = new List<FileOperationItem>();
             if (fi != null)
-                list.Add(new FileOperationItem(new FileInfo(fi.FullName), false, CalcFileAttributes(FileAttributes.Directory, new FileInfo(fi.FullName).Attributes, attributes)));
+                list.Add(new FileOperationItem(new FileInfo(fi.FullName), false, CalcFileAttributes(0, new FileInfo(fi.FullName).Attributes, attributes)));
             else
                 list.Add(new FileOperationItem(new DirectoryInfo(di == null ? dri.Name : di.FullName), false, CalcFileAttributes(FileAttributes.Directory, new DirectoryInfo(di == null ? dri.Name : di.FullName).Attributes, attributes)));
-            new Operation().CopyDialogShow(list, OperationType.Attributes, "", true);
+            if (Functions.ConfirmRiskyItems(new string[] { ItemPath() }, "change the attributes of"))
+                new Operation().CopyDialogShow(list, OperationType.Attributes, "", true);
+            RefreshAttributes();
         }
 
         private void ApplyAttreputeToAllContent_Click(object sender, RoutedEventArgs e)
@@ -1669,9 +2281,19 @@ namespace File_Manager
                     Messages.ShowMessage("Sorry, the app is busy now, please try again later.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
                 else
                 {
-                    bool?[] attributes = { read_only.IsChecked, hidden.IsChecked, system.IsChecked, archive.IsChecked, compressed.IsChecked, encrypted.IsChecked, not_content_indexed.IsChecked, normal.IsChecked };
+                    bool?[] attributes = SelectedAttributes();
+                    if (loaded_attributes != null)
+                    {
+                        for (int i = 0; i < 7; i++)
+                            if (attributes[i] == loaded_attributes[i])
+                                attributes[i] = null;
+                        if (attributes[7] == loaded_attributes[7])
+                            attributes[7] = false;
+                    }
+                    if (!Functions.ConfirmRiskyItems(new string[] { ItemPath() }, "change the attributes of all content of"))
+                        return;
                     List<FileOperationItem> list = new List<FileOperationItem>();
-                    list.Add(new FileOperationItem(new DirectoryInfo(di == null ? dri.Name : di.FullName), false, CalcFileAttributes(0, new DirectoryInfo(di == null ? dri.Name : di.FullName).Attributes, attributes)));
+                    list.Add(new FileOperationItem(new DirectoryInfo(di == null ? dri.Name : di.FullName), false, CalcFileAttributes(FileAttributes.Directory, new DirectoryInfo(di == null ? dri.Name : di.FullName).Attributes, attributes)));
                     foreach (var i in directory_list)
                     {
                         i.short_path = CalcFileAttributes(FileAttributes.Directory, i.Item.Attributes, attributes);
@@ -1683,36 +2305,40 @@ namespace File_Manager
                         list.Add(i);
                     }
                     new Operation().CopyDialogShow(list, OperationType.Attributes, "", true);
+                    RefreshAttributes();
                 }
+        }
+
+        bool?[] SelectedAttributes()
+        {
+            bool? compressed_value = compressed.IsChecked, encrypted_value = encrypted.IsChecked;
+            if (compressed_value != true && encrypted_value != true && not_encrypted_compressed.IsChecked != true)
+                compressed_value = encrypted_value = null;
+            bool?[] attributes = { read_only.IsChecked, hidden.IsChecked, system.IsChecked, archive.IsChecked, compressed_value, encrypted_value, not_content_indexed.IsChecked, normal.IsChecked };
+            return attributes;
+        }
+
+        FileAttributes SetAttribute(FileAttributes attributes, FileAttributes flag, bool? value)
+        {
+            if (value == true)
+                return attributes | flag;
+            if (value == false)
+                return attributes & ~flag;
+            return attributes;
         }
 
         FileAttributes CalcFileAttributes(FileAttributes start, FileAttributes default_attributes, bool?[] selected_attributes)
         {
-            FileAttributes new_attributes = start;
-            if (selected_attributes[0] == true)
-                new_attributes += 1;
-            if (selected_attributes[1] == true)
-                new_attributes += 2;
-            if (selected_attributes[2] == true)
-                new_attributes += 4;
-            if (selected_attributes[3] == true)
-                new_attributes += 32;
-            if (default_attributes.HasFlag(FileAttributes.Temporary))
-                new_attributes += 256;
-            if (default_attributes.HasFlag(FileAttributes.SparseFile))
-                new_attributes += 512;
-            if (default_attributes.HasFlag(FileAttributes.ReparsePoint))
-                new_attributes += 1024;
-            if (selected_attributes[4] == true)
-                new_attributes += 2048;
-            if (default_attributes.HasFlag(FileAttributes.Offline))
-                new_attributes += 4096;
-            if (selected_attributes[5] == true)
-                new_attributes += 16384;
-            if (selected_attributes[6] == true)
-                new_attributes += 8192;
-            if (selected_attributes[7].Value)
-                new_attributes = FileAttributes.Normal;
+            if (selected_attributes[7] == true)
+                return FileAttributes.Normal;
+            FileAttributes new_attributes = start | (default_attributes & (FileAttributes.ReadOnly | FileAttributes.Hidden | FileAttributes.System | FileAttributes.Archive | FileAttributes.Temporary | FileAttributes.SparseFile | FileAttributes.ReparsePoint | FileAttributes.Compressed | FileAttributes.Offline | FileAttributes.NotContentIndexed | FileAttributes.Encrypted));
+            new_attributes = SetAttribute(new_attributes, FileAttributes.ReadOnly, selected_attributes[0]);
+            new_attributes = SetAttribute(new_attributes, FileAttributes.Hidden, selected_attributes[1]);
+            new_attributes = SetAttribute(new_attributes, FileAttributes.System, selected_attributes[2]);
+            new_attributes = SetAttribute(new_attributes, FileAttributes.Archive, selected_attributes[3]);
+            new_attributes = SetAttribute(new_attributes, FileAttributes.Compressed, selected_attributes[4]);
+            new_attributes = SetAttribute(new_attributes, FileAttributes.Encrypted, selected_attributes[5]);
+            new_attributes = SetAttribute(new_attributes, FileAttributes.NotContentIndexed, selected_attributes[6]);
             return new_attributes;
         }
 
@@ -1728,7 +2354,7 @@ namespace File_Manager
                         try
                         {
                             di.CreationTimeUtc = date.Value;
-                            creation_time.Text = "Creation: " + di.CreationTimeUtc.ToString();
+                            creation_time.Text = "Creation: " + di.CreationTime.ToString();
                         }
                         catch (Exception ex)
                         { Messages.ShowMessage("Sorry, we can not change creation time for this file.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
@@ -1740,7 +2366,7 @@ namespace File_Manager
                         try
                         {
                             fi.CreationTimeUtc = date.Value;
-                            creation_time.Text = "Creation: " + fi.CreationTimeUtc.ToString();
+                            creation_time.Text = "Creation: " + fi.CreationTime.ToString();
                         }
                         catch (Exception ex)
                         { Messages.ShowMessage("Sorry, we can not change creation time for this directory.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
@@ -1757,7 +2383,7 @@ namespace File_Manager
                         try
                         {
                             di.LastWriteTimeUtc = date.Value;
-                            modified_time.Text = "Modified: " + di.LastWriteTimeUtc.ToString();
+                            modified_time.Text = "Modified: " + di.LastWriteTime.ToString();
                         }
                         catch (Exception ex)
                         { Messages.ShowMessage("Sorry, we can not change last write time for this file.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
@@ -1769,7 +2395,7 @@ namespace File_Manager
                         try
                         {
                             fi.LastWriteTimeUtc = date.Value;
-                            modified_time.Text = "Modified: " + fi.LastWriteTimeUtc.ToString();
+                            modified_time.Text = "Modified: " + fi.LastWriteTime.ToString();
                         }
                         catch (Exception ex)
                         { Messages.ShowMessage("Sorry, we can not change last write time for this directory.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
@@ -1786,7 +2412,7 @@ namespace File_Manager
                         try
                         {
                             di.LastAccessTimeUtc = date.Value;
-                            last_accessed_time.Text = "Last accessed: " + di.LastAccessTimeUtc.ToString();
+                            last_accessed_time.Text = "Last accessed: " + di.LastAccessTime.ToString();
                         }
                         catch (Exception ex)
                         { Messages.ShowMessage("Sorry, we can not change last access time for this file.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
@@ -1798,7 +2424,7 @@ namespace File_Manager
                         try
                         {
                             fi.LastAccessTimeUtc = date.Value;
-                            last_accessed_time.Text = "Last accessed: " + fi.LastAccessTimeUtc.ToString();
+                            last_accessed_time.Text = "Last accessed: " + fi.LastAccessTime.ToString();
                         }
                         catch (Exception ex)
                         { Messages.ShowMessage("Sorry, we can not change last access time for this directory.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
@@ -1808,6 +2434,12 @@ namespace File_Manager
         private void Window_Closing(object sender, CancelEventArgs e)
         {
             CancelEveryThinig = true;
+            if (xps_document != null)
+                try { xps_document.Close(); }
+                catch (Exception) { }
+            if (shell_host != null)
+                shell_host.Unload();
+            ClearApps();
             foreach (BackgroundWorker bw in background_workers)
             {
                 if (bw.IsBusy)
@@ -1819,7 +2451,7 @@ namespace File_Manager
 
         private void Window_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
         {
-            if (app_bar_stack.Visibility == Visibility.Visible)
+            if (app_bar_stack.Visibility == Visibility.Visible && !(e.OriginalSource is Visual && app_can_open_this_type.IsAncestorOf((Visual)e.OriginalSource)))
                 OpenCloseAPPBar();
         }
 
@@ -1953,7 +2585,7 @@ namespace File_Manager
         private void MuteVolume_Click(object sender, RoutedEventArgs e)
         {
             if (video_player_element.Volume == 0)
-                video_player_element.Volume = 75;
+                video_player_element.Volume = 0.75;
             else
                 video_player_element.Volume = 0;
         }
@@ -2002,6 +2634,482 @@ namespace File_Manager
         public static void RestCount()
         {
             count = 0;
+        }
+    }
+
+    class SecurityRuleItem
+    {
+        public SecurityRuleItem(string identity, string type, string rights, string inherited)
+        {
+            Identity = identity;
+            Type = type;
+            Rights = rights;
+            Inherited = inherited;
+        }
+
+        string identity;
+        public string Identity
+        {
+            get { return identity; }
+            set { identity = value; }
+        }
+
+        string type;
+        public string Type
+        {
+            get { return type; }
+            set { type = value; }
+        }
+
+        string rights;
+        public string Rights
+        {
+            get { return rights; }
+            set { rights = value; }
+        }
+
+        string inherited;
+        public string Inherited
+        {
+            get { return inherited; }
+            set { inherited = value; }
+        }
+    }
+
+    class ShellPreviewHost : HwndHost
+    {
+        [ComImport, Guid("8895b1c6-b41f-4c1c-a562-0d564250836f"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        interface IPreviewHandler
+        {
+            void SetWindow(IntPtr hwnd, ref RECT rect);
+            void SetRect(ref RECT rect);
+            void DoPreview();
+            void Unload();
+            void SetFocus();
+            void QueryFocus(out IntPtr phwnd);
+            [PreserveSig]
+            int TranslateAccelerator(IntPtr pmsg);
+        }
+
+        [ComImport, Guid("b7d14566-0509-4cce-a71f-0a554233bd9b"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        interface IInitializeWithFile
+        {
+            void Initialize([MarshalAs(UnmanagedType.LPWStr)] string pszFilePath, uint grfMode);
+        }
+
+        [ComImport, Guid("b824b49d-22ac-4161-ac8a-9916e8fa3f7f"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        interface IInitializeWithStream
+        {
+            void Initialize(System.Runtime.InteropServices.ComTypes.IStream pstream, uint grfMode);
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct RECT
+        {
+            public int left, top, right, bottom;
+        }
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        static extern IntPtr CreateWindowEx(int dwExStyle, string lpClassName, string lpWindowName, int dwStyle, int x, int y, int nWidth, int nHeight, IntPtr hWndParent, IntPtr hMenu, IntPtr hInstance, IntPtr lpParam);
+
+        [DllImport("user32.dll")]
+        static extern bool DestroyWindow(IntPtr hwnd);
+
+        [DllImport("user32.dll")]
+        static extern bool GetClientRect(IntPtr hwnd, out RECT rect);
+
+        [DllImport("ole32.dll")]
+        static extern int CoCreateInstance(ref Guid rclsid, IntPtr pUnkOuter, uint dwClsContext, ref Guid riid, [MarshalAs(UnmanagedType.IUnknown)] out object ppv);
+
+        [DllImport("shlwapi.dll", CharSet = CharSet.Unicode)]
+        static extern int SHCreateStreamOnFileEx(string pszFile, uint grfMode, uint dwAttributes, bool fCreate, IntPtr pstmTemplate, out System.Runtime.InteropServices.ComTypes.IStream ppstm);
+
+        [DllImport("shlwapi.dll", CharSet = CharSet.Unicode)]
+        static extern int AssocQueryString(uint flags, uint str, string pszAssoc, string pszExtra, StringBuilder pszOut, ref uint pcchOut);
+
+        IntPtr host_window = IntPtr.Zero;
+        IPreviewHandler handler;
+        System.Runtime.InteropServices.ComTypes.IStream stream;
+
+        internal static string QueryAssociation(uint what, string extension, string extra)
+        {
+            if (string.IsNullOrEmpty(extension))
+                return null;
+            uint length = 1024;
+            StringBuilder result = new StringBuilder((int)length);
+            try
+            {
+                if (AssocQueryString(0x4, what, extension, extra, result, ref length) == 0)
+                    return result.ToString();
+            }
+            catch (Exception) { }
+            return null;
+        }
+
+        internal static bool FindHandler(string extension, out Guid clsid)
+        {
+            clsid = Guid.Empty;
+            string value = QueryAssociation(16, extension, "{8895b1c6-b41f-4c1c-a562-0d564250836f}");
+            if (string.IsNullOrEmpty(value))
+                return false;
+            try
+            {
+                clsid = new Guid(value);
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        protected override HandleRef BuildWindowCore(HandleRef hwndParent)
+        {
+            host_window = CreateWindowEx(0, "static", "", 0x40000000 | 0x10000000 | 0x02000000, 0, 0, Math.Max(1, (int)ActualWidth), Math.Max(1, (int)ActualHeight), hwndParent.Handle, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
+            return new HandleRef(this, host_window);
+        }
+
+        protected override void DestroyWindowCore(HandleRef hwnd)
+        {
+            Unload();
+            DestroyWindow(hwnd.Handle);
+            host_window = IntPtr.Zero;
+        }
+
+        internal string Open(string path, Guid clsid)
+        {
+            if (host_window == IntPtr.Zero)
+                return "the preview window is not ready.";
+            object instance = null;
+            try
+            {
+                Guid iid = new Guid("00000000-0000-0000-C000-000000000046");
+                if (CoCreateInstance(ref clsid, IntPtr.Zero, 0x4, ref iid, out instance) != 0 || instance == null)
+                    if (CoCreateInstance(ref clsid, IntPtr.Zero, 0x1, ref iid, out instance) != 0 || instance == null)
+                        return "the preview handler could not be started.";
+                if (instance is IInitializeWithFile)
+                    ((IInitializeWithFile)instance).Initialize(path, 0);
+                else if (instance is IInitializeWithStream)
+                {
+                    if (SHCreateStreamOnFileEx(path, 0x40, 0, false, IntPtr.Zero, out stream) != 0 || stream == null)
+                        return "the file could not be opened.";
+                    ((IInitializeWithStream)instance).Initialize(stream, 0);
+                }
+                else
+                    return "the preview handler does not support files.";
+                handler = instance as IPreviewHandler;
+                if (handler == null)
+                    return "the preview handler is not valid.";
+                RECT rect;
+                GetClientRect(host_window, out rect);
+                handler.SetWindow(host_window, ref rect);
+                handler.DoPreview();
+                return null;
+            }
+            catch (Exception ex)
+            {
+                handler = null;
+                ReleaseAll(instance);
+                return ex.Message;
+            }
+        }
+
+        void UpdateRect()
+        {
+            if (handler == null || host_window == IntPtr.Zero)
+                return;
+            try
+            {
+                RECT rect;
+                GetClientRect(host_window, out rect);
+                handler.SetRect(ref rect);
+            }
+            catch (Exception) { }
+        }
+
+        protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
+        {
+            base.OnRenderSizeChanged(sizeInfo);
+            Dispatcher.BeginInvoke(new Action(UpdateRect), System.Windows.Threading.DispatcherPriority.Background);
+        }
+
+        internal void Unload()
+        {
+            object instance = handler;
+            handler = null;
+            if (instance != null)
+                try
+                {
+                    ((IPreviewHandler)instance).Unload();
+                }
+                catch (Exception) { }
+            ReleaseAll(instance);
+        }
+
+        void ReleaseAll(object instance)
+        {
+            if (instance != null && Marshal.IsComObject(instance))
+                try
+                {
+                    Marshal.FinalReleaseComObject(instance);
+                }
+                catch (Exception) { }
+            if (stream != null)
+            {
+                try
+                {
+                    Marshal.FinalReleaseComObject(stream);
+                }
+                catch (Exception) { }
+                stream = null;
+            }
+        }
+    }
+
+    enum OpenWithKind
+    {
+        Handler,
+        Default,
+        Other,
+        FileManager,
+        FileExplorer
+    }
+
+    class OpenWithApp
+    {
+        internal string Name, Id, Tip;
+        internal ImageSource Icon;
+        internal OpenWithKind Kind;
+        internal bool IsDefault, IsStore;
+        internal object Handler;
+
+        internal string Title
+        {
+            get { return Name + (IsStore ? " (Store)" : "") + (IsDefault ? " (default)" : ""); }
+        }
+    }
+
+    static class ShellAssociations
+    {
+        [ComImport, Guid("F04061AC-1659-4a3f-A954-775AA57FC083"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        interface IAssocHandler
+        {
+            [PreserveSig]
+            int GetName([MarshalAs(UnmanagedType.LPWStr)] out string ppsz);
+            [PreserveSig]
+            int GetUIName([MarshalAs(UnmanagedType.LPWStr)] out string ppsz);
+            [PreserveSig]
+            int GetIconLocation([MarshalAs(UnmanagedType.LPWStr)] out string ppszPath, out int pIndex);
+            [PreserveSig]
+            int IsRecommended();
+            [PreserveSig]
+            int MakeDefault([MarshalAs(UnmanagedType.LPWStr)] string pszDescription);
+            [PreserveSig]
+            int Invoke(IntPtr pdo);
+            [PreserveSig]
+            int CreateInvoker(IntPtr pdo, out IntPtr ppInvoker);
+        }
+
+        [ComImport, Guid("973810ae-9599-4b88-9e4d-6ee98c9552da"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        interface IEnumAssocHandlers
+        {
+            [PreserveSig]
+            int Next(int celt, [Out, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 0)] IAssocHandler[] rgelt, out int pceltFetched);
+        }
+
+        [ComImport, Guid("43826d1e-e718-42ee-bc55-a1e261c37bfe"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        interface IShellItem
+        {
+            [PreserveSig]
+            int BindToHandler(IntPtr pbc, [In] ref Guid bhid, [In] ref Guid riid, out IntPtr ppv);
+        }
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        struct OPENASINFO
+        {
+            [MarshalAs(UnmanagedType.LPWStr)]
+            public string pcszFile;
+            [MarshalAs(UnmanagedType.LPWStr)]
+            public string pcszClass;
+            public int oaifInFlags;
+        }
+
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+        static extern int SHAssocEnumHandlers(string pszExtra, int afFilter, out IEnumAssocHandlers ppEnumHandler);
+
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+        static extern int SHCreateItemFromParsingName(string pszPath, IntPtr pbc, [In] ref Guid riid, out IShellItem ppv);
+
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+        static extern int SHOpenWithDialog(IntPtr hwndParent, ref OPENASINFO poainfo);
+
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+        static extern uint ExtractIconEx(string lpszFile, int nIconIndex, out IntPtr phiconLarge, out IntPtr phiconSmall, uint nIcons);
+
+        [DllImport("user32.dll")]
+        static extern bool DestroyIcon(IntPtr hIcon);
+
+        [DllImport("shlwapi.dll", CharSet = CharSet.Unicode)]
+        static extern int SHLoadIndirectString(string pszSource, StringBuilder pszOutBuf, int cchOutBuf, IntPtr ppvReserved);
+
+        internal static List<OpenWithApp> Handlers(string extension, string default_name, string default_exe, string default_id)
+        {
+            List<OpenWithApp> apps = new List<OpenWithApp>();
+            if (string.IsNullOrEmpty(extension))
+                return apps;
+            IEnumAssocHandlers list = null;
+            try
+            {
+                if (SHAssocEnumHandlers(extension, 1, out list) != 0 || list == null)
+                    return apps;
+                IAssocHandler[] one = new IAssocHandler[1];
+                int fetched;
+                while (apps.Count < 30 && list.Next(1, one, out fetched) == 0 && fetched == 1)
+                {
+                    IAssocHandler handler = one[0];
+                    one[0] = null;
+                    if (handler == null)
+                        continue;
+                    string name, ui_name, icon_path;
+                    int icon_index;
+                    if (handler.GetName(out name) != 0)
+                        name = null;
+                    if (handler.GetUIName(out ui_name) != 0 || string.IsNullOrEmpty(ui_name))
+                        ui_name = name;
+                    if (string.IsNullOrEmpty(ui_name))
+                    {
+                        Release(handler);
+                        continue;
+                    }
+                    if (handler.GetIconLocation(out icon_path, out icon_index) != 0)
+                    {
+                        icon_path = null;
+                        icon_index = 0;
+                    }
+                    OpenWithApp app = new OpenWithApp() { Name = ui_name, Id = name, Kind = OpenWithKind.Handler, Handler = handler };
+                    app.IsStore = (icon_path != null && icon_path.StartsWith("@{")) || (name != null && name.IndexOf('\\') < 0 && name.IndexOf('!') > 0);
+                    app.Icon = LoadIcon(string.IsNullOrEmpty(icon_path) ? name : icon_path, icon_index);
+                    app.Tip = ui_name + (app.IsStore ? " (Microsoft Store app)" : "") + (string.IsNullOrEmpty(name) ? "" : "\n" + name);
+                    apps.Add(app);
+                }
+            }
+            catch (Exception) { }
+            finally
+            {
+                Release(list);
+            }
+            OpenWithApp found = null;
+            foreach (var i in new string[] { default_id, default_exe })
+                if (found == null && !string.IsNullOrEmpty(i))
+                    found = apps.FirstOrDefault(x => string.Equals(x.Id, i, StringComparison.OrdinalIgnoreCase));
+            if (found == null && !string.IsNullOrEmpty(default_name))
+                found = apps.FirstOrDefault(x => string.Equals(x.Name, default_name, StringComparison.OrdinalIgnoreCase));
+            if (found != null)
+            {
+                found.IsDefault = true;
+                apps.Remove(found);
+                apps.Insert(0, found);
+            }
+            return apps;
+        }
+
+        internal static ImageSource LoadIcon(string path, int index)
+        {
+            if (string.IsNullOrEmpty(path))
+                return null;
+            try
+            {
+                if (path.StartsWith("@"))
+                {
+                    StringBuilder resolved = new StringBuilder(1024);
+                    if (SHLoadIndirectString(path, resolved, resolved.Capacity, IntPtr.Zero) != 0 || !File.Exists(resolved.ToString()))
+                        return null;
+                    BitmapImage image = new BitmapImage();
+                    image.BeginInit();
+                    image.CacheOption = BitmapCacheOption.OnLoad;
+                    image.DecodePixelWidth = 32;
+                    image.UriSource = new Uri(resolved.ToString());
+                    image.EndInit();
+                    image.Freeze();
+                    return image;
+                }
+                path = Environment.ExpandEnvironmentVariables(path.Trim('"'));
+                IntPtr large, small;
+                if (ExtractIconEx(path, index, out large, out small, 1) == 0)
+                    return null;
+                try
+                {
+                    IntPtr icon = small != IntPtr.Zero ? small : large;
+                    if (icon == IntPtr.Zero)
+                        return null;
+                    BitmapSource source = Imaging.CreateBitmapSourceFromHIcon(icon, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+                    source.Freeze();
+                    return source;
+                }
+                finally
+                {
+                    if (large != IntPtr.Zero)
+                        DestroyIcon(large);
+                    if (small != IntPtr.Zero)
+                        DestroyIcon(small);
+                }
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        internal static string Invoke(object handler, string file)
+        {
+            IShellItem item = null;
+            IntPtr data = IntPtr.Zero;
+            try
+            {
+                Guid item_id = new Guid("43826d1e-e718-42ee-bc55-a1e261c37bfe"), data_handler = new Guid("b8c0bd9f-ed24-455c-83e6-d5390c4fe8c4"), data_id = new Guid("0000010e-0000-0000-C000-000000000046");
+                int result = SHCreateItemFromParsingName(file, IntPtr.Zero, ref item_id, out item);
+                if (result != 0 || item == null)
+                    return Marshal.GetExceptionForHR(result != 0 ? result : -2147467259).Message;
+                result = item.BindToHandler(IntPtr.Zero, ref data_handler, ref data_id, out data);
+                if (result != 0 || data == IntPtr.Zero)
+                    return Marshal.GetExceptionForHR(result != 0 ? result : -2147467259).Message;
+                result = ((IAssocHandler)handler).Invoke(data);
+                return result == 0 ? null : Marshal.GetExceptionForHR(result).Message;
+            }
+            catch (Exception ex)
+            {
+                return ex.Message;
+            }
+            finally
+            {
+                if (data != IntPtr.Zero)
+                    Marshal.Release(data);
+                Release(item);
+            }
+        }
+
+        internal static string OpenWithDialog(IntPtr owner, string file, bool set_default)
+        {
+            try
+            {
+                OPENASINFO info = new OPENASINFO() { pcszFile = file, pcszClass = null, oaifInFlags = set_default ? 0x1 | 0x2 | 0x4 | 0x8 : 0x1 | 0x2 | 0x4 };
+                int result = SHOpenWithDialog(owner, ref info);
+                return result == 0 || result == -2147023673 ? null : Marshal.GetExceptionForHR(result).Message;
+            }
+            catch (Exception ex)
+            {
+                return ex.Message;
+            }
+        }
+
+        internal static void Release(object instance)
+        {
+            if (instance != null && Marshal.IsComObject(instance))
+                try
+                {
+                    Marshal.ReleaseComObject(instance);
+                }
+                catch (Exception) { }
         }
     }
 }

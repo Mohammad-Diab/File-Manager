@@ -5,31 +5,57 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:File_Manager"
         mc:Ignorable="d"
-        Title="About Tool" Height="450" Width="350" FontSize="14" ResizeMode="NoResize" MinWidth="350" MinHeight="450">
+        Title="About Tool" Height="560" Width="440" FontSize="14" MinWidth="360" MinHeight="320" WindowStartupLocation="CenterScreen" Loaded="Window_Loaded">
     <Grid>
-        <TextBlock x:Name="tool_title" HorizontalAlignment="Left" Margin="10,10,0,0" TextWrapping="Wrap" Text="About tool" VerticalAlignment="Top" Foreground="Gray" FontSize="28"/>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,47,0,38">
-            <Grid>
-                <ItemsControl Margin="20,156,10,0" VerticalAlignment="Top" ItemsSource="{Binding}">
+        <TextBlock x:Name="tool_title" Margin="15,8,15,0" TextTrimming="CharacterEllipsis" Text="About tool" VerticalAlignment="Top" Foreground="Gray" FontSize="26"/>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,50,0,45">
+            <StackPanel Margin="20,0,20,10">
+                <TextBlock Text="General" FontSize="16" Foreground="CadetBlue"/>
+                <Grid Margin="0,8,0,0">
+                    <Image x:Name="tool_image" HorizontalAlignment="Left" Height="64" Width="64" VerticalAlignment="Top"/>
+                    <StackPanel Margin="80,0,0,0" VerticalAlignment="Center">
+                        <TextBlock x:Name="tool_name" TextWrapping="Wrap" Text="Name" FontSize="18"/>
+                        <TextBlock x:Name="tool_vertion" TextWrapping="Wrap" Text="Version" Foreground="Gray"/>
+                        <TextBlock x:Name="tool_date" TextWrapping="Wrap" Text="Date" Foreground="Gray"/>
+                    </StackPanel>
+                </Grid>
+                <TextBlock x:Name="tool_description" Margin="0,12,0,0" TextWrapping="Wrap" Visibility="Collapsed"/>
+                <TextBlock x:Name="how_to_header" Margin="0,16,0,4" Text="How to use" FontSize="16" Foreground="CadetBlue" Visibility="Collapsed"/>
+                <ItemsControl x:Name="how_to_list" Visibility="Collapsed">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Grid VerticalAlignment="Top">
-                                <Image HorizontalAlignment="Left" Height="24" Source="{Binding Path=TypeImage}" VerticalAlignment="Top" Width="24" Margin="5,5,0,0"/>
-                                <TextBlock HorizontalAlignment="Left" Margin="{Binding Path=TypeMargin}" Text="{Binding Path=TypeText}" VerticalAlignment="Top" FontSize="16"/>
-                                <TextBlock HorizontalAlignment="Left" Margin="10,34,0,0" TextWrapping="Wrap" Text="{Binding Path=FeatureInfo}" VerticalAlignment="Top" FontSize="12"/>
+                            <Grid Margin="0,2,0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="24"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding Path=Mark}" Foreground="CadetBlue"/>
+                                <TextBlock Grid.Column="1" Text="{Binding Path=Text}" TextWrapping="Wrap"/>
                             </Grid>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <Image x:Name="tool_image" HorizontalAlignment="Left" Height="72" Margin="20,36,0,0" VerticalAlignment="Top" Width="72"/>
-                <TextBlock x:Name="tool_name" HorizontalAlignment="Left" Margin="100,36,0,0" TextWrapping="Wrap" Text="Name" VerticalAlignment="Top"/>
-                <TextBlock x:Name="tool_vertion" HorizontalAlignment="Left" Margin="100,60,0,0" TextWrapping="Wrap" Text="Version" VerticalAlignment="Top"/>
-                <TextBlock HorizontalAlignment="Left" Margin="20,10,0,0" TextWrapping="Wrap" Text="General" VerticalAlignment="Top" FontSize="16" Foreground="CadetBlue"/>
-                <TextBlock HorizontalAlignment="Left" Margin="20,130,0,0" TextWrapping="Wrap" Text="What's new" VerticalAlignment="Top" FontSize="16" Foreground="CadetBlue"/>
-                <TextBlock x:Name="tool_date" HorizontalAlignment="Left" Margin="100,84,0,0" TextWrapping="Wrap" Text="Date" VerticalAlignment="Top"/>
-            </Grid>
+                <TextBlock x:Name="whats_new_header" Margin="0,16,0,4" Text="What's new" FontSize="16" Foreground="CadetBlue" Visibility="Collapsed"/>
+                <ItemsControl x:Name="whats_new_list" Visibility="Collapsed">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,2,0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="{Binding Path=MarkWidth}"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding Path=Mark}" Foreground="CadetBlue"/>
+                                <TextBlock Grid.Column="1" Text="{Binding Path=Text}" TextWrapping="Wrap" FontWeight="{Binding Path=Weight}" Foreground="{Binding Path=Color}"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock x:Name="notes_header" Margin="0,16,0,4" Text="Notes" FontSize="16" Foreground="CadetBlue" Visibility="Collapsed"/>
+                <TextBlock x:Name="tool_notes" TextWrapping="Wrap" Visibility="Collapsed"/>
+            </StackPanel>
         </ScrollViewer>
-        <Button x:Name="button" Content="OK" HorizontalAlignment="Right" Margin="0,0,10,10" VerticalAlignment="Bottom" Width="75" Background="{x:Null}" Click="button_Click" Foreground="Gray" BorderBrush="Gray"/>
-        <TextBlock Text="mohammad.diab93@outlook.com " Margin="10,0,0,10" VerticalAlignment="Bottom" FontSize="14" FontFamily="Segoe Print" Foreground="Gray" TextAlignment="Center" HorizontalAlignment="Left"/>
+        <Rectangle Height="1" Margin="10,0,10,44" VerticalAlignment="Bottom" Fill="#FFDDDDDD"/>
+        <Button x:Name="button" Content="OK" HorizontalAlignment="Right" Margin="0,0,10,10" VerticalAlignment="Bottom" Width="75" Height="26" Background="{x:Null}" Click="button_Click" Foreground="Gray" BorderBrush="Gray" IsDefault="True" IsCancel="True"/>
+        <TextBlock Text="mohammad.diab93@outlook.com " Margin="10,0,0,12" VerticalAlignment="Bottom" FontSize="14" FontFamily="Segoe Print" Foreground="Gray" TextAlignment="Center" HorizontalAlignment="Left"/>
     </Grid>
 </Window>

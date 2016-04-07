@@ -1,30 +1,118 @@
 ﻿<Window x:Class="File_Manager.System_Monitor"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="System Monitor" Height="350" Width="550">
-    <Grid x:Name="GridContainer">
-        <ListView x:Name="ProcessList" ItemsSource="{Binding}" Margin="5,43,5,5">
-            <ListView.View>
-                <GridView>
-                    <GridViewColumn Header="PID" Width="60" DisplayMemberBinding="{Binding Path=PID}"/>
-                    <GridViewColumn Header="Name" Width="130">
-                        <GridViewColumn.CellTemplate>
-                            <DataTemplate>
-                                <Grid Margin="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" ContextMenu="{Binding Path=Menu}">
-                                    <TextBlock Margin="28,4,0,0" Text="{Binding Path=ProcessName}" HorizontalAlignment="Left"/>
-                                    <Image Margin="0" Source="{Binding Path=Icon}" Height="24" Width="24" VerticalAlignment="Top" HorizontalAlignment="Left"/>
-                                </Grid>
-                            </DataTemplate>
-                        </GridViewColumn.CellTemplate>
-                    </GridViewColumn>
-                    <GridViewColumn Header="Memory" Width="90" DisplayMemberBinding="{Binding Path=Memory}"/>
-                    <GridViewColumn Header="CPU" Width="75" DisplayMemberBinding="{Binding Path=CPU}"/>
-                    <GridViewColumn Header="Threads" Width="80" DisplayMemberBinding="{Binding Path=Threads}"/>
-                </GridView>
-            </ListView.View>
-        </ListView>
-        <Button x:Name="EndProcess" IsEnabled="False" ToolTip="Ask to close" HorizontalAlignment="Left" VerticalAlignment="Top" Width="28" Margin="10,10,0,0" Height="28"/>
-        <Button x:Name="EndProcess_Copy" IsEnabled="False" ToolTip="Kill" HorizontalAlignment="Left" VerticalAlignment="Top" Width="28" Margin="43,10,0,0" Height="28"/>
-        <Button x:Name="Refresh" ToolTip="Refresh" HorizontalAlignment="Left" VerticalAlignment="Top" Width="28" Click="Refresh_Click" Margin="76,10,0,0" Height="28"/>
+        Title="System Monitor" Height="500" Width="760" MinHeight="360" MinWidth="560" Icon="Images/Tools Icon/system-monitor.png" Loaded="Window_Loaded" Closing="Window_Closing" StateChanged="Window_StateChanged">
+    <Grid>
+        <Grid x:Name="processes_page" Margin="0,36,0,0">
+            <Button x:Name="EndProcess" IsEnabled="False" ToolTip="Ask to close: select a program that has a window" ToolTipService.ShowOnDisabled="True" HorizontalAlignment="Left" VerticalAlignment="Top" Width="32" Height="32" Margin="8,6,0,0" Padding="3" Background="{x:Null}" BorderBrush="#FFBBBBBB" Click="EndProcess_Click">
+                <Image Source="Images/Appearance/button-cancel.png"/>
+            </Button>
+            <Button x:Name="EndProcess_Copy" IsEnabled="False" ToolTip="End process: select a process first&#x0a;Warning: anything not saved in it is lost, and ending a Windows process can make Windows stop working." ToolTipService.ShowOnDisabled="True" HorizontalAlignment="Left" VerticalAlignment="Top" Width="32" Height="32" Margin="44,6,0,0" Padding="3" Background="{x:Null}" BorderBrush="#FFBBBBBB" Click="KillProcess_Click">
+                <Image Source="Images/Appearance/delete.png"/>
+            </Button>
+            <Button x:Name="EndProcessTree" IsEnabled="False" ToolTip="End process tree: select a process first&#x0a;Warning: anything not saved in them is lost, and ending Windows processes can make Windows stop working." ToolTipService.ShowOnDisabled="True" HorizontalAlignment="Left" VerticalAlignment="Top" Width="32" Height="32" Margin="80,6,0,0" Padding="3" Background="{x:Null}" BorderBrush="#FFBBBBBB" Click="KillProcessTree_Click">
+                <Grid>
+                    <Image Source="Images/Appearance/delete.png" Width="17" Height="17" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+                    <Image Source="Images/Appearance/delete-icon.png" Width="15" Height="15" HorizontalAlignment="Right" VerticalAlignment="Bottom"/>
+                </Grid>
+            </Button>
+            <Button x:Name="Refresh" ToolTip="Refresh now" HorizontalAlignment="Left" VerticalAlignment="Top" Width="32" Height="32" Margin="124,6,0,0" Padding="3" Background="{x:Null}" BorderBrush="#FFBBBBBB" Click="Refresh_Click">
+                <Image Source="Images/Appearance/view-refresh.png"/>
+            </Button>
+            <TextBlock x:Name="processes_count" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="168,14,0,0" Foreground="Gray"/>
+            <ListView x:Name="ProcessList" Margin="5,44,5,5" SelectionMode="Single" SelectionChanged="ProcessList_SelectionChanged" GridViewColumnHeader.Click="ProcessListHeader_Click">
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="PID" Width="65" DisplayMemberBinding="{Binding Path=PID}"/>
+                        <GridViewColumn Header="Name" Width="280">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0" ToolTip="{Binding Path=Details}">
+                                        <Image Margin="0,1,0,1" Source="{Binding Path=Icon}" Height="20" Width="20" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                                        <TextBlock Margin="26,0,0,0" Text="{Binding Path=ProcessName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="Memory" Width="100">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Path=Memory}" TextAlignment="Right" MinWidth="80"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="CPU" Width="70">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Path=CPU}" TextAlignment="Right" MinWidth="50"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="Threads" Width="70">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Path=Threads}" TextAlignment="Right" MinWidth="50"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                    </GridView>
+                </ListView.View>
+            </ListView>
+        </Grid>
+        <Grid x:Name="performance_page" Margin="0,36,0,0" Visibility="Collapsed">
+            <ListBox x:Name="perf_list" HorizontalAlignment="Left" Width="200" Margin="5,5,0,5" SelectionChanged="PerfList_SelectionChanged" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Margin="2,3,2,3">
+                            <TextBlock Text="{Binding Path=Name}" FontSize="14" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="{Binding Path=Value}" Foreground="Gray" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            <Grid Margin="212,5,8,5">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid Grid.Row="0" Margin="0,0,0,4">
+                    <TextBlock x:Name="perf_title" FontSize="22" Text="CPU" TextTrimming="CharacterEllipsis" Margin="0,0,150,0"/>
+                    <CheckBox x:Name="show_cores" Content="Show each core" HorizontalAlignment="Right" VerticalAlignment="Center" Checked="ShowCores_Changed" Unchecked="ShowCores_Changed"/>
+                </Grid>
+                <Border Grid.Row="1" BorderBrush="#FF7498BF" BorderThickness="1" Background="#FFF7FAFD" MinHeight="120">
+                    <Grid>
+                        <Canvas x:Name="chart_canvas" ClipToBounds="True" SizeChanged="ChartCanvas_SizeChanged">
+                            <Polyline x:Name="chart_line2" Stroke="#FFE07B00" StrokeThickness="1.5"/>
+                            <Polyline x:Name="chart_line1" Stroke="#FF1F6FB5" StrokeThickness="1.5"/>
+                        </Canvas>
+                        <TextBlock x:Name="chart_max" Margin="4,2,0,0" Foreground="Gray" FontSize="11" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+                        <TextBlock Margin="4,0,0,2" Foreground="Gray" FontSize="11" HorizontalAlignment="Left" VerticalAlignment="Bottom" Text="60 seconds"/>
+                        <TextBlock Margin="0,0,4,2" Foreground="Gray" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Bottom" Text="0"/>
+                    </Grid>
+                </Border>
+                <ScrollViewer Grid.Row="2" x:Name="cores_scroll" MaxHeight="150" VerticalScrollBarVisibility="Auto" Visibility="Collapsed" Margin="0,6,0,0">
+                    <WrapPanel x:Name="cores_panel"/>
+                </ScrollViewer>
+                <StackPanel Grid.Row="3" Margin="0,6,0,0">
+                    <StackPanel Orientation="Horizontal" x:Name="legend_panel">
+                        <Rectangle Width="14" Height="3" Fill="#FF1F6FB5" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="legend1" Margin="4,0,14,0"/>
+                        <Rectangle x:Name="legend2_mark" Width="14" Height="3" Fill="#FFE07B00" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="legend2" Margin="4,0,0,0"/>
+                    </StackPanel>
+                    <TextBlock x:Name="perf_details" Margin="0,4,0,0" TextWrapping="Wrap" FontSize="13"/>
+                </StackPanel>
+            </Grid>
+        </Grid>
+        <StackPanel x:Name="tab_panal" Height="36" VerticalAlignment="Top" Orientation="Horizontal" Background="Black">
+            <Label x:Name="label1" Content="PROCESSES" FontSize="18" Background="White" Cursor="Hand" PreviewMouseLeftButtonUp="TabChange_MouseButtonUp"/>
+            <Label x:Name="label2" Content="PERFORMANCE" FontSize="18" Foreground="White" Background="Black" Cursor="Hand" PreviewMouseLeftButtonUp="TabChange_MouseButtonUp"/>
+        </StackPanel>
+        <Rectangle x:Name="rec" Fill="Red" HorizontalAlignment="Left" Height="4" Margin="0,32,0,0" VerticalAlignment="Top" Width="100"/>
+        <Button ToolTip="About System Monitor" HorizontalAlignment="Right" VerticalAlignment="Top" Width="36" Height="36" Background="{x:Null}" BorderBrush="{x:Null}" Click="AboutTool_Click">
+            <Image Stretch="Fill" Source="Images/Menu/about-tool.png"/>
+        </Button>
     </Grid>
 </Window>

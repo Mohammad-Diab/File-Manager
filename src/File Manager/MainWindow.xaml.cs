@@ -35,7 +35,8 @@ namespace File_Manager
 
         public static string to_go_path = "";
 
-        string current_address = "Computer", next_address = "", to_select_file = null;
+        string current_address = "Computer", next_address = "", to_select_file = null, load_error = null;
+        int explore_id = 0;
         static string computer_Name, operating_System, CPU = "Core", Memory_Size;
         Thickness name_thickness = new Thickness(80, 5, 0, 0), size_thickness = new Thickness(80, 25, 0, 0), type_thickness = new Thickness(80, 45, 0, 0), folder_thickness = new Thickness(80, 25, 0, 0);
         string path
@@ -82,39 +83,12 @@ namespace File_Manager
         void Initializer()
         {
             InitializeComponent();
-            BinaryFormatter BF = new BinaryFormatter();
-            if (File.Exists("FileInfo.dat"))
-            {
-                List<BasicFileInfoCombonents> info = null;
-                Stream filestream = File.Open("FileInfo.dat", FileMode.Open);
-                bool err = false;
-                for (int i = 0; i < 4; i++)
-                {
-                    try
-                    {
-                        info = (List<BasicFileInfoCombonents>)BF.Deserialize(filestream);
-                        err = false; break;
-                    }
-                    catch (Exception)
-                    {
-                        Thread.Sleep(250);
-                        err = true;
-                    }
-                }
-                filestream.Close();
-                if (err)
-                    ShowErrorAndClose("Can not load 'FileInfo.dat' File.");
-
-                if (info == null || !BasicFileInfoCombonents.ConvertToStandard(info))
-                    ShowErrorAndClose("The file 'FileInfo.dat' is not valid.");
-                if (Functions.IsRunningAsAdmin())
-                    Title = "[Administrator]  " + Title;
-                back = new Stack<string>();
-                front = new Stack<string>();
-                Explorer.DataContext = MainList;
-            }
-            else
-                ShowErrorAndClose("Can not find 'FileInfo.dat' File.");
+            load_error = Functions.LoadFileInfo();
+            if (Functions.IsRunningAsAdmin())
+                Title = "[Administrator]  " + Title;
+            back = new Stack<string>();
+            front = new Stack<string>();
+            Explorer.DataContext = MainList;
             //ListView.AddHandler(Control.MouseDoubleClickEvent, new RoutedEventHandler(HandleDoubleClick);
         }
 
@@ -167,16 +141,18 @@ namespace File_Manager
 
         private void GetDirectoryContent(string new_path, bool close_if_failed, bool add_to_back)
         {
-            bool first_get = true;
+            bool first_get = true, failed = false;
             DriveInfo[] drives = new DriveInfo[0];
             List<DirectoryInfo> sub_directories = new List<DirectoryInfo>();
             List<FileInfo> files = new List<FileInfo>();
+            int id = ++explore_id;
 
-            GetFilesAndDirectory = new BackgroundWorker();
-            GetFilesAndDirectory.WorkerReportsProgress = true;
+            BackgroundWorker worker = new BackgroundWorker();
+            GetFilesAndDirectory = worker;
+            worker.WorkerReportsProgress = true;
             string message = "", extra = "";
 
-            GetFilesAndDirectory.DoWork += (object sender, DoWorkEventArgs e) =>
+            worker.DoWork += (object sender, DoWorkEventArgs e) =>
             {   //desktop //documents //music .... etc
                 if (new_path.ToLower().Equals("computer"))
                 {
@@ -184,14 +160,14 @@ namespace File_Manager
                     { drives = DriveInfo.GetDrives(); }
                     catch (Exception ex)
                     {
-                        message = "can not load drives info, the app will exit now.";
+                        message = "can not load drives info.";
                         extra = ex.Message;
-                        WorkerAsyncCancel = true;
+                        failed = true;
                         return;
                     }
-                    GetFilesAndDirectory.ReportProgress(10);
-                    for (int i = 0; i < drives.Length; i++)
-                        GetFilesAndDirectory.ReportProgress(1, i);
+                    worker.ReportProgress(10);
+                    for (int i = 0; i < drives.Length && id == explore_id; i++)
+                        worker.ReportProgress(1, i);
                 }
                 else
                 {
@@ -207,27 +183,29 @@ namespace File_Manager
                         }
                         catch (Exception ex)
                         {
-                            message = "can not get directory content, app will exit now.";
+                            message = "can not get directory content.";
                             extra = ex.Message;
-                            WorkerAsyncCancel = true;
+                            failed = true;
                             return;
                         }
-                        GetFilesAndDirectory.ReportProgress(10);
-                        for (int i = 0; i < sub_directories.Count; i++)
+                        worker.ReportProgress(10);
+                        for (int i = 0; i < sub_directories.Count && id == explore_id; i++)
                             if (ShowHiddenFiles || (!ShowHiddenFiles && !sub_directories[i].Attributes.HasFlag(FileAttributes.Hidden)))
-                                GetFilesAndDirectory.ReportProgress(2, i);
-                        for (int i = 0; i < files.Count; i++)
+                                worker.ReportProgress(2, i);
+                        for (int i = 0; i < files.Count && id == explore_id; i++)
                             if (ShowHiddenFiles || (!ShowHiddenFiles && !files[i].Attributes.HasFlag(FileAttributes.Hidden)))
-                                GetFilesAndDirectory.ReportProgress(3, i);
-                        GetFilesAndDirectory.ReportProgress(4);
+                                worker.ReportProgress(3, i);
+                        worker.ReportProgress(4);
                     }
                     else
-                        WorkerAsyncCancel = true;
+                        failed = true;
                 }
             };
 
-            GetFilesAndDirectory.ProgressChanged += (object sender, ProgressChangedEventArgs e) =>
+            worker.ProgressChanged += (object sender, ProgressChangedEventArgs e) =>
             {
+                if (id != explore_id)
+                    return;
                 if (first_get)
                 {
                     MainList.Clear();
@@ -251,14 +229,16 @@ namespace File_Manager
                         break;
                     case 10:
                         path = new_path;
-                        GetFilesAndDirectory.WorkerSupportsCancellation = true;
+                        worker.WorkerSupportsCancellation = true;
                         break;
                 }
             };
 
-            GetFilesAndDirectory.RunWorkerCompleted += (object sender, RunWorkerCompletedEventArgs e) =>
+            worker.RunWorkerCompleted += (object sender, RunWorkerCompletedEventArgs e) =>
             {
-                if (!WorkerAsyncCancel)
+                if (id != explore_id)
+                    return;
+                if (!failed && e.Error == null)
                 {
                     Address_SelectChange_IsFake = true;
                     AddressHelper.Items.Clear();
@@ -285,16 +265,38 @@ namespace File_Manager
                 }
                 else
                 {
-                    next_address = Address.Text;
-                    ExplorePath(Address.Text, close_if_failed, add_to_back);
-                    if (message == "")
-                        Messages.ShowMessage("Path is unreadable!", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, false, "");
+                    progressbar.Value = 0;
+                    progressbar.Visibility = Visibility.Hidden;
+                    stop_progress = true;
+                    if (e.Error != null)
+                        extra = e.Error.Message;
+                    if (message == "" && extra == "")
+                        Messages.ShowMessage("Path is unreadable!", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, new_path);
                     else
-                        Messages.ShowMessage(message, ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, extra == "", extra);
-                    if (CloseIfFailed) Close();
+                        Messages.ShowMessage(message == "" ? "Path is unreadable!" : message, ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, extra != "", extra);
+                    if (close_if_failed)
+                        Close();
+                    else if (!new_path.ToLower().Equals("computer") && !path.ToLower().Equals("computer") && !Directory.Exists(path))
+                        ExplorePath(string.Equals(new_path.TrimEnd('\\'), path.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase) ? ExistingParent(path) : "Computer", false, true);
                 }
             };
-            GetFilesAndDirectory.RunWorkerAsync();
+            worker.RunWorkerAsync();
+        }
+
+        string ExistingParent(string folder)
+        {
+            try
+            {
+                string parent = Path.GetDirectoryName(folder.TrimEnd('\\'));
+                while (parent != null)
+                {
+                    if (Directory.Exists(parent))
+                        return parent;
+                    parent = Path.GetDirectoryName(parent);
+                }
+            }
+            catch (Exception) { }
+            return "Computer";
         }
 
         private int FilesSorter(FileInfo x, FileInfo y)
@@ -388,10 +390,12 @@ namespace File_Manager
 
         void Item_ContextMenuOpening(object sender, ContextMenuEventArgs e)
         {
-            ContextMenu c = (((ListViewItem)sender).Content as MainListView).Menu;
+            MainListView item = ((ListViewItem)sender).Content as MainListView;
+            if (item == null)
+                return;
+            ContextMenu c = item.Menu;
             if (c == null)
             {
-                MainListView item = ((ListViewItem)sender).Content as MainListView;
                 c = new ContextMenu();
                 if (item.File == null)
                     MakeDriveContextMenu(item.Drive, c);
@@ -399,7 +403,11 @@ namespace File_Manager
                     File_ContextMenuCreator(c);
                 else
                     Directory_ContextMenuCreator(c);
+                item.Menu = c;
             }
+            c.PlacementTarget = (ListViewItem)sender;
+            c.IsOpen = true;
+            e.Handled = true;
             //c.IsOpen = true;
             //Explorer.ContextMenu.IsOpen = false;
         }
@@ -437,7 +445,7 @@ namespace File_Manager
                 file_context_menu.Items.Add(new Separator());
                 menu_item = new MenuItem();
                 menu_item.Header = "Create shortcut";
-                //menu_item.Click += CreateShortcut;
+                menu_item.Click += CreateShortcut;
                 file_context_menu.Items.Add(menu_item);
                 menu_item = new MenuItem();
                 menu_item.Header = "Delete";
@@ -447,10 +455,11 @@ namespace File_Manager
                 menu_item.Header = "Rename";
                 menu_item.Click += RenameFile_Click;
                 file_context_menu.Items.Add(menu_item);
-                file_context_menu.Items.Add(new Separator());
+                file_context_menu.Items.Add(new Separator() { Visibility = Visibility.Collapsed });
                 menu_item = new MenuItem();
                 menu_item.Header = "Properties";
                 menu_item.Click += Properties_Click;
+                menu_item.Visibility = Visibility.Collapsed;
                 file_context_menu.Items.Add(menu_item);
             }
         }
@@ -489,11 +498,12 @@ namespace File_Manager
                 menu_item.Header = "Paste into directory";
                 menu_item.IsEnabled = false;
                 menu_item.Click += PasteIn_Click;
+                menu_item.Visibility = Visibility.Collapsed;
                 directory_context_menu.Items.Add(menu_item);
                 directory_context_menu.Items.Add(new Separator());
                 menu_item = new MenuItem();
                 menu_item.Header = "Create shortcut";
-                //menu_item.Click += CreateShortcut;
+                menu_item.Click += CreateShortcut;
                 directory_context_menu.Items.Add(menu_item);
                 menu_item = new MenuItem();
                 menu_item.Header = "Delete";
@@ -503,10 +513,11 @@ namespace File_Manager
                 menu_item.Header = "Rename";
                 menu_item.Click += RenameFile_Click;
                 directory_context_menu.Items.Add(menu_item);
-                directory_context_menu.Items.Add(new Separator());
+                directory_context_menu.Items.Add(new Separator() { Visibility = Visibility.Collapsed });
                 menu_item = new MenuItem();
                 menu_item.Header = "Properties";
                 menu_item.Click += Properties_Click;
+                menu_item.Visibility = Visibility.Collapsed;
                 directory_context_menu.Items.Add(menu_item);
             }
         }
@@ -626,6 +637,11 @@ namespace File_Manager
 
         void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
+            if (load_error != null)
+            {
+                ShowErrorAndClose(load_error);
+                return;
+            }
             Functions.SystemDrive = new DirectoryInfo(Environment.SystemDirectory).Root.FullName;
             //next_address = path;
             ExplorePath(path, true, true);
@@ -683,7 +699,13 @@ namespace File_Manager
 
         private void Quit(object sender, RoutedEventArgs e)
         {
-            Process.GetCurrentProcess().Close();
+            foreach (Window i in Application.Current.Windows.Cast<Window>().ToList())
+                i.Close();
+        }
+
+        private void Help_Click(object sender, RoutedEventArgs e)
+        {
+            Functions.OpenUrl(Functions.HelpLink);
         }
 
         private void Close(object sender, RoutedEventArgs e)
@@ -705,27 +727,28 @@ namespace File_Manager
 
         private void DublicateFileRemover_Click(object sender, RoutedEventArgs e)
         {
-            new Identical_File_Remover().Show();
+            Functions.ShowTool(new Identical_File_Remover());
         }
 
         private void BigFileFinder_Click(object sender, RoutedEventArgs e)
         {
-            new Big_File_Finder().Show();
+            Functions.ShowTool(new Big_File_Finder());
         }
 
         private void SuperFilesRenamer_Click(object sender, RoutedEventArgs e)
         {
-            new Renamer().Show();
+            Functions.ShowTool(new Renamer());
         }
 
         private void SystemMonitor_Click(object sender, RoutedEventArgs e)
         {
-            new System_Monitor().Show();
+            if (!Functions.ShowOpenedTool<System_Monitor>())
+                Functions.ShowTool(new System_Monitor());
         }
 
         private void EmptyDirectoriesRemover_Click(object sender, RoutedEventArgs e)
         {
-            (new Empty_Folder_Remover()).Show();
+            Functions.ShowTool(new Empty_Folder_Remover());
         }
 
         private void SelectAll_Click(object sender, RoutedEventArgs e)
@@ -743,6 +766,10 @@ namespace File_Manager
             //        unselected.Add(i);
             //}
             //Explorer.SelectedItems = unselected;
+            List<object> unselected = Explorer.Items.Cast<object>().Where(x => !Explorer.SelectedItems.Contains(x)).ToList();
+            Explorer.SelectedItems.Clear();
+            foreach (var i in unselected)
+                Explorer.SelectedItems.Add(i);
         }
 
         private void NewShortcut_Click(object sender, RoutedEventArgs e)
@@ -797,7 +824,7 @@ namespace File_Manager
 
         private void FileCompresser_Click(object sender, RoutedEventArgs e)
         {
-            new File_Compresser().Show();
+            Functions.ShowTool(new File_Compresser());
         }
 
         private void Properties_Click(object sender, RoutedEventArgs e)
@@ -836,9 +863,9 @@ namespace File_Manager
                 }
                 foreach (MainListView i in Explorer.SelectedItems)
                     if (i.File != null && i.File is FileInfo)
-                        ToCopyList.Add(new FileOperationItem((FileInfo)i.File, true, i.File.FullName.Substring(path.Length)));
+                        ToCopyList.Add(new FileOperationItem((FileInfo)i.File, true, i.File.Name));
                     else if (i.File != null)
-                        ToCopyList.Add(new FileOperationItem((DirectoryInfo)i.File, true, i.File.FullName.Substring(path.Length)));
+                        ToCopyList.Add(new FileOperationItem((DirectoryInfo)i.File, true, i.File.Name));
             }
             else
                 Messages.ShowMessage("You can not move any item from here.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
@@ -846,29 +873,31 @@ namespace File_Manager
 
         private void Copy_Click(object sender, RoutedEventArgs e)
         {
-            if (path != "Computer")
+            if (Explorer.SelectedItems.Count == 0)
+                return;
+            if (ToCopyList == null)
+                ToCopyList = new List<FileOperationItem>();
+            else
             {
-                if (ToCopyList == null)
-                    ToCopyList = new List<FileOperationItem>();
-                else
+                if (!IsPaste)
                 {
-                    if (!IsPaste)
-                    {
-                        if (Messages.ShowMessage("Do you want to append files to the list?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, true, "In clipboard there is items have not been paste yet, if you click 'NO' thies items will be removed from clipboard.") == MyMessageBoxResult.No)
-                            ToCopyList.Clear();
-                    }
-                    else
+                    if (Messages.ShowMessage("Do you want to append files to the list?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, true, "In clipboard there is items have not been paste yet, if you click 'NO' thies items will be removed from clipboard.") == MyMessageBoxResult.No)
                         ToCopyList.Clear();
                 }
+                else
+                    ToCopyList.Clear();
+            }
+            if (path != "Computer")
+            {
                 foreach (MainListView i in Explorer.SelectedItems)
                     if (i.File != null && i.File is FileInfo)
-                        ToCopyList.Add(new FileOperationItem((FileInfo)i.File, false, i.File.FullName.Substring(path.Length)));
+                        ToCopyList.Add(new FileOperationItem((FileInfo)i.File, false, i.File.Name));
                     else if (i.File != null)
-                        ToCopyList.Add(new FileOperationItem((DirectoryInfo)i.File, false, i.File.FullName.Substring(path.Length)));
+                        ToCopyList.Add(new FileOperationItem((DirectoryInfo)i.File, false, i.File.Name));
             }
             else
                 foreach (MainListView i in Explorer.SelectedItems)
-                    if (i.Drive.IsReady)
+                    if (i.Drive != null && i.Drive.IsReady)
                         ToCopyList.Add(new FileOperationItem(i.Drive.RootDirectory, false, ""));
         }
 
@@ -885,15 +914,15 @@ namespace File_Manager
 
         private void Delete_Click(object sender, RoutedEventArgs e)
         {
-            DeteteSelectetFiles();
+            DeteteSelectetFiles(Functions.PermanentDeleteKey());
         }
 
         private void OpenInNewWindow_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                foreach (var i in Explorer.SelectedItems)
-                    Functions.OpenWith(((ListViewItem)i).ContentStringFormat, Functions.GetItemType(((ListViewItem)i).ContentStringFormat));
+                foreach (MainListView i in Explorer.SelectedItems.Cast<MainListView>().ToList())
+                    Functions.OpenWith(i.FullPath, i.File == null ? ItemType.Drive : i.File is FileInfo ? ItemType.File : ItemType.Directory);
             }
             catch (Exception ex)
             {
@@ -903,6 +932,8 @@ namespace File_Manager
 
         private void RenameDrive_Click(object sender, RoutedEventArgs e)
         {
+            if (Explorer.SelectedItem == null || ((MainListView)Explorer.SelectedItem).Drive == null)
+                return;
             try
             {
                 string new_name = new Rename().ShowWindow(((MainListView)Explorer.SelectedItem).Drive.VolumeLabel, false);
@@ -922,7 +953,7 @@ namespace File_Manager
 
         private void VirtualMachine_Click(object sender, RoutedEventArgs e)
         {
-            new Virtual_Machine().Show();
+            Functions.ShowTool(new Virtual_Machine());
         }
 
         private void Eject_Click(object sender, RoutedEventArgs e)
@@ -944,16 +975,17 @@ namespace File_Manager
                 string file_name = null; ;
                 if (new_name != null)
                 {
-                    if (File.Exists(path + "\\" + new_name + extension))
+                    string folder = path.TrimEnd('\\');
+                    if (File.Exists(folder + "\\" + new_name + extension))
                     {
                         int i = 1;
-                        while (File.Exists(path + "\\" + new_name + " (" + i + ")" + extension)) i++;
-                        if (Messages.ShowMessage("File with name '" + new_name + extension + "' is already exist.", ModrenMessageButton.YesNo, ModrenMessageImage.Rename, ModrenMessageSound.Question, true, string.Format("New File", "Do you want to create file '{0} ({1}){2}' " + new_name, i, extension) + string.Format("instat of '{0}'", new_name + extension)) == MyMessageBoxResult.Yes)
-                            file_name = path + "\\" + new_name + " (" + i + ")" + extension;
+                        while (File.Exists(folder + "\\" + new_name + " (" + i + ")" + extension)) i++;
+                        if (Messages.ShowMessage("File with name '" + new_name + extension + "' is already exist.", ModrenMessageButton.YesNo, ModrenMessageImage.Rename, ModrenMessageSound.Question, true, string.Format("Do you want to create file '{0} ({1}){2}' instat of '{0}{2}'?", new_name, i, extension)) == MyMessageBoxResult.Yes)
+                            file_name = folder + "\\" + new_name + " (" + i + ")" + extension;
                     }
                     else
-                        file_name = path + "\\" + new_name + extension;
-                    try { if (file_name != null) File.Create(file_name); }
+                        file_name = folder + "\\" + new_name + extension;
+                    try { if (file_name != null) Functions.CreateNewFile(file_name, extension); }
                     catch (Exception ex)
                     { Messages.ShowMessage("Something went wrong.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
                     Refresh();
@@ -968,15 +1000,16 @@ namespace File_Manager
             string dir_name = null; ;
             if (new_name != null && new_name != "")
             {
-                if (Directory.Exists(path + "\\" + new_name))
+                string folder = path.TrimEnd('\\');
+                if (Directory.Exists(folder + "\\" + new_name))
                 {
                     int i = 1;
-                    while (Directory.Exists(path + "\\" + new_name + " (" + i + ")")) i++;
+                    while (Directory.Exists(folder + "\\" + new_name + " (" + i + ")")) i++;
                     if (Messages.ShowMessage("Directory with same name is exist.", ModrenMessageButton.YesNo, ModrenMessageImage.Rename, ModrenMessageSound.Question, true, "Do you want to create directory '" + new_name + " (" + i + ")' instat of '" + new_name + "'") == MyMessageBoxResult.Yes)
-                        dir_name = path + "\\" + new_name + " (" + i + ")";
+                        dir_name = folder + "\\" + new_name + " (" + i + ")";
                 }
                 else
-                    dir_name = path + "\\" + new_name;
+                    dir_name = folder + "\\" + new_name;
                 try { if (dir_name != null) Directory.CreateDirectory(dir_name); }
                 catch (Exception ex) { Messages.ShowMessage("Something went wrong.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message); }
             }
@@ -997,30 +1030,18 @@ namespace File_Manager
             }
         }
 
-        private void DeteteSelectetFiles()
+        private void DeteteSelectetFiles(bool permanent)
         {
-            if (path != "Computer" && Explorer.SelectedItems.Count > 0)
+            if (path != "Computer")
             {
-                bool delete = false;
-                if (Explorer.SelectedItems.Count > 1)
+                if (Explorer.SelectedItems.Count > 0)
                 {
-                    StringBuilder items_name = new StringBuilder();
-                    foreach (var i in Explorer.SelectedItems)
-                        items_name.AppendLine((i as MainListView).FullPath);
-                    if (Messages.ShowMessage(string.Format("Are you sure you want to permanently delete these {0} items", Explorer.SelectedItems.Count), ModrenMessageButton.YesNo, ModrenMessageImage.Delete, ModrenMessageSound.Question, true, items_name.ToString()) == MyMessageBoxResult.Yes)
-                        delete = true;
-                }
-                else if (Messages.ShowMessage("Are you sure you want to permanently delete these item", ModrenMessageButton.YesNo, ModrenMessageImage.Delete, ModrenMessageSound.Question, true, Messages.GetItemInfo((Explorer.SelectedItem as MainListView).File)) == MyMessageBoxResult.Yes)
-                    delete = true;
-                if (delete)
-                {
-                    List<FileOperationItem> to_delete_list = new List<FileOperationItem>();
+                    List<FileSystemInfo> items = new List<FileSystemInfo>();
                     foreach (MainListView i in Explorer.SelectedItems)
-                        if (i.File is DirectoryInfo)
-                            to_delete_list.Add(new FileOperationItem((DirectoryInfo)i.File, false, ""));
-                        else
-                            to_delete_list.Add(new FileOperationItem((FileInfo)i.File, false, ""));
-                    new Operation().CopyDialogShow(to_delete_list, OperationType.Delete, "", false);
+                        if (i.File != null)
+                            items.Add(i.File);
+                    if (items.Count > 0 && Functions.ConfirmDelete(items, permanent) && Functions.DeleteItems(items, permanent, this))
+                        Refresh();
                 }
             }
             else
@@ -1154,15 +1175,12 @@ namespace File_Manager
 
         private void GoUP_Click(object sender, RoutedEventArgs e)
         {
-            if (GetFilesAndDirectory != null && GetFilesAndDirectory.IsBusy)
-                while (!GetFilesAndDirectory.WorkerSupportsCancellation)
-                    Thread.Sleep(10);
             string new_path, old_path = path;
             string[] split_path = path.Split(Functions.spliter, StringSplitOptions.RemoveEmptyEntries);
             if (!path.ToLower().Equals("computer"))
             {
                 if (split_path.Length == 1)
-                    new_path = "computer";
+                    new_path = "Computer";
                 else
                     try
                     { new_path = new DirectoryInfo(path).Parent.FullName; }
@@ -1171,8 +1189,6 @@ namespace File_Manager
                         Messages.ShowMessage("Sorry we can not go up.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message);
                         return;
                     }
-                if (GetFilesAndDirectory.WorkerSupportsCancellation && GetFilesAndDirectory.IsBusy)
-                    GetFilesAndDirectory.CancelAsync();
                 //next_address = new_path;
                 ExplorePath(new_path, false, true);
                 front.Clear();
@@ -1203,9 +1219,9 @@ namespace File_Manager
             if (front.Count > 0)
             {
                 //next_address = front.Pop();
-                string old_path = path;
-                back.Push(next_address);
-                ExplorePath(front.Pop(), false, false);
+                string old_path = path, front_path = front.Pop();
+                back.Push(front_path);
+                ExplorePath(front_path, false, false);
                 SelectItem(old_path);
             }
             if (front.Count < 1)
@@ -1221,8 +1237,8 @@ namespace File_Manager
             else if (e.Key.Equals(Key.Enter) && Explorer.SelectedIndex > -1)
                 OpenFileOrDirectory();
             else if (e.Key == Key.Delete)
-                DeteteSelectetFiles();
-            else if (e.Key == Key.F2)
+                DeteteSelectetFiles(Functions.PermanentDeleteKey());
+            else if (e.Key == Key.F2 && Explorer.SelectedIndex > -1)
                 if (path == "Computer")
                     RenameDrive_Click(null, null);
                 else
@@ -1249,7 +1265,8 @@ namespace File_Manager
         private void SurfingBackMenu_SelectionChange(object sender, SelectionChangedEventArgs e)
         {
             //next_address = (backMenu.Items[backMenu.SelectedIndex]).ToString();
-            ExplorePath((backMenu.Items[backMenu.SelectedIndex]).ToString(), false, false);
+            if (backMenu.SelectedIndex > -1)
+                ExplorePath((backMenu.Items[backMenu.SelectedIndex]).ToString(), false, false);
         }
 
         private void Duplicate_Click(object sender, RoutedEventArgs e)
@@ -1297,6 +1314,22 @@ namespace File_Manager
             //    window2.Show(path);
             //}
             //Refresh();
+            if (path == "Computer" || Explorer.SelectedItems.Count == 0)
+                return;
+            List<FileOperationItem> files = new List<FileOperationItem>();
+            foreach (MainListView i in Explorer.SelectedItems)
+                if (i.File is FileInfo)
+                    files.Add(new FileOperationItem((FileInfo)i.File, false, i.File.Name));
+                else if (i.File is DirectoryInfo)
+                    files.Add(new FileOperationItem((DirectoryInfo)i.File, false, i.File.Name));
+            new Operation().CopyDialogShow(files, OperationType.Copy, path, true);
+            Refresh();
+        }
+
+        private void CreateShortcut(object sender, RoutedEventArgs e)
+        {
+            if (Explorer.SelectedItem != null)
+                New_Shortcut.CreateShortcut(((MainListView)Explorer.SelectedItem).FullPath, true);
         }
 
         private void PasteIn_Click(object sender, RoutedEventArgs e)
@@ -1306,29 +1339,37 @@ namespace File_Manager
 
         private void RenameFile_Click(object sender, RoutedEventArgs e)
         {
-            if (path != "Computer")
+            if (path != "Computer" && Explorer.SelectedItem != null && ((MainListView)Explorer.SelectedItem).File != null)
             {
-                string new_name = new Rename().ShowWindow(((MainListView)Explorer.SelectedItem).File.FullName, true);
+                FileSystemInfo reference = ((MainListView)Explorer.SelectedItem).File;
+                string new_name = new Rename().ShowWindow(reference.FullName, true);
                 if (new_name != null)
                 {
                     if (path != "Computer" && Explorer.SelectedItems.Count > 0)
                     {
-                        List<FileOperationItem> to_rename_list = new List<FileOperationItem>();
+                        List<FileSystemInfo> items = new List<FileSystemInfo>();
                         foreach (MainListView i in Explorer.SelectedItems)
-                            if (i.File is DirectoryInfo)
-                                to_rename_list.Add(new FileOperationItem((DirectoryInfo)i.File, false, new_name));
+                            if (i.File != null)
+                                items.Add(i.File);
+                        if (!Functions.ConfirmRiskyItems(items.Select(x => x.FullName), "rename"))
+                            return;
+                        List<string> names = Functions.MultiRenameNames(items, reference, new_name);
+                        List<FileOperationItem> to_rename_list = new List<FileOperationItem>();
+                        for (int i = 0; i < items.Count; i++)
+                            if (items[i] is DirectoryInfo)
+                                to_rename_list.Add(new FileOperationItem((DirectoryInfo)items[i], false, names[i]));
                             else
-                                to_rename_list.Add(new FileOperationItem((FileInfo)i.File, false, new_name));
+                                to_rename_list.Add(new FileOperationItem((FileInfo)items[i], false, names[i]));
                         new Operation().CopyDialogShow(to_rename_list, OperationType.Rename, new_name, true);
                     }
+                    Refresh();
                 }
             }
-            Refresh();
         }
 
         private void Address_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (!Address_SelectChange_IsFake)
+            if (!Address_SelectChange_IsFake && AddressHelper.SelectedItem != null)
             {
                 //next_address = AddressHelper.SelectedItem.ToString();
                 ExplorePath(AddressHelper.SelectedItem.ToString(), false, true);
@@ -1408,7 +1449,17 @@ namespace File_Manager
             type.Text = Functions.GetFileType(fi.Extension);
             if (FileInfoCombonents.FilesInformation.ContainsKey(fi.Extension.ToLower()))
                 if (FileInfoCombonents.FilesInformation[fi.Extension.ToLower()].Category == FileCategory.Image)
-                    try { img.Source = new BitmapImage(new Uri(fi.FullName)); }
+                    try
+                    {
+                        BitmapImage image = new BitmapImage();
+                        image.BeginInit();
+                        image.CacheOption = BitmapCacheOption.OnLoad;
+                        image.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
+                        image.DecodePixelWidth = 256;
+                        image.UriSource = new Uri(fi.FullName);
+                        image.EndInit();
+                        img.Source = image;
+                    }
                     catch (Exception) { }
         }
 
@@ -1537,12 +1588,14 @@ namespace File_Manager
                     menu_item = new MenuItem();
                     menu_item.Header = "Paste in this location";
                     menu_item.Click += PasteIn_Click;
+                    menu_item.Visibility = Visibility.Collapsed;
                     drive_context_menu.Items.Add(menu_item);
-                    drive_context_menu.Items.Add(new Separator());
+                    drive_context_menu.Items.Add(new Separator() { Visibility = Visibility.Collapsed });
                 }
                 menu_item = new MenuItem();
                 menu_item.Header = "Format";
                 menu_item.Click += Format_Click;
+                menu_item.Visibility = Visibility.Collapsed;
                 drive_context_menu.Items.Add(menu_item);
                 if (drive.DriveType == DriveType.Removable)
                 {
@@ -1550,21 +1603,22 @@ namespace File_Manager
                     menu_item.Header = "Eject";
                     menu_item.Click += Eject_Click;
                 }
-                drive_context_menu.Items.Add(new Separator());
+                drive_context_menu.Items.Add(new Separator() { Visibility = Visibility.Collapsed });
                 menu_item = new MenuItem();
                 menu_item.Header = "Copy to";
-                //menu_item.Click += CopyTo_Click;
+                menu_item.Visibility = Visibility.Collapsed;
                 drive_context_menu.Items.Add(menu_item);
-                drive_context_menu.Items.Add(new Separator());
+                drive_context_menu.Items.Add(new Separator() { Visibility = Visibility.Collapsed });
                 menu_item = new MenuItem();
                 menu_item.Header = "Rename";
                 menu_item.Click += RenameDrive_Click;
                 drive_context_menu.Items.Add(menu_item);
             }
-            drive_context_menu.Items.Add(new Separator());
+            drive_context_menu.Items.Add(new Separator() { Visibility = Visibility.Collapsed });
             menu_item = new MenuItem();
             menu_item.Header = "Properties";
             menu_item.Click += Properties_Click;
+            menu_item.Visibility = Visibility.Collapsed;
             drive_context_menu.Items.Add(menu_item);
             return drive_context_menu;
         }
@@ -1579,8 +1633,7 @@ namespace File_Manager
 
         private void Explorer_ContextMenuOpening(object sender, ContextMenuEventArgs e)
         {
-            if (Explorer.SelectedIndex > -1)
-                Explorer.ContextMenu.IsOpen = false;
+            paste_context_menu.IsEnabled = ToCopyList != null && ToCopyList.Count > 0;
         }
 
         private void Explorer_KeyUP(object sender, RoutedEventArgs e)
@@ -1590,7 +1643,7 @@ namespace File_Manager
 
         private void FilesDestoyer_Click(object sender, RoutedEventArgs e)
         {
-            new File_Destroyer().Show();
+            Functions.ShowTool(new File_Destroyer());
         }
 
         private void SortByName_Click(object sender, RoutedEventArgs e)
@@ -1626,7 +1679,7 @@ namespace File_Manager
         private void DateModifiedBySize_Click(object sender, RoutedEventArgs e)
         {
             List<MainListView> list = MainList.ToList<MainListView>();
-            list.Sort((MainListView x, MainListView y) => { return x.File.LastWriteTime.Ticks.CompareTo(y.File.LastWriteTime.Ticks); });
+            list.Sort((MainListView x, MainListView y) => { return (x.File == null ? 0 : x.File.LastWriteTime.Ticks).CompareTo(y.File == null ? 0 : y.File.LastWriteTime.Ticks); });
             MainList.Clear();
             foreach (var i in list)
                 MainList.Add(i);
@@ -1648,7 +1701,7 @@ namespace File_Manager
 
         private void FilesEncreptor_Click(object sender, RoutedEventArgs e)
         {
-            new Files_Encrepter().Show();
+            Functions.ShowTool(new Files_Encrepter());
         }
 
         private void OpenFileDialog_Click(object sender, RoutedEventArgs e)
@@ -1705,7 +1758,7 @@ namespace File_Manager
             FileType = "Directory";
             FileSize = "";
             FileExt = "";
-            DateModified = directory.LastWriteTimeUtc.ToString();
+            DateModified = directory.LastWriteTime.ToString();
         }
 
         public MainListView(DriveInfo drive)

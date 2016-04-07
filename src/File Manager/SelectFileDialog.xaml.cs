@@ -34,7 +34,6 @@ namespace File_Manager
         internal object[] OkAndCancelContent;
         static string LastSelectedPath = "root";
         SortItemsBy sort_by = SortItemsBy.Name;
-        static SortItemsBy GeneralSortBy;
         internal string SelectedItem;
         internal List<string> SelectedItems = new List<string>();
         internal bool AddExtension = true;
@@ -115,25 +114,26 @@ namespace File_Manager
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             #region Startup Movement
-            Rotation3d.Angle = 90;
-            BackgroundWorker rotate_3d = new BackgroundWorker();
-            rotate_3d.WorkerReportsProgress = true;
-            rotate_3d.DoWork += (object senderw, DoWorkEventArgs ew) =>
+            if (SystemParameters.ClientAreaAnimation)
             {
-                for (int i = 0; i < 50; i ++)
+                ScaleTransform scale = new ScaleTransform(0.2, 1, 0, 0);
+                TranslateTransform move = new TranslateTransform(ActualWidth / 4, 0);
+                TransformGroup transform = new TransformGroup();
+                transform.Children.Add(scale);
+                transform.Children.Add(move);
+                containt_grid.RenderTransform = transform;
+                Duration duration = new Duration(TimeSpan.FromMilliseconds(450));
+                CubicEase ease = new CubicEase() { EasingMode = EasingMode.EaseOut };
+                DoubleAnimation fade = new DoubleAnimation(0, 1, duration) { EasingFunction = ease };
+                fade.Completed += (object senderw, EventArgs ew) =>
                 {
-                    rotate_3d.ReportProgress(i);
-                    Thread.Sleep(2);
-                }
-            };
-            rotate_3d.ProgressChanged += (object senderw, ProgressChangedEventArgs ew) => { Rotation3d.Angle -= 1.8; };
-            rotate_3d.RunWorkerCompleted += (object senderw, RunWorkerCompletedEventArgs ew) =>
-            {
-                Rotation3d.Angle = 0;
-                FistAnimation_Grid.Visibility = Visibility.Collapsed;
-                containt_grid.Visibility = Visibility.Visible;
-            };
-            rotate_3d.RunWorkerAsync();
+                    containt_grid.BeginAnimation(OpacityProperty, null);
+                    containt_grid.RenderTransform = Transform.Identity;
+                };
+                scale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(0.2, 1, duration) { EasingFunction = ease });
+                move.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(ActualWidth / 4, 0, duration) { EasingFunction = ease });
+                containt_grid.BeginAnimation(OpacityProperty, fade);
+            }
             #endregion Startup Movement
 
             InitializeData();
@@ -159,8 +159,8 @@ namespace File_Manager
             get_drivers.RunWorkerCompleted += (object sender, RunWorkerCompletedEventArgs e) =>
             {
                 for (int i = drivers.Length - 1; i > -1; i--)
-                    QuickAccess_List.Items.Insert(0, CreateQuickAccessItem(Functions.GetDriveImage(drivers[i], 24), 24, drivers[i].IsReady ? ((drivers[i].VolumeLabel.Equals(string.Empty) ? "Local disk" : drivers[i].VolumeLabel) + " (" + drivers[i].Name + ")") : drivers[i].Name, drivers[i], drivers[i].Name));
-                QuickAccess_List.Items.Insert(0, CreateQuickAccessItem("Local disks"));
+                    QuickAccess_List.Items.Insert(0, CreateQuickAccessItem(Functions.GetDriveImage(drivers[i], 24), 24, Functions.GetDriveDescription(drivers[i]), drivers[i], drivers[i].Name));
+                QuickAccess_List.Items.Insert(0, CreateQuickAccessItem("Drives"));
             };
             get_drivers.RunWorkerAsync();
 
@@ -191,7 +191,7 @@ namespace File_Manager
 
             string[] special_folders = { Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles) , Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
                 Environment.GetFolderPath(Environment.SpecialFolder.Fonts),Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),Environment.GetFolderPath(Environment.SpecialFolder.History)};
-            string[] special_folders_image = { "programfile", "programfile", "fonts", "directory", "history" };
+            string[] special_folders_image = { "programfile", "programfile", "fonts", "local", "history" };
             QuickAccess_List.Items.Add(CreateQuickAccessItem("System directories"));
 
             bool k = false;
@@ -205,7 +205,7 @@ namespace File_Manager
                         continue;
                     }
                     DirectoryInfo dir = new DirectoryInfo(special_folders[i]);
-                    QuickAccess_List.Items.Add(CreateQuickAccessItem(Functions.GetDirectoryImage(user_folders_images[i]), 24, dir.Name, dir, dir.FullName));
+                    QuickAccess_List.Items.Add(CreateQuickAccessItem(Functions.GetDirectoryImage(special_folders_image[i]), 24, dir.Name, dir, dir.FullName));
                 }
                 worker_isbusy = false;
             }
@@ -270,8 +270,8 @@ namespace File_Manager
             get_drivers.DoWork += (object senderw, DoWorkEventArgs ew) => { drivers = DriveInfo.GetDrives(); };
             get_drivers.RunWorkerCompleted += (object senderw, RunWorkerCompletedEventArgs ew) =>
             {
-                foreach (DriveInfo i in drivers)
-                    items.Add(new RootItem(i));
+                for (int i = 0; i < drivers.Length; i++)
+                    items.Insert(i, new RootItem(drivers[i]));
                 CollectionView view = (CollectionView)CollectionViewSource.GetDefaultView(RootPage.ItemsSource);
                 PropertyGroupDescription groupDescription = new PropertyGroupDescription("Header");
                 view.GroupDescriptions.Add(groupDescription);
@@ -313,7 +313,7 @@ namespace File_Manager
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.Fonts)))
                 items.Add(new RootItem(new DirectoryInfo(tmp_path), "System directories", "fonts"));
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)))
-                items.Add(new RootItem(new DirectoryInfo(tmp_path), "System directories", "directory"));
+                items.Add(new RootItem(new DirectoryInfo(tmp_path), "System directories", "local"));
             if (Directory.Exists(tmp_path = Environment.GetFolderPath(Environment.SpecialFolder.History)))
                 items.Add(new RootItem(new DirectoryInfo(tmp_path), "System directories", "history"));
         }
@@ -577,29 +577,26 @@ namespace File_Manager
 
         private void FinishThis(ExplorerItem explorerItem)
         {
-            if (CheckFileExists)
-                if (dialogMode == SelectFileDialogMode.OpenFile && !File.Exists(explorerItem.ToolTip))
-                {
-                    Messages.ShowMessage("File is not exists.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
-                    return;
-                }
-                else if (dialogMode == SelectFileDialogMode.SaveFile && File.Exists(explorerItem.ToolTip))
-                {
-                    if (Messages.ShowMessage("File is already exists. overwrite?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, false, "") == MyMessageBoxResult.No)
-                        return;
-                }
+            if (dialogMode == SelectFileDialogMode.SaveFile && AddExtension && Filter_ComboBox.SelectedItem != null)
+            {
+                string[] extentions = (Filter_ComboBox.SelectedItem as ComboBoxItem).Tag as string[];
+                if (extentions != null && extentions.Length > 0 && !extentions.Any(x => explorerItem.ToolTip.EndsWith(x, StringComparison.OrdinalIgnoreCase)))
+                    explorerItem.ToolTip += extentions[0];
+            }
             if (dialogMode == SelectFileDialogMode.SaveFile)
             {
-                if (AddExtension /*&& Path.GetExtension(explorerItem.ToolTip) == ""*/)
-                    explorerItem.ToolTip += ((Filter_ComboBox.SelectedItem as ComboBoxItem).Tag as string[])[0];
-                try
+                if (Directory.Exists(explorerItem.ToolTip))
                 {
-                    File.Create(explorerItem.ToolTip);
+                    Messages.ShowMessage("A directory with this name already exists.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, true, explorerItem.ToolTip);
+                    return;
                 }
-                catch(Exception ex)
-                {
-                    Messages.ShowMessage("Sorry we can not create file.", ModrenMessageButton.OK, ModrenMessageImage.Stop, ModrenMessageSound.Stop, true, ex.Message);
-                }
+                if (File.Exists(explorerItem.ToolTip) && Messages.ShowMessage("File is already exists. overwrite?", ModrenMessageButton.YesNo, ModrenMessageImage.Question, ModrenMessageSound.Question, true, explorerItem.ToolTip) != MyMessageBoxResult.Yes)
+                    return;
+            }
+            else if (CheckFileExists && dialogMode == SelectFileDialogMode.OpenFile && !File.Exists(explorerItem.ToolTip))
+            {
+                Messages.ShowMessage("File is not exists.", ModrenMessageButton.OK, ModrenMessageImage.Exclamation, ModrenMessageSound.Exclamation, false, "");
+                return;
             }
             SelectedItem = explorerItem.ToolTip;
             SelectedItems = new List<string>();
@@ -947,7 +944,9 @@ namespace File_Manager
                 }
                 else if (CurrentPath == "root")
                 {
-                    if (dialogMode == SelectFileDialogMode.SelectDirectory)
+                    if (dialogMode == SelectFileDialogMode.SelectDirectory && RootPage.SelectedItem == null)
+                        Functions.ShuckWindow(this, true, "Please select an item.");
+                    else if (dialogMode == SelectFileDialogMode.SelectDirectory)
                     {
                         return_value = MyMessageBoxResult.OK;
                         SelectedItem = (RootPage.SelectedItem as RootItem).toolTip;
@@ -1076,7 +1075,7 @@ namespace File_Manager
 
         public QuickAccessMenuItem(DriveInfo drive)
         {
-            FullPath = drive.IsReady ? ((drive.VolumeLabel.Equals(string.Empty) ? "Local Drive" : drive.VolumeLabel) + " (" + drive.Name + ")") : drive.Name;
+            FullPath = Functions.GetDriveDescription(drive);
             driveInfo = drive;
             Image = Functions.GetDriveImage(drive, 24);
             isDrive = true;
@@ -1157,33 +1156,58 @@ namespace File_Manager
             set { color = value; }
         }
 
-        public RootItem(DriveInfo i)
+        string space_text;
+        public string SpaceText
         {
+            get { return space_text; }
+            set { space_text = value; }
+        }
+
+        string tip;
+        public string Tip
+        {
+            get { return tip; }
+            set { tip = value; }
+        }
+
+        static SolidColorBrush low_space_brush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0xDA, 0x26, 0x26));
+
+        public RootItem(DriveInfo i) : this(new DriveSnapshot(i))
+        {
+        }
+
+        public RootItem(DriveSnapshot snapshot)
+        {
+            DriveInfo i = snapshot.drive;
             Directory = i.RootDirectory;
-            FullPath = Functions.GetDriveDescription(i);
-            if (i.IsReady)
+            FullPath = snapshot.description;
+            Tip = i.Name;
+            if (snapshot.is_ready)
             {
                 ShowUsedSpace = Visibility.Visible;
-                if ((i.TotalFreeSpace * 100.0) / i.TotalSize > 15)
+                if (snapshot.total_size > 0 && (snapshot.free_space * 100.0) / snapshot.total_size >= 10)
                     Color = Brushes.DodgerBlue;
                 else
-                    Color = Brushes.Tomato;
-                if (i.TotalSize > 0)
-                    UsedSpace = (i.TotalSize - i.TotalFreeSpace) * 125.0 / i.TotalSize;
+                    Color = low_space_brush;
+                if (snapshot.total_size > 0)
+                    UsedSpace = (snapshot.total_size - snapshot.free_space) * 125.0 / snapshot.total_size;
                 else
                     UsedSpace = 125;
+                SpaceText = Functions.FileSize(snapshot.free_space, 1) + " free of " + Functions.FileSize(snapshot.total_size, 1);
+                Tip = i.Name + "\n" + SpaceText + (snapshot.total_size > 0 && (snapshot.free_space * 100.0) / snapshot.total_size < 10 ? "\nThis drive is almost full" : "");
             }
             else
             {
                 UsedSpace = 0;
                 Color = Brushes.DodgerBlue;
                 ShowUsedSpace = Visibility.Collapsed;
+                SpaceText = "";
             }
-            Header = "Disk drivers";
+            Header = "Drives";
             isDrive = true;
             driveInfo = i;
             toolTip = i.Name;
-            Image = Functions.GetDriveImage(i, 64);
+            Image = Functions.GetDriveImage(snapshot, 64);
         }
 
         public RootItem(DirectoryInfo di, string header, string image)
@@ -1195,8 +1219,36 @@ namespace File_Manager
             Header = header;
             isDrive = false;
             Directory = di;
-            toolTip = di.FullName;
+            toolTip = Tip = di.FullName;
+            SpaceText = "";
             Image = Functions.GetDirectoryImage(image);
+        }
+    }
+
+    internal class DriveSnapshot
+    {
+        internal DriveInfo drive;
+        internal DriveType drive_type;
+        internal bool is_ready;
+        internal string label = "", description;
+        internal long total_size, free_space;
+
+        internal DriveSnapshot(DriveInfo drive)
+        {
+            this.drive = drive;
+            try
+            {
+                drive_type = drive.DriveType;
+                is_ready = drive.IsReady;
+                if (is_ready)
+                {
+                    label = drive.VolumeLabel;
+                    total_size = drive.TotalSize;
+                    free_space = drive.TotalFreeSpace;
+                }
+            }
+            catch (Exception) { is_ready = false; }
+            description = Functions.DriveTitle(drive_type, label ?? "", drive.Name);
         }
     }
 

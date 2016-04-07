@@ -1,46 +1,38 @@
 ﻿<Window x:Class="File_Manager.Compress_Files"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Compress Files" Height="550" Width="500" ResizeMode="NoResize" WindowStartupLocation="CenterScreen" Icon="Images/Appearance/compress.png" FontSize="14">
+        Title="Compress Files" Height="550" Width="500" ResizeMode="NoResize" WindowStartupLocation="CenterScreen" Icon="Images/Tools Icon/Window/CompressFiles.ico" FontSize="14">
         <Grid>
             <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,47,0,38">
                 <Grid VerticalAlignment="Top">
-                    <TextBox x:Name="file_name" Margin="30,25,36,0" TextWrapping="Wrap" VerticalAlignment="Top" IsReadOnly="True" BorderBrush="RoyalBlue"/>
-                    <Button Content="..." Margin="0,25,10,0" VerticalAlignment="Top" Height="21" HorizontalAlignment="Right" Width="21" Click="Browse_Click" Background="{x:Null}" BorderBrush="RoyalBlue"/>
+                    <Grid Margin="30,25,10,0" VerticalAlignment="Top">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="file_name" VerticalAlignment="Top" BorderBrush="RoyalBlue" ToolTip="Full path of the new archive, you can type it or choose it with '...'"/>
+                        <Button Grid.Column="1" Content="..." ToolTip="Choose where to save the archive" Width="24" Height="{Binding ActualHeight, ElementName=file_name}" Margin="-1,0,0,0" VerticalAlignment="Top" Click="Browse_Click" Background="{x:Null}" BorderBrush="RoyalBlue"/>
+                    </Grid>
                     <ComboBox x:Name="format" Margin="200,92,10,0" VerticalAlignment="Top" SelectionChanged="Format_SelectionChanged" BorderBrush="RoyalBlue" Background="{x:Null}">
-                        <ComboBoxItem Content="7z" Tag="7z"/>
-                        <!--<ComboBoxItem Content="ace" Tag="ace"/>-->
-                        <ComboBoxItem Content="arc" Tag="arc"/>
-                        <!--<ComboBoxItem Content="b1" Tag="b1"/>-->
-                        <ComboBoxItem Content="bzip" Tag="bzip"/>
-                        <ComboBoxItem Content="cab" Tag="cab"/>
-                        <ComboBoxItem Content="gzip" Tag="gzip"/>
-                        <ComboBoxItem Content="iso" Tag="iso"/>
-                        <ComboBoxItem Content="kgb" Tag="kgb"/>
-                        <ComboBoxItem Content="mou" Tag="mou"/>
-                        <ComboBoxItem Content="rar" Tag="rar"/>
-                        <ComboBoxItem Content="rar5" Tag="rar"/>
-                        <ComboBoxItem Content="sit" Tag="sit"/>
-                        <ComboBoxItem Content="sitx" Tag="sitx"/>
-                        <ComboBoxItem Content="tar" Tag="tar"/>
-                        <ComboBoxItem Content="uha" Tag="uha"/>
-                        <ComboBoxItem Content="wim" Tag="wim"/>
-                        <ComboBoxItem Content="xz" Tag="xz"/>
-                        <ComboBoxItem Content="zip" Tag="zip"/>
-                        <ComboBoxItem Content="zipx" Tag="zipx"/>
+                        <ComboBoxItem Content="7z" Tag="7z" ToolTip="Best compression, AES-256 password and encrypted file names"/>
+                        <ComboBoxItem Content="zip" Tag="zip" ToolTip="Opens on every system, AES-256 password"/>
+                        <ComboBoxItem Content="tar" Tag="tar" ToolTip="Keeps the files together without compressing them"/>
+                        <ComboBoxItem Content="gzip" Tag="gz" ToolTip="One file, or several files inside a tar"/>
+                        <ComboBoxItem Content="bzip2" Tag="bz2" ToolTip="One file, or several files inside a tar"/>
+                        <ComboBoxItem Content="xz" Tag="xz" ToolTip="One file, or several files inside a tar"/>
                     </ComboBox>
                     <TextBlock HorizontalAlignment="Left" Margin="20,95,0,0" TextWrapping="Wrap" Text="Format" VerticalAlignment="Top"/>
                     <TextBlock HorizontalAlignment="Left" Margin="20,165,0,0" TextWrapping="Wrap" Text="Compress level" VerticalAlignment="Top"/>
                     <TextBlock HorizontalAlignment="Left" Margin="20,235,0,0" TextWrapping="Wrap" Text="Solid block size" VerticalAlignment="Top"/>
-                    <CheckBox x:Name="sfx" Content="SFX archive" HorizontalAlignment="Left" Margin="20,290,0,0" VerticalAlignment="Top" Checked="SFX_Checked" Unchecked="SFX_Unchecked" BorderBrush="RoyalBlue"/>
-                    <ComboBox x:Name="level" Margin="200,162,10,0" VerticalAlignment="Top" BorderBrush="RoyalBlue" Background="{x:Null}">
+                    <CheckBox x:Name="sfx" Visibility="Collapsed" Content="SFX archive" HorizontalAlignment="Left" Margin="20,290,0,0" VerticalAlignment="Top" Checked="SFX_Checked" Unchecked="SFX_Unchecked" BorderBrush="RoyalBlue"/>
+                    <ComboBox x:Name="level" Margin="200,162,10,0" VerticalAlignment="Top" BorderBrush="RoyalBlue" Background="{x:Null}" ToolTipService.ShowOnDisabled="True">
                         <ComboBoxItem Content="Just store"/>
                         <ComboBoxItem Content="Low"/>
                         <ComboBoxItem Content="Medium"/>
                         <ComboBoxItem Content="High"/>
                         <ComboBoxItem Content="Ultra"/>
                     </ComboBox>
-                    <ComboBox x:Name="solid_block" Margin="200,232,10,0" VerticalAlignment="Top" BorderBrush="RoyalBlue" Background="{x:Null}">
+                    <ComboBox x:Name="solid_block" Margin="200,232,10,0" VerticalAlignment="Top" BorderBrush="RoyalBlue" Background="{x:Null}" ToolTipService.ShowOnDisabled="True">
                         <ComboBoxItem Content="Non-Solid"/>
                         <ComboBoxItem Content="1 MB"/>
                         <ComboBoxItem Content="2 MB"/>
@@ -61,12 +53,32 @@
                         <ComboBoxItem Content="64 GB"/>
                         <ComboBoxItem Content="Solid"/>
                     </ComboBox>
-                    <Grid x:Name="password_box" Margin="10,358,10,0" VerticalAlignment="Top">
-                        <ToggleButton x:Name="show_password" Content="S" ToolTip="Show password" Margin="0,25,0,0" HorizontalAlignment="Right" Width="21" Height="21" VerticalAlignment="Top" Background="{x:Null}" BorderBrush="RoyalBlue"/>
-                        <CheckBox x:Name="password_checkbox" HorizontalAlignment="Left" Content="Password" VerticalAlignment="Top" FontSize="16" Foreground="ForestGreen" Margin="0,0,0,0" BorderBrush="ForestGreen"/>
-                        <PasswordBox x:Name="password_enc" Margin="20,25,26,0" VerticalAlignment="Top" BorderBrush="RoyalBlue"/>
-                        <TextBox x:Name="password_textbox" Margin="20,25,26,0" VerticalAlignment="Top" Visibility="Collapsed"/>
-                        <CheckBox x:Name="encrypt_file_name" Content="Encrypt file names" HorizontalAlignment="Left" Margin="10,78,0,0" VerticalAlignment="Top" Background="{x:Null}" BorderBrush="RoyalBlue"/>
+                    <TextBlock HorizontalAlignment="Left" Margin="20,303,0,0" TextWrapping="Wrap" Text="Split to volumes" VerticalAlignment="Top"/>
+                    <ComboBox x:Name="volume_size" Margin="200,300,10,0" VerticalAlignment="Top" BorderBrush="RoyalBlue" Background="{x:Null}" IsEditable="True" ToolTip="Choose a size or type one, for example 250 MB, 700M or 2 GB">
+                        <ComboBoxItem Content="Don't split"/>
+                        <ComboBoxItem Content="10 MB"/>
+                        <ComboBoxItem Content="100 MB"/>
+                        <ComboBoxItem Content="650 MB (CD)"/>
+                        <ComboBoxItem Content="700 MB (CD)"/>
+                        <ComboBoxItem Content="1 GB"/>
+                        <ComboBoxItem Content="4092 MB (FAT32)"/>
+                        <ComboBoxItem Content="4480 MB (DVD)"/>
+                    </ComboBox>
+                    <TextBlock x:Name="help_6" Margin="30,330,20,0" TextTrimming="CharacterEllipsis" VerticalAlignment="Top" FontSize="12" Foreground="RoyalBlue" Text="The archive is saved in parts of this size: name.001, name.002 ... (open the .001 file)."/>
+                    <Grid x:Name="password_box" Margin="10,358,10,0" VerticalAlignment="Top" ToolTipService.ShowOnDisabled="True">
+                        <CheckBox x:Name="password_checkbox" HorizontalAlignment="Left" Content="Password" VerticalAlignment="Top" FontSize="16" Foreground="ForestGreen" Margin="0,0,0,0" BorderBrush="ForestGreen" Checked="PasswordCheckbox_Changed" Unchecked="PasswordCheckbox_Changed"/>
+                        <Grid Margin="20,25,0,0" VerticalAlignment="Top">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <PasswordBox x:Name="password_enc" VerticalAlignment="Top" BorderBrush="RoyalBlue" ToolTipService.ShowOnDisabled="True"/>
+                            <TextBox x:Name="password_textbox" VerticalAlignment="Top" Visibility="Collapsed" BorderBrush="RoyalBlue"/>
+                            <ToggleButton x:Name="show_password" Grid.Column="1" ToolTip="Show password" Width="24" Height="{Binding ActualHeight, ElementName=password_enc}" Margin="-1,0,0,0" VerticalAlignment="Top" Background="{x:Null}" BorderBrush="RoyalBlue" Checked="ShowPassword_Checked" Unchecked="ShowPassword_Unchecked">
+                                <Image Source="Images/Appearance/show-passwoed.png" Width="16" Height="16"/>
+                            </ToggleButton>
+                        </Grid>
+                        <CheckBox x:Name="encrypt_file_name" Content="Encrypt file names" HorizontalAlignment="Left" Margin="10,78,0,0" VerticalAlignment="Top" Background="{x:Null}" BorderBrush="RoyalBlue" ToolTipService.ShowOnDisabled="True"/>
                         <TextBlock x:Name="help_5" Margin="20,51,20,0" TextTrimming="CharacterEllipsis" VerticalAlignment="Top" FontSize="12" Foreground="RoyalBlue" Text="Be sure to save password in safe place."/>
                     </Grid>
                     <TextBlock HorizontalAlignment="Left" Margin="20,510,0,0" TextWrapping="Wrap" Text="Process priority" VerticalAlignment="Top"/>
@@ -77,15 +89,16 @@
                     </ComboBox>
                     <TextBlock x:Name="textBlock" HorizontalAlignment="Left" Margin="10,0,0,0" TextWrapping="Wrap" Text="archive name and path" VerticalAlignment="Top" FontSize="16" Foreground="ForestGreen"/>
                     <TextBlock x:Name="textBlock_Copy" HorizontalAlignment="Left" Margin="10,70,0,0" TextWrapping="Wrap" Text="archive options" VerticalAlignment="Top" FontSize="16" Foreground="ForestGreen"/>
-                    <TextBlock x:Name="help_2" Margin="30,192,20,0" TextTrimming="CharacterEllipsis" VerticalAlignment="Top" FontSize="12" Foreground="RoyalBlue"><Run Text="low compress level means fast compress speed and large archive file."/><LineBreak/><Run Text="and ultra means slow, "/><Span><Run Text="require more memory "/></Span><Run Text="and small archive file."/></TextBlock>
-                    <TextBlock x:Name="help_1" Margin="30,122,20,0" TextTrimming="CharacterEllipsis" VerticalAlignment="Top" FontSize="12" Foreground="RoyalBlue"><Run Text="some types is not free so you may buy a copy of them before you can use them."/><LineBreak/><Run Text="7z file format is recommended. "/></TextBlock>
-                    <TextBlock x:Name="help_3" Margin="30,262,20,0" TextTrimming="CharacterEllipsis" VerticalAlignment="Top" FontSize="12" Foreground="RoyalBlue" Text="Compress files in blocks, usually it improve compress ratio, But in extract if you want to extract one file will extract hole block contains this file "/>
-                    <TextBlock x:Name="help_4" Margin="30,313,20,0" TextTrimming="CharacterEllipsis" VerticalAlignment="Top" FontSize="12" Foreground="RoyalBlue" Text="Self extracting archive (*.exe type)"/>
+                    <TextBlock x:Name="help_2" Margin="30,192,20,0" TextTrimming="CharacterEllipsis" VerticalAlignment="Top" FontSize="12" Foreground="RoyalBlue"><Run Text="Low level means fast compressing and a large archive file,"/><LineBreak/><Run Text="ultra means slow compressing, "/><Span><Run Text="more memory "/></Span><Run Text="and a small archive file."/></TextBlock>
+                    <TextBlock x:Name="help_1" Margin="30,122,20,0" TextTrimming="CharacterEllipsis" VerticalAlignment="Top" FontSize="12" Foreground="RoyalBlue"><Run Text="7z file format is recommended, zip opens on every system."/><LineBreak/><Run Text="gzip, bzip2 and xz keep one file, several files are put in a tar inside."/></TextBlock>
+                    <TextBlock x:Name="help_3" Margin="30,262,20,0" TextTrimming="CharacterEllipsis" VerticalAlignment="Top" FontSize="12" Foreground="RoyalBlue" Text="Compresses the files in blocks, this usually improves the ratio, but extracting one file has to decompress its whole block."/>
+                    <TextBlock x:Name="help_4" Visibility="Collapsed" Margin="30,313,20,0" TextTrimming="CharacterEllipsis" VerticalAlignment="Top" FontSize="12" Foreground="RoyalBlue" Text="Self extracting archive (*.exe type)"/>
                     <TextBlock x:Name="textBlock_Copy6" HorizontalAlignment="Left" Margin="10,481,0,0" TextWrapping="Wrap" Text="Other options" VerticalAlignment="Top" FontSize="16" Foreground="ForestGreen"/>
+                    <TextBlock x:Name="help_7" Margin="30,537,20,10" TextTrimming="CharacterEllipsis" VerticalAlignment="Top" FontSize="12" Foreground="RoyalBlue" Text="The dates and attributes of the files are kept in the archive."/>
                 </Grid>
             </ScrollViewer>
-            <Button Content="Compress" HorizontalAlignment="Right" Margin="0,0,10,10" VerticalAlignment="Bottom" Width="75" Background="{x:Null}" Foreground="RoyalBlue" Click="Compress_Click" BorderBrush="RoyalBlue"/>
-            <Button Content="Close" HorizontalAlignment="Right" Margin="0,0,90,10" VerticalAlignment="Bottom" Width="75" Background="{x:Null}" Click="Close_Click"/>
+            <Button Content="Compress" IsDefault="True" HorizontalAlignment="Right" Margin="0,0,10,10" VerticalAlignment="Bottom" Width="75" Background="{x:Null}" Foreground="RoyalBlue" Click="Compress_Click" BorderBrush="RoyalBlue"/>
+            <Button Content="Close" IsCancel="True" HorizontalAlignment="Right" Margin="0,0,90,10" VerticalAlignment="Bottom" Width="75" Background="{x:Null}" Foreground="RoyalBlue" BorderBrush="RoyalBlue" Click="Close_Click"/>
             <TextBlock x:Name="textBlock1" HorizontalAlignment="Left" Margin="10,5,0,0" TextWrapping="Wrap" Text="Compress files options" FontSize="28" VerticalAlignment="Top" Foreground="RoyalBlue"/>
         <Rectangle Height="5" Stroke="Black" VerticalAlignment="Top" Fill="RoyalBlue" StrokeThickness="0"/>
     </Grid>

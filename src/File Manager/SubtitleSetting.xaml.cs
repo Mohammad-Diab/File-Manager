@@ -354,6 +354,13 @@ namespace File_Manager
             //background color and opacity
             //fonts and color filters
             //you can resize dialog now
+            AboutTool window = new AboutTool();
+            window.tool_vertion.Text = "Version: 2.0";
+            window.tool_date.Text = "";
+            window.tool_name.Text = "Subtitle Options";
+            window.tool_image.Source = new BitmapImage(new Uri("pack://application:,,,/File Manager;component/Images/Tools Icon/subtitle-options.png"));
+            window.Owner = this;
+            window.ShowDialog();
         }
 
         private void SetBackgroundWhite_Click(object sender, RoutedEventArgs e)

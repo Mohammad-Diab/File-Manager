@@ -26,24 +26,29 @@ namespace File_Manager
             //(Content as Grid).Children.Add(h);
         }
 
+        bool accept = false;
+
         internal DateTime? ShowDialog(DateTime elementary_date)
         {
+            if (elementary_date.Kind == DateTimeKind.Utc)
+                elementary_date = elementary_date.ToLocalTime();
             date_picker.SelectedDate = elementary_date;
             hour.SelectedIndex = elementary_date.Hour;
             minute.SelectedIndex = elementary_date.Minute;
             second.SelectedIndex = elementary_date.Second;
             ShowDialog();
-            if (!date_picker.SelectedDate.HasValue)
+            if (!accept || !date_picker.SelectedDate.HasValue)
                 return null;
             else
             {
-                DateTime date = new DateTime(date_picker.SelectedDate.Value.Year, date_picker.SelectedDate.Value.Month, date_picker.SelectedDate.Value.Day, hour.SelectedIndex, minute.SelectedIndex, second.SelectedIndex, 0);
+                DateTime date = new DateTime(date_picker.SelectedDate.Value.Year, date_picker.SelectedDate.Value.Month, date_picker.SelectedDate.Value.Day, hour.SelectedIndex, minute.SelectedIndex, second.SelectedIndex, 0, DateTimeKind.Local);
                 return date;
             }
         }
 
         private void OK_Click(object sender, RoutedEventArgs e)
         {
+            accept = true;
             Close();
         }
 

@@ -1,0 +1,198 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{5837170A-EB62-4A27-A8B9-713B6D29E63D}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Directories_Explorer</RootNamespace>
+    <AssemblyName>Directories Explorer</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="System.Xaml">
+      <RequiredTargetFramework>4.0</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="WindowsBase" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+  </ItemGroup>
+  <ItemGroup>
+    <ApplicationDefinition Include="App.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </ApplicationDefinition>
+    <Compile Include="Options.xaml.cs">
+      <DependentUpon>Options.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Rename.xaml.cs">
+      <DependentUpon>Rename.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="SelectFileDialog.xaml.cs">
+      <DependentUpon>SelectFileDialog.xaml</DependentUpon>
+    </Compile>
+    <Page Include="MainWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Compile Include="App.xaml.cs">
+      <DependentUpon>App.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="MainWindow.xaml.cs">
+      <DependentUpon>MainWindow.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Page Include="Options.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Rename.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="SelectFileDialog.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Properties\AssemblyInfo.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Include="Properties\Settings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+    <AppDesigner Include="Properties\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Tools_Icons\coming-soon.png" />
+    <Resource Include="Images\Tools_Icons\directory-analyzer.png" />
+    <Resource Include="Images\Tools_Icons\dublicate-files-remover.png" />
+    <Resource Include="Images\Tools_Icons\empty-directory-remover.png" />
+    <Resource Include="Images\Tools_Icons\encrypt.png" />
+    <Resource Include="Images\Tools_Icons\extension-changer.png" />
+    <Resource Include="Images\Tools_Icons\files-destroyer.png" />
+    <Resource Include="Images\Tools_Icons\system-monitor.png" />
+    <Resource Include="Images\Tools_Icons\Virtual-machine.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Interface\arrow.png" />
+    <Resource Include="Images\Interface\Ascending.png" />
+    <Resource Include="Images\Interface\back-menu.png" />
+    <Resource Include="Images\Interface\back.png" />
+    <Resource Include="Images\Interface\bookmark.png" />
+    <Resource Include="Images\Interface\copy.png" />
+    <Resource Include="Images\Interface\cut.png" />
+    <Resource Include="Images\Interface\delete.png" />
+    <Resource Include="Images\Interface\details.png" />
+    <Resource Include="Images\Interface\down.png" />
+    <Resource Include="Images\Interface\edit.png" />
+    <Resource Include="Images\Interface\exit.png" />
+    <Resource Include="Images\Interface\front.png" />
+    <Resource Include="Images\Interface\help.png" />
+    <Resource Include="Images\Interface\history.png" />
+    <Resource Include="Images\Interface\Invert-selection.png" />
+    <Resource Include="Images\Interface\new-directory.png" />
+    <Resource Include="Images\Interface\new-file.png" />
+    <Resource Include="Images\Interface\new-shortcut.png" />
+    <Resource Include="Images\Interface\new-tab.png" />
+    <Resource Include="Images\Interface\new-window-admin.png" />
+    <Resource Include="Images\Interface\new-window.png" />
+    <Resource Include="Images\Interface\new.png" />
+    <Resource Include="Images\Interface\option.png" />
+    <Resource Include="Images\Interface\paste.png" />
+    <Resource Include="Images\Interface\quick-access.png" />
+    <Resource Include="Images\Interface\recent.png" />
+    <Resource Include="Images\Interface\redo.png" />
+    <Resource Include="Images\Interface\refresh.png" />
+    <Resource Include="Images\Interface\search.png" />
+    <Resource Include="Images\Interface\select-all.png" />
+    <Resource Include="Images\Interface\select-none.png" />
+    <Resource Include="Images\Interface\tools.png" />
+    <Resource Include="Images\Interface\undo.png" />
+    <Resource Include="Images\Interface\up.png" />
+    <Resource Include="Images\Interface\view.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\App Icon.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Interface\rename.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\Tools_Icons\compress-files-manager.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Images\App Icon.png" />
+    <Resource Include="Images\xbill.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Core\Core\Core.csproj">
+      <Project>{4d8a704c-9943-4995-b9c5-5376ae821690}</Project>
+      <Name>Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Files Operations\Files Operations\File Operations.csproj">
+      <Project>{51001c95-4c4c-4de3-9f26-ddc3666537bd}</Project>
+      <Name>File Operations</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Messaging Centre\Messaging Centre.csproj">
+      <Project>{6a480da3-b026-4c7d-b4d2-8452e3700609}</Project>
+      <Name>Messaging Centre</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

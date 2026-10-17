@@ -59,6 +59,8 @@ The `-alpha.N` tags mark development states between these versions.
 
 Windows with .NET Framework 4.0 or later. Windows 8, 10 and 11 already include it.
 
+The first versions (v0.0.1 to v0.3.0) targeted .NET Framework 4.5. From v0.5.1-alpha.1 (September 2013) the project moved down to .NET Framework 4.0 so it could also run on Windows XP SP3 and Windows Server 2003 SP2, which .NET 4.5 does not support. v1.0.0 still targets 4.0, but a few of its newer features need a newer Windows: the Office/PDF previews and the "Apps can open this type" list need Windows Vista or later, and the GPU graphs and QEMU hardware acceleration need Windows 10.
+
 The 7-Zip engine ships with v1.0.0. The Virtual Machine tool needs [QEMU](https://www.qemu.org/download/#windows); the tool offers the download page when QEMU is not installed.
 
 ## Usage

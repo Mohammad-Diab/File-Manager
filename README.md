@@ -52,7 +52,7 @@ The `-alpha.N` tags mark development states between these versions.
 | `tools/Install-Fonts` | Console helper that installs fonts, used by Preview up to v0.9.0 |
 | `experiments` | `WpfApplication3` (an interface experiment) and `Size-On-Disk` (VB and C# console tests) |
 | `Version-2` | A modular rewrite (Core, Directories Explorer, Files Operations, PreView, Messaging Centre, File Manager) and a Music Player module; work in progress, it does not build as a whole |
-| `docs` | Notes: the first release notes, the bug list (`Errors.txt`), ideas, file type tables, XAML drafts |
+| `docs` | Notes: the first release notes, the bug list (`Errors.txt`), ideas, file type tables, XAML drafts, and [`How To.mp4`](docs/How%20To.mp4), a short video that browses a folder and previews an image |
 | `assets` | Icon drafts (SVG and PNG) |
 
 ## Requirements
